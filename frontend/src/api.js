@@ -40,5 +40,19 @@ export const api = {
   reports: () => http.get('/reports'),
   createReport: (data) => http.post('/reports', data),
   approvals: (params) => http.get('/approvals', { params }),
-  approve: (bizType, bizId, data) => http.post(`/approvals/${bizType}/${bizId}`, data)
+  approve: (bizType, bizId, data) => http.post(`/approvals/${bizType}/${bizId}`, data),
+
+  // Admin - User management
+  adminUsers: () => http.get('/admin/users'),
+  adminUser: (id) => http.get(`/admin/users/${id}`),
+  adminCreateUser: (data) => http.post('/admin/users', data),
+  adminUpdateUser: (id, data) => http.put(`/admin/users/${id}`, data),
+  adminDeleteUser: (id) => http.delete(`/admin/users/${id}`),
+  adminRoles: () => http.get('/admin/roles'),
+
+  // Admin - Department management
+  adminDepts: () => http.get('/admin/depts'),
+  adminCreateDept: (data) => http.post('/admin/depts', data),
+  adminUpdateDept: (id, data) => http.put(`/admin/depts/${id}`, data),
+  adminDeleteDept: (id) => http.delete(`/admin/depts/${id}`)
 }
