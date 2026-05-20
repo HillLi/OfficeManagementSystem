@@ -121,12 +121,13 @@ public class MeetingService {
     }
 
     private boolean isLargeActivity(String venueType, Integer expectedCount) {
-        int count = safeCount(expectedCount);
+        int count = expectedCount == null ? 0 : expectedCount;
         return ("室内".equals(venueType) && count > 500) || ("室外".equals(venueType) && count > 100);
     }
 
     private int safeCount(Integer count) {
-        return count == null ? 0 : count;
+        if (count == null) throw new BusinessException("预计参会人数不能为空");
+        return count;
     }
 
     private boolean blank(String value) {

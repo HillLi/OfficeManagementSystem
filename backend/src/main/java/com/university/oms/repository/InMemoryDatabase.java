@@ -57,6 +57,7 @@ public class InMemoryDatabase {
         addRoom(1L, "理科一号楼 101", 80, "投影仪,白板", "理科一号楼");
         addRoom(2L, "英杰交流中心阳光厅", 520, "视频会议,音响,投影仪", "英杰交流中心");
         addRoom(3L, "二教 201", 120, "投影仪", "第二教学楼");
+        addRoom(4L, "百周年纪念讲堂", 2000, "视频会议,音响,投影仪,灯光", "百周年纪念讲堂");
 
         meetingFeeStandards.put("国内管理会议", new BigDecimal("550"));
         meetingFeeStandards.put("国内业务会议", new BigDecimal("950"));

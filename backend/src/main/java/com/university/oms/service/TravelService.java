@@ -26,6 +26,9 @@ public class TravelService {
         ALLOWED_TRANSPORT.put("一类", Arrays.asList("飞机", "高铁一等座", "高铁二等座", "火车软卧"));
         ALLOWED_TRANSPORT.put("二类", Arrays.asList("高铁一等座", "高铁二等座", "火车软卧", "火车硬卧"));
         ALLOWED_TRANSPORT.put("三类", Arrays.asList("高铁二等座", "火车硬卧", "火车硬座"));
+        ALLOWED_TRANSPORT.put("level1", ALLOWED_TRANSPORT.get("一类"));
+        ALLOWED_TRANSPORT.put("level2", ALLOWED_TRANSPORT.get("二类"));
+        ALLOWED_TRANSPORT.put("level3", ALLOWED_TRANSPORT.get("三类"));
     }
 
     public TravelService(InMemoryDatabase db, ApprovalService approvalService, TravelExpenseStrategy expenseStrategy,
@@ -68,8 +71,16 @@ public class TravelService {
     private void validateTransport(Travel travel) {
         String transport = travel.getTransport();
         String staffLevel = travel.getStaffLevel();
-        if (transport == null || transport.isEmpty()) return;
-        List<String> allowed = ALLOWED_TRANSPORT.getOrDefault(staffLevel, ALLOWED_TRANSPORT.get("三类"));
+        if (transport == null || transport.isEmpty()) {
+            throw new BusinessException("交通工具不能为空");
+        }
+        if (staffLevel == null || staffLevel.isEmpty()) {
+            throw new BusinessException("人员类别不能为空");
+        }
+        List<String> allowed = ALLOWED_TRANSPORT.get(staffLevel);
+        if (allowed == null) {
+            throw new BusinessException("未知人员类别：" + staffLevel);
+        }
         if (!allowed.contains(transport)) {
             throw new BusinessException(staffLevel + "人员不允许乘坐" + transport);
         }
