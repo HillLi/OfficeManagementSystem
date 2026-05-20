@@ -1,0 +1,12 @@
+package com.university.oms;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+
+@SpringBootApplication(exclude = DataSourceAutoConfiguration.class)
+public class OfficeManagementSystemApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(OfficeManagementSystemApplication.class, args);
+    }
+}
