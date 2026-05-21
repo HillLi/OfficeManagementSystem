@@ -6,6 +6,8 @@ import com.university.oms.model.Seal;
 import com.university.oms.model.SealApplication;
 import com.university.oms.repository.DataPersistence;
 import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.model.User;
+import com.university.oms.security.AuthContext;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -17,11 +19,14 @@ public class SealService {
     private final InMemoryDatabase db;
     private final ApprovalService approvalService;
     private final DataPersistence persistence;
+    private final WorkflowService workflowService;
 
-    public SealService(InMemoryDatabase db, ApprovalService approvalService, DataPersistence persistence) {
+    public SealService(InMemoryDatabase db, ApprovalService approvalService, DataPersistence persistence,
+                       WorkflowService workflowService) {
         this.db = db;
         this.approvalService = approvalService;
         this.persistence = persistence;
+        this.workflowService = workflowService;
     }
 
     public List<Seal> seals() {
@@ -29,10 +34,25 @@ public class SealService {
     }
 
     public List<SealApplication> applications() {
-        return new ArrayList<SealApplication>(db.sealApplications().values());
+        User user = AuthContext.currentUser();
+        List<SealApplication> apps = new ArrayList<SealApplication>(db.sealApplications().values());
+        if (user == null || user.getRoleKeys().contains("admin") || user.getRoleKeys().contains("office_admin")
+                || user.getRoleKeys().contains("school_leader") || user.getRoleKeys().contains("seal_keeper")) {
+            return apps;
+        }
+        List<SealApplication> scoped = new ArrayList<SealApplication>();
+        for (SealApplication app : apps) {
+            User applicant = db.users().get(app.getApplicantId());
+            if (app.getApplicantId().equals(user.getId())
+                    || (user.getRoleKeys().contains("dept_head") && applicant != null && user.getDeptId().equals(applicant.getDeptId()))) {
+                scoped.add(app);
+            }
+        }
+        return scoped;
     }
 
     public SealApplication apply(SealApplyRequest request) {
+        Long applicantId = AuthContext.currentUserIdOr(request.getApplicantId());
         Seal seal = db.seals().get(request.getSealId());
         if (seal == null) {
             throw new BusinessException("印章不存在");
@@ -43,7 +63,7 @@ public class SealService {
         SealApplication application = new SealApplication();
         db.fill(application, db.nextId());
         application.setSealId(request.getSealId());
-        application.setApplicantId(request.getApplicantId());
+        application.setApplicantId(applicantId);
         application.setPurpose(request.getPurpose());
         application.setMaterialUrl(request.getMaterialUrl());
         application.setCopies(request.getCopies());
@@ -55,11 +75,14 @@ public class SealService {
         }
         db.sealApplications().put(application.getId(), application);
         persistence.saveSealApplication(application);
-        approvalService.record("seal", application.getId(), request.getApplicantId(), "submit", "提交用印申请");
+        approvalService.record("seal", application.getId(), applicantId, "submit", "提交用印申请");
+        workflowService.startFlow("seal", application.getId(), application.getStatus(), applicantId);
         return application;
     }
 
     public SealApplication markUsed(Long id, Long keeperId) {
+        Long operatorId = AuthContext.currentUserIdOr(keeperId);
+        requireKeeper(operatorId);
         SealApplication app = find(id);
         app.setUseTime(LocalDateTime.now());
         app.setStatus("used");
@@ -67,12 +90,16 @@ public class SealService {
         seal.setStatus(app.isTakeOut() ? "lent" : "in_use");
         persistence.saveSealApplication(app);
         persistence.saveSeal(seal);
-        approvalService.record("seal", id, keeperId, "use", "用印登记");
+        approvalService.record("seal", id, operatorId, "use", "用印登记");
+        workflowService.audit("seal", "use", "seal", id, "用印登记");
         return app;
     }
 
     public SealApplication markReturned(Long id, Long keeperId) {
+        Long operatorId = AuthContext.currentUserIdOr(keeperId);
+        requireKeeper(operatorId);
         SealApplication app = find(id);
+        String oldStatus = app.getStatus();
         app.setReturnTime(LocalDateTime.now());
         app.setStatus("returned");
         Seal seal = db.seals().get(app.getSealId());
@@ -80,10 +107,11 @@ public class SealService {
         persistence.saveSealApplication(app);
         persistence.saveSeal(seal);
         if (app.getReturnDeadline() != null && LocalDateTime.now().isAfter(app.getReturnDeadline())) {
-            approvalService.record("seal", id, keeperId, "overdue_return", "逾期归还（截止" + app.getReturnDeadline() + "）");
+            approvalService.record("seal", id, operatorId, "overdue_return", "逾期归还（截止" + app.getReturnDeadline() + "）");
         } else {
-            approvalService.record("seal", id, keeperId, "return", "归还确认");
+            approvalService.record("seal", id, operatorId, "return", "归还确认");
         }
+        workflowService.advanceFlow("seal", id, oldStatus, "returned", app.getApplicantId());
         return app;
     }
 
@@ -93,5 +121,13 @@ public class SealService {
             throw new BusinessException("用印申请不存在");
         }
         return app;
+    }
+
+    private void requireKeeper(Long userId) {
+        User user = db.users().get(userId);
+        if (user == null || !(user.getRoleKeys().contains("seal_keeper") || user.getRoleKeys().contains("office_admin")
+                || user.getRoleKeys().contains("admin"))) {
+            throw new BusinessException("只有印章保管人或党办校办人员可以登记用印和归还");
+        }
     }
 }

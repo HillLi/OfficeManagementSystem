@@ -19,6 +19,35 @@ public class JdbcDataPersistence implements DataPersistence {
     }
 
     @Override
+    public void saveUser(User u) {
+        jdbcTemplate.update("REPLACE INTO sys_user (id, username, password, real_name, dept_id, email, phone, status, created_at, updated_at) " +
+                        "VALUES (?,?,?,?,?,?,?,1,?,?)",
+                u.getId(), u.getUsername(), u.getPassword(), u.getRealName(), u.getDeptId(), null, null, u.getCreatedAt(), u.getUpdatedAt());
+        jdbcTemplate.update("DELETE FROM sys_user_role WHERE user_id=?", u.getId());
+        for (String roleKey : u.getRoleKeys()) {
+            jdbcTemplate.update("INSERT INTO sys_user_role (user_id, role_id) SELECT ?, id FROM sys_role WHERE role_key=?",
+                    u.getId(), roleKey);
+        }
+    }
+
+    @Override
+    public void deleteUser(Long id) {
+        jdbcTemplate.update("DELETE FROM sys_user_role WHERE user_id=?", id);
+        jdbcTemplate.update("DELETE FROM sys_user WHERE id=?", id);
+    }
+
+    @Override
+    public void saveDepartment(Department d) {
+        jdbcTemplate.update("REPLACE INTO sys_dept (id, dept_name, parent_id, status) VALUES (?,?,?,1)",
+                d.getId(), d.getDeptName(), d.getParentId());
+    }
+
+    @Override
+    public void deleteDepartment(Long id) {
+        jdbcTemplate.update("DELETE FROM sys_dept WHERE id=?", id);
+    }
+
+    @Override
     public void saveDocument(Document d) {
         jdbcTemplate.update("REPLACE INTO oa_document " +
                         "(id, doc_no, title, doc_type, urgency, secrecy_level, knowledge_scope, content, applicant_id, dept_id, status, ai_review_result, created_at, updated_at) " +
@@ -46,11 +75,12 @@ public class JdbcDataPersistence implements DataPersistence {
     @Override
     public void saveMeeting(Meeting m) {
         jdbcTemplate.update("REPLACE INTO oa_meeting " +
-                        "(id, title, room_id, start_time, end_time, organizer_id, expected_count, venue_type, meeting_type, budget, risk_report_url, security_plan_url, emergency_plan_url, large_activity, status, created_at) " +
-                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        "(id, title, room_id, start_time, end_time, organizer_id, expected_count, venue_type, meeting_type, budget, risk_report_url, security_plan_url, emergency_plan_url, large_activity, sign_in_count, minutes, status, created_at) " +
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 m.getId(), m.getTitle(), m.getRoomId(), m.getStartTime(), m.getEndTime(), m.getOrganizerId(),
                 m.getExpectedCount(), m.getVenueType(), m.getMeetingType(), m.getBudget(), m.getRiskReportUrl(),
-                m.getSecurityPlanUrl(), m.getEmergencyPlanUrl(), m.isLargeActivity() ? 1 : 0, m.getStatus(), m.getCreatedAt());
+                m.getSecurityPlanUrl(), m.getEmergencyPlanUrl(), m.isLargeActivity() ? 1 : 0, m.getSignInCount(),
+                m.getMinutes(), m.getStatus(), m.getCreatedAt());
     }
 
     @Override
@@ -75,6 +105,47 @@ public class JdbcDataPersistence implements DataPersistence {
     public void saveApproval(ApprovalRecord r) {
         jdbcTemplate.update("REPLACE INTO oa_approval_history (id, biz_type, biz_id, operator_id, action, opinion, operated_at) VALUES (?,?,?,?,?,?,?)",
                 r.getId(), r.getBizType(), r.getBizId(), r.getOperatorId(), r.getAction(), r.getOpinion(), r.getCreatedAt());
+    }
+
+    @Override
+    public void saveAttachment(Attachment a) {
+        jdbcTemplate.update("REPLACE INTO sys_attachment " +
+                        "(id, biz_type, biz_id, file_name, file_url, secrecy_level, uploader_id, created_at) VALUES (?,?,?,?,?,?,?,?)",
+                a.getId(), a.getBizType(), a.getBizId(), a.getFileName(), a.getFileUrl(), a.getSecrecyLevel(),
+                a.getUploaderId(), a.getCreatedAt());
+    }
+
+    @Override
+    public void saveAuditLog(AuditLog l) {
+        jdbcTemplate.update("REPLACE INTO sys_operation_log " +
+                        "(id, operator_id, module, action, biz_type, biz_id, detail, created_at) VALUES (?,?,?,?,?,?,?,?)",
+                l.getId(), l.getOperatorId(), l.getModule(), l.getAction(), l.getBizType(), l.getBizId(),
+                l.getDetail(), l.getCreatedAt());
+    }
+
+    @Override
+    public void saveNotification(Notification n) {
+        jdbcTemplate.update("REPLACE INTO sys_notification " +
+                        "(id, receiver_id, title, content, read_status, biz_type, biz_id, created_at) VALUES (?,?,?,?,?,?,?,?)",
+                n.getId(), n.getReceiverId(), n.getTitle(), n.getContent(), n.isReadStatus() ? 1 : 0,
+                n.getBizType(), n.getBizId(), n.getCreatedAt());
+    }
+
+    @Override
+    public void saveFlowInstance(FlowInstance i) {
+        jdbcTemplate.update("REPLACE INTO oa_flow_instance " +
+                        "(id, biz_type, biz_id, current_node_key, status, starter_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)",
+                i.getId(), i.getBizType(), i.getBizId(), i.getCurrentNodeKey(), i.getStatus(), i.getStarterId(),
+                i.getCreatedAt(), i.getUpdatedAt());
+    }
+
+    @Override
+    public void saveFlowTask(FlowTask t) {
+        jdbcTemplate.update("REPLACE INTO oa_flow_task " +
+                        "(id, instance_id, biz_type, biz_id, node_key, approver_role, approver_id, status, due_time, created_at, updated_at) " +
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                t.getId(), t.getInstanceId(), t.getBizType(), t.getBizId(), t.getNodeKey(), t.getApproverRole(),
+                t.getApproverId(), t.getStatus(), t.getDueTime(), t.getCreatedAt(), t.getUpdatedAt());
     }
 
     private String toJson(Object value) {

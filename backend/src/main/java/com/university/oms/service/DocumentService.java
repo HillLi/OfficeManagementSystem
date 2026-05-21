@@ -9,6 +9,7 @@ import com.university.oms.model.Document;
 import com.university.oms.model.User;
 import com.university.oms.repository.DataPersistence;
 import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.security.AuthContext;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -25,24 +26,39 @@ public class DocumentService {
     private final DataPersistence persistence;
     private final DocumentFactory factory = new DocumentFactory();
     private final DocumentProcessor processor;
+    private final WorkflowService workflowService;
 
     public DocumentService(InMemoryDatabase db, ApprovalService approvalService,
                            AiProviderAdapter aiProvider, List<DocumentReviewStrategy> strategies,
-                           DataPersistence persistence, DocumentProcessor processor) {
+                           DataPersistence persistence, DocumentProcessor processor, WorkflowService workflowService) {
         this.db = db;
         this.approvalService = approvalService;
         this.aiProvider = aiProvider;
         this.strategies = strategies;
         this.persistence = persistence;
         this.processor = processor;
+        this.workflowService = workflowService;
     }
 
     public List<Document> list() {
-        return new ArrayList<Document>(db.documents().values());
+        User user = AuthContext.currentUser();
+        List<Document> documents = new ArrayList<Document>(db.documents().values());
+        if (user == null || canViewAll(user)) {
+            return documents;
+        }
+        List<Document> scoped = new ArrayList<Document>();
+        for (Document document : documents) {
+            if (document.getApplicantId().equals(user.getId()) || document.getDeptId().equals(user.getDeptId())
+                    && user.getRoleKeys().contains("dept_head")) {
+                scoped.add(document);
+            }
+        }
+        return scoped;
     }
 
     public Document create(DocumentRequest request) {
-        User applicant = db.users().get(request.getApplicantId());
+        Long applicantId = AuthContext.currentUserIdOr(request.getApplicantId());
+        User applicant = db.users().get(applicantId);
         if (applicant == null) {
             throw new BusinessException("用户不存在");
         }
@@ -51,6 +67,7 @@ public class DocumentService {
         db.documents().put(document.getId(), document);
         persistence.saveDocument(document);
         approvalService.record("document", document.getId(), applicant.getId(), "create", "起草公文");
+        workflowService.audit("document", "create", "document", document.getId(), document.getTitle());
         return document;
     }
 
@@ -60,6 +77,20 @@ public class DocumentService {
         document.setUpdatedAt(LocalDateTime.now());
         persistence.saveDocument(document);
         approvalService.record("document", id, document.getApplicantId(), "submit", "提交审批");
+        workflowService.startFlow("document", id, document.getStatus(), document.getApplicantId());
+        return document;
+    }
+
+    public Document archive(Long id) {
+        Document document = find(id);
+        if (!"approved".equals(document.getStatus())) {
+            throw new BusinessException("只有已审批通过的公文可以归档");
+        }
+        document.setStatus("archived");
+        document.setUpdatedAt(LocalDateTime.now());
+        persistence.saveDocument(document);
+        approvalService.record("document", id, AuthContext.currentUserIdOr(document.getApplicantId()), "archive", "公文归档");
+        workflowService.advanceFlow("document", id, "approved", "archived", document.getApplicantId());
         return document;
     }
 
@@ -82,5 +113,11 @@ public class DocumentService {
             throw new BusinessException("公文不存在");
         }
         return document;
+    }
+
+    private boolean canViewAll(User user) {
+        return user.getRoleKeys().contains("admin")
+                || user.getRoleKeys().contains("office_admin")
+                || user.getRoleKeys().contains("school_leader");
     }
 }

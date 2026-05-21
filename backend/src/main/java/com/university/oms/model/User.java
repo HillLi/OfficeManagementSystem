@@ -1,5 +1,6 @@
 package com.university.oms.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -19,6 +20,7 @@ public class User extends BaseEntity {
         this.username = username;
     }
 
+    @JsonIgnore
     public String getPassword() {
         return password;
     }

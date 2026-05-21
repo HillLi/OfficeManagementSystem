@@ -34,6 +34,11 @@ public class MysqlDataLoader {
         db.travels().clear();
         db.reports().clear();
         db.approvals().clear();
+        db.attachments().clear();
+        db.auditLogs().clear();
+        db.notifications().clear();
+        db.flowInstances().clear();
+        db.flowTasks().clear();
 
         loadDepartments();
         loadUsers();
@@ -45,6 +50,11 @@ public class MysqlDataLoader {
         loadTravels();
         loadReports();
         loadApprovals();
+        loadAttachments();
+        loadAuditLogs();
+        loadNotifications();
+        loadFlowInstances();
+        loadFlowTasks();
         db.ensureNextIdAtLeast(maxId());
     }
 
@@ -159,6 +169,8 @@ public class MysqlDataLoader {
             m.setSecurityPlanUrl(rs.getString("security_plan_url"));
             m.setEmergencyPlanUrl(rs.getString("emergency_plan_url"));
             m.setLargeActivity(rs.getInt("large_activity") == 1);
+            m.setSignInCount(rs.getInt("sign_in_count"));
+            m.setMinutes(rs.getString("minutes"));
             m.setStatus(rs.getString("status"));
             db.meetings().put(m.getId(), m);
         });
@@ -212,6 +224,77 @@ public class MysqlDataLoader {
         });
     }
 
+    private void loadAttachments() {
+        jdbcTemplate.query("SELECT * FROM sys_attachment", rs -> {
+            Attachment a = new Attachment();
+            db.fill(a, rs.getLong("id"));
+            a.setBizType(rs.getString("biz_type"));
+            a.setBizId(rs.getLong("biz_id"));
+            a.setFileName(rs.getString("file_name"));
+            a.setFileUrl(rs.getString("file_url"));
+            a.setSecrecyLevel(rs.getString("secrecy_level"));
+            a.setUploaderId(rs.getLong("uploader_id"));
+            db.attachments().add(a);
+        });
+    }
+
+    private void loadAuditLogs() {
+        jdbcTemplate.query("SELECT * FROM sys_operation_log", rs -> {
+            AuditLog l = new AuditLog();
+            db.fill(l, rs.getLong("id"));
+            l.setOperatorId(rs.getLong("operator_id"));
+            l.setModule(rs.getString("module"));
+            l.setAction(rs.getString("action"));
+            l.setBizType(rs.getString("biz_type"));
+            l.setBizId(rs.getLong("biz_id"));
+            l.setDetail(rs.getString("detail"));
+            db.auditLogs().add(l);
+        });
+    }
+
+    private void loadNotifications() {
+        jdbcTemplate.query("SELECT * FROM sys_notification", rs -> {
+            Notification n = new Notification();
+            db.fill(n, rs.getLong("id"));
+            n.setReceiverId(rs.getLong("receiver_id"));
+            n.setTitle(rs.getString("title"));
+            n.setContent(rs.getString("content"));
+            n.setReadStatus(rs.getInt("read_status") == 1);
+            n.setBizType(rs.getString("biz_type"));
+            n.setBizId(rs.getLong("biz_id"));
+            db.notifications().add(n);
+        });
+    }
+
+    private void loadFlowInstances() {
+        jdbcTemplate.query("SELECT * FROM oa_flow_instance", rs -> {
+            FlowInstance i = new FlowInstance();
+            db.fill(i, rs.getLong("id"));
+            i.setBizType(rs.getString("biz_type"));
+            i.setBizId(rs.getLong("biz_id"));
+            i.setCurrentNodeKey(rs.getString("current_node_key"));
+            i.setStatus(rs.getString("status"));
+            i.setStarterId(rs.getLong("starter_id"));
+            db.flowInstances().put(i.getBizType() + ":" + i.getBizId(), i);
+        });
+    }
+
+    private void loadFlowTasks() {
+        jdbcTemplate.query("SELECT * FROM oa_flow_task", rs -> {
+            FlowTask t = new FlowTask();
+            db.fill(t, rs.getLong("id"));
+            t.setInstanceId(rs.getLong("instance_id"));
+            t.setBizType(rs.getString("biz_type"));
+            t.setBizId(rs.getLong("biz_id"));
+            t.setNodeKey(rs.getString("node_key"));
+            t.setApproverRole(rs.getString("approver_role"));
+            t.setApproverId(rs.getLong("approver_id"));
+            t.setStatus(rs.getString("status"));
+            t.setDueTime(toLocalDateTime(rs, "due_time"));
+            db.flowTasks().add(t);
+        });
+    }
+
     private long maxId() {
         Long value = jdbcTemplate.queryForObject(
                 "SELECT GREATEST(" +
@@ -221,6 +304,11 @@ public class MysqlDataLoader {
                         "COALESCE((SELECT MAX(id) FROM oa_travel),0)," +
                         "COALESCE((SELECT MAX(id) FROM oa_report),0)," +
                         "COALESCE((SELECT MAX(id) FROM oa_approval_history),0)," +
+                        "COALESCE((SELECT MAX(id) FROM sys_attachment),0)," +
+                        "COALESCE((SELECT MAX(id) FROM sys_operation_log),0)," +
+                        "COALESCE((SELECT MAX(id) FROM sys_notification),0)," +
+                        "COALESCE((SELECT MAX(id) FROM oa_flow_instance),0)," +
+                        "COALESCE((SELECT MAX(id) FROM oa_flow_task),0)," +
                         "1000)",
                 Long.class);
         return value == null ? 1000L : value;

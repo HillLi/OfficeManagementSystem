@@ -27,8 +27,13 @@
 
 <script setup>
 import { onMounted, onUnmounted, reactive, ref } from 'vue'
-import * as echarts from 'echarts'
+import { BarChart, GaugeChart, PieChart } from 'echarts/charts'
+import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
+import { init, use } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
 import { api } from '../api'
+
+use([BarChart, GaugeChart, PieChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
 
 const stats = reactive({
   documentCount: 0, pendingDocumentCount: 0, sealApplyCount: 0,
@@ -54,7 +59,7 @@ onUnmounted(() => {
 function initCharts() {
   const statusDist = stats.documentStatusDistribution || {}
   if (Object.keys(statusDist).length > 0) {
-    const pie = echarts.init(pieRef.value)
+    const pie = init(pieRef.value)
     charts.push(pie)
     pie.setOption({
       tooltip: { trigger: 'item' },
@@ -68,7 +73,7 @@ function initCharts() {
 
   const monthly = stats.monthlyBusinessCounts || {}
   if (Object.keys(monthly).length > 0) {
-    const bar = echarts.init(barRef.value)
+    const bar = init(barRef.value)
     charts.push(bar)
     bar.setOption({
       tooltip: { trigger: 'axis' },
@@ -78,7 +83,7 @@ function initCharts() {
     })
   }
 
-  const gauge = echarts.init(gaugeRef.value)
+  const gauge = init(gaugeRef.value)
   charts.push(gauge)
   gauge.setOption({
     series: [{

@@ -2,6 +2,7 @@ package com.university.oms.controller;
 
 import com.university.oms.common.ApiResponse;
 import com.university.oms.dto.MeetingRequest;
+import com.university.oms.dto.MeetingMinutesRequest;
 import com.university.oms.dto.RecommendRoomRequest;
 import com.university.oms.model.Meeting;
 import com.university.oms.model.MeetingRoom;
@@ -38,5 +39,10 @@ public class MeetingController {
     @PostMapping
     public ApiResponse<Meeting> create(@Valid @RequestBody MeetingRequest request) {
         return ApiResponse.ok(service.create(request));
+    }
+
+    @PostMapping("/{id}/minutes")
+    public ApiResponse<Meeting> archiveMinutes(@PathVariable Long id, @Valid @RequestBody MeetingMinutesRequest request) {
+        return ApiResponse.ok(service.archiveMinutes(id, request));
     }
 }

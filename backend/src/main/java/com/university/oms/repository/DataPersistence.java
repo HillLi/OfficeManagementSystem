@@ -3,6 +3,10 @@ package com.university.oms.repository;
 import com.university.oms.model.*;
 
 public interface DataPersistence {
+    void saveUser(User user);
+    void deleteUser(Long id);
+    void saveDepartment(Department department);
+    void deleteDepartment(Long id);
     void saveDocument(Document document);
     void saveSealApplication(SealApplication application);
     void saveSeal(Seal seal);
@@ -10,4 +14,9 @@ public interface DataPersistence {
     void saveTravel(Travel travel);
     void saveReport(Report report);
     void saveApproval(ApprovalRecord record);
+    void saveAttachment(Attachment attachment);
+    void saveAuditLog(AuditLog auditLog);
+    void saveNotification(Notification notification);
+    void saveFlowInstance(FlowInstance flowInstance);
+    void saveFlowTask(FlowTask flowTask);
 }

@@ -1,0 +1,93 @@
+package com.university.oms;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+class SecurityIntegrationTest {
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Test
+    void apiRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/dashboard"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void loginReturnsTokenWithoutPassword() throws Exception {
+        JsonNode response = postJson("/api/auth/login", "{\"username\":\"user\",\"password\":\"123456\"}", null);
+
+        assertTrue(response.get("success").asBoolean());
+        assertTrue(response.get("data").get("token").asText().length() > 20);
+        assertFalse(response.get("data").get("user").has("password"));
+    }
+
+    @Test
+    void nonAdminCannotAccessAdminApi() throws Exception {
+        String token = login("user");
+
+        mockMvc.perform(get("/api/admin/users").header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void approvalOperatorComesFromToken() throws Exception {
+        String userToken = login("user");
+        String headToken = login("head");
+
+        JsonNode documentResponse = postJson("/api/documents",
+                "{\"title\":\"关于安全测试的通知\",\"docType\":\"通知\",\"content\":\"各单位：请开展测试。\",\"applicantId\":999}",
+                userToken);
+        long documentId = documentResponse.get("data").get("id").asLong();
+
+        postJson("/api/documents/" + documentId + "/submit", "{}", userToken);
+        postJson("/api/approvals/document/" + documentId, "{\"operatorId\":4,\"action\":\"approve\",\"opinion\":\"同意\"}", headToken);
+
+        JsonNode approvalResponse = getJson("/api/approvals?bizType=document&bizId=" + documentId, userToken);
+        JsonNode approvals = approvalResponse.get("data");
+        JsonNode last = approvals.get(approvals.size() - 1);
+
+        assertEquals(3L, last.get("operatorId").asLong());
+    }
+
+    private String login(String username) throws Exception {
+        JsonNode response = postJson("/api/auth/login",
+                "{\"username\":\"" + username + "\",\"password\":\"123456\"}", null);
+        return response.get("data").get("token").asText();
+    }
+
+    private JsonNode postJson(String url, String json, String token) throws Exception {
+        org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder builder = post(url)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json);
+        if (token != null) {
+            builder.header("Authorization", "Bearer " + token);
+        }
+        String body = mockMvc.perform(builder)
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(body);
+    }
+
+    private JsonNode getJson(String url, String token) throws Exception {
+        String body = mockMvc.perform(get(url).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(body);
+    }
+}

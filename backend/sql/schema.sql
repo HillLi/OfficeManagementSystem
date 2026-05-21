@@ -103,6 +103,8 @@ CREATE TABLE IF NOT EXISTS oa_meeting (
   security_plan_url VARCHAR(500),
   emergency_plan_url VARCHAR(500),
   large_activity TINYINT DEFAULT 0,
+  sign_in_count INT DEFAULT 0,
+  minutes LONGTEXT,
   status VARCHAR(30) NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -146,6 +148,71 @@ CREATE TABLE IF NOT EXISTS oa_approval_history (
   operated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS sys_attachment (
+  id BIGINT PRIMARY KEY,
+  biz_type VARCHAR(20) NOT NULL,
+  biz_id BIGINT NOT NULL,
+  file_name VARCHAR(255) NOT NULL,
+  file_url VARCHAR(500) NOT NULL,
+  secrecy_level VARCHAR(20) DEFAULT '公开',
+  uploader_id BIGINT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_attachment_biz (biz_type, biz_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS sys_operation_log (
+  id BIGINT PRIMARY KEY,
+  operator_id BIGINT,
+  module VARCHAR(50) NOT NULL,
+  action VARCHAR(50) NOT NULL,
+  biz_type VARCHAR(20),
+  biz_id BIGINT,
+  detail VARCHAR(1000),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_operation_biz (biz_type, biz_id),
+  INDEX idx_operation_operator (operator_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS sys_notification (
+  id BIGINT PRIMARY KEY,
+  receiver_id BIGINT NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  content VARCHAR(1000),
+  read_status TINYINT DEFAULT 0,
+  biz_type VARCHAR(20),
+  biz_id BIGINT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_notification_receiver (receiver_id, read_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS oa_flow_instance (
+  id BIGINT PRIMARY KEY,
+  biz_type VARCHAR(20) NOT NULL,
+  biz_id BIGINT NOT NULL,
+  current_node_key VARCHAR(50),
+  status VARCHAR(30) NOT NULL,
+  starter_id BIGINT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_flow_biz (biz_type, biz_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS oa_flow_task (
+  id BIGINT PRIMARY KEY,
+  instance_id BIGINT NOT NULL,
+  biz_type VARCHAR(20) NOT NULL,
+  biz_id BIGINT NOT NULL,
+  node_key VARCHAR(50) NOT NULL,
+  approver_role VARCHAR(50),
+  approver_id BIGINT,
+  status VARCHAR(20) NOT NULL,
+  due_time DATETIME,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_flow_task_biz (biz_type, biz_id),
+  INDEX idx_flow_task_status (status, approver_role, approver_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS oa_travel_standard (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   staff_level VARCHAR(20) NOT NULL,
@@ -153,7 +220,8 @@ CREATE TABLE IF NOT EXISTS oa_travel_standard (
   city_level VARCHAR(30) NOT NULL,
   hotel_limit DECIMAL(10,2) NOT NULL,
   meal_subsidy DECIMAL(10,2) NOT NULL,
-  local_transport_subsidy DECIMAL(10,2) NOT NULL
+  local_transport_subsidy DECIMAL(10,2) NOT NULL,
+  UNIQUE KEY uk_travel_standard (staff_level, travel_type, city_level)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS oa_meeting_fee_standard (
@@ -162,5 +230,6 @@ CREATE TABLE IF NOT EXISTS oa_meeting_fee_standard (
   accommodation_limit DECIMAL(10,2) NOT NULL,
   meal_limit DECIMAL(10,2) NOT NULL,
   other_limit DECIMAL(10,2) NOT NULL,
-  total_limit DECIMAL(10,2) NOT NULL
+  total_limit DECIMAL(10,2) NOT NULL,
+  UNIQUE KEY uk_meeting_fee_standard (meeting_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

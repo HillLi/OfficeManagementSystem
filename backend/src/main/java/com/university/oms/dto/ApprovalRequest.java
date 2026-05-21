@@ -1,9 +1,6 @@
 package com.university.oms.dto;
 
-import javax.validation.constraints.NotNull;
-
 public class ApprovalRequest {
-    @NotNull(message = "操作人不能为空")
     private Long operatorId;
     private String action = "approve";
     private String opinion = "同意";

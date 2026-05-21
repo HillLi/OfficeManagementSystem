@@ -23,6 +23,11 @@ public class InMemoryDatabase {
     private final Map<Long, Travel> travels = new ConcurrentHashMap<Long, Travel>();
     private final Map<Long, Report> reports = new ConcurrentHashMap<Long, Report>();
     private final List<ApprovalRecord> approvals = Collections.synchronizedList(new ArrayList<ApprovalRecord>());
+    private final List<Attachment> attachments = Collections.synchronizedList(new ArrayList<Attachment>());
+    private final List<AuditLog> auditLogs = Collections.synchronizedList(new ArrayList<AuditLog>());
+    private final List<Notification> notifications = Collections.synchronizedList(new ArrayList<Notification>());
+    private final Map<String, FlowInstance> flowInstances = new ConcurrentHashMap<String, FlowInstance>();
+    private final List<FlowTask> flowTasks = Collections.synchronizedList(new ArrayList<FlowTask>());
     private final Map<String, BigDecimal> meetingFeeStandards = new ConcurrentHashMap<String, BigDecimal>();
 
     public long nextId() {
@@ -122,5 +127,10 @@ public class InMemoryDatabase {
     public Map<Long, Travel> travels() { return travels; }
     public Map<Long, Report> reports() { return reports; }
     public List<ApprovalRecord> approvals() { return approvals; }
+    public List<Attachment> attachments() { return attachments; }
+    public List<AuditLog> auditLogs() { return auditLogs; }
+    public List<Notification> notifications() { return notifications; }
+    public Map<String, FlowInstance> flowInstances() { return flowInstances; }
+    public List<FlowTask> flowTasks() { return flowTasks; }
     public Map<String, BigDecimal> meetingFeeStandards() { return meetingFeeStandards; }
 }

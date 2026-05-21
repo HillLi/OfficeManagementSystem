@@ -1,6 +1,7 @@
 package com.university.oms.controller;
 
 import com.university.oms.common.ApiResponse;
+import com.university.oms.dto.ReportReplyRequest;
 import com.university.oms.dto.ReportRequest;
 import com.university.oms.model.Report;
 import com.university.oms.service.ReportService;
@@ -26,5 +27,10 @@ public class ReportController {
     @PostMapping
     public ApiResponse<Report> create(@Valid @RequestBody ReportRequest request) {
         return ApiResponse.ok(service.create(request));
+    }
+
+    @PostMapping("/{id}/reply")
+    public ApiResponse<Report> reply(@PathVariable Long id, @Valid @RequestBody ReportReplyRequest request) {
+        return ApiResponse.ok(service.reply(id, request));
     }
 }

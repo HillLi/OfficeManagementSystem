@@ -35,6 +35,11 @@ public class DocumentController {
         return ApiResponse.ok(service.submit(id));
     }
 
+    @PostMapping("/{id}/archive")
+    public ApiResponse<Document> archive(@PathVariable Long id) {
+        return ApiResponse.ok(service.archive(id));
+    }
+
     @PostMapping("/{id}/ai-review")
     public ApiResponse<AiReviewResult> review(@PathVariable Long id) {
         return ApiResponse.ok(service.review(id));

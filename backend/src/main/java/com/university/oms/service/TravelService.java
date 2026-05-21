@@ -2,10 +2,13 @@ package com.university.oms.service;
 
 import com.university.oms.common.BusinessException;
 import com.university.oms.design.TravelExpenseStrategy;
+import com.university.oms.dto.TravelReimburseRequest;
 import com.university.oms.dto.TravelRequest;
 import com.university.oms.model.Travel;
+import com.university.oms.model.User;
 import com.university.oms.repository.DataPersistence;
 import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.security.AuthContext;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -20,6 +23,7 @@ public class TravelService {
     private final ApprovalService approvalService;
     private final TravelExpenseStrategy expenseStrategy;
     private final DataPersistence persistence;
+    private final WorkflowService workflowService;
 
     private static final Map<String, List<String>> ALLOWED_TRANSPORT = new HashMap<>();
     static {
@@ -32,24 +36,40 @@ public class TravelService {
     }
 
     public TravelService(InMemoryDatabase db, ApprovalService approvalService, TravelExpenseStrategy expenseStrategy,
-                         DataPersistence persistence) {
+                         DataPersistence persistence, WorkflowService workflowService) {
         this.db = db;
         this.approvalService = approvalService;
         this.expenseStrategy = expenseStrategy;
         this.persistence = persistence;
+        this.workflowService = workflowService;
     }
 
     public List<Travel> list() {
-        return new ArrayList<Travel>(db.travels().values());
+        User user = AuthContext.currentUser();
+        List<Travel> travels = new ArrayList<Travel>(db.travels().values());
+        if (user == null || user.getRoleKeys().contains("admin") || user.getRoleKeys().contains("finance_staff")
+                || user.getRoleKeys().contains("school_leader")) {
+            return travels;
+        }
+        List<Travel> scoped = new ArrayList<Travel>();
+        for (Travel travel : travels) {
+            User applicant = db.users().get(travel.getApplicantId());
+            if (travel.getApplicantId().equals(user.getId())
+                    || (user.getRoleKeys().contains("dept_head") && applicant != null && user.getDeptId().equals(applicant.getDeptId()))) {
+                scoped.add(travel);
+            }
+        }
+        return scoped;
     }
 
     public Travel create(TravelRequest request) {
-        if (!db.users().containsKey(request.getApplicantId())) {
+        Long applicantId = AuthContext.currentUserIdOr(request.getApplicantId());
+        if (!db.users().containsKey(applicantId)) {
             throw new BusinessException("用户不存在");
         }
         Travel travel = new Travel();
         db.fill(travel, db.nextId());
-        travel.setApplicantId(request.getApplicantId());
+        travel.setApplicantId(applicantId);
         travel.setDestination(request.getDestination());
         travel.setStartDate(request.getStartDate());
         travel.setEndDate(request.getEndDate());
@@ -64,7 +84,33 @@ public class TravelService {
         travel.setCheckResult(expenseStrategy.check(travel));
         db.travels().put(travel.getId(), travel);
         persistence.saveTravel(travel);
-        approvalService.record("travel", travel.getId(), request.getApplicantId(), "submit", "提交差旅申请");
+        approvalService.record("travel", travel.getId(), applicantId, "submit", "提交差旅申请");
+        workflowService.startFlow("travel", travel.getId(), travel.getStatus(), applicantId);
+        return travel;
+    }
+
+    public Travel reimburse(Long id, TravelReimburseRequest request) {
+        Travel travel = db.travels().get(id);
+        if (travel == null) {
+            throw new BusinessException("差旅申请不存在");
+        }
+        if (!"approved".equals(travel.getStatus())) {
+            throw new BusinessException("只有审批通过的差旅可以提交报销");
+        }
+        travel.setActualExpense(request.getActualExpense());
+        travel.setStatus("pending_finance");
+        travel.setUpdatedAt(java.time.LocalDateTime.now());
+        persistence.saveTravel(travel);
+        if (request.getReceiptUrl() != null && !request.getReceiptUrl().trim().isEmpty()) {
+            com.university.oms.dto.AttachmentRequest attachment = new com.university.oms.dto.AttachmentRequest();
+            attachment.setBizType("travel");
+            attachment.setBizId(id);
+            attachment.setFileName("差旅报销凭证");
+            attachment.setFileUrl(request.getReceiptUrl());
+            workflowService.addAttachment(attachment);
+        }
+        approvalService.record("travel", id, AuthContext.currentUserIdOr(travel.getApplicantId()), "reimburse", "提交报销");
+        workflowService.startFlow("travel", id, travel.getStatus(), travel.getApplicantId());
         return travel;
     }
 

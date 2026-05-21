@@ -7,6 +7,7 @@ import com.university.oms.repository.InMemoryDatabase;
 import com.university.oms.repository.NoopDataPersistence;
 import com.university.oms.service.ApprovalService;
 import com.university.oms.service.SealService;
+import com.university.oms.service.WorkflowService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -22,11 +23,14 @@ class SealServiceTest {
     void setUp() {
         db = new InMemoryDatabase();
         db.init();
+        ApprovalFlowConfig flowConfig = new ApprovalFlowConfig();
+        flowConfig.init();
+        WorkflowService workflowService = new WorkflowService(db, new NoopDataPersistence(), flowConfig);
         service = new SealService(db,
                 new ApprovalService(db, new NoopDataPersistence(),
-                        new ApprovalFlowConfig(), new StateFactory(new ApprovalFlowConfig()),
-                        new StatusChangeNotifier(new ArrayList<>())),
-                new NoopDataPersistence());
+                        flowConfig, new StateFactory(flowConfig),
+                        new StatusChangeNotifier(new ArrayList<>()), workflowService),
+                new NoopDataPersistence(), workflowService);
     }
 
     @Test

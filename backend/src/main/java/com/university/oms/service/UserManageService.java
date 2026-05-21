@@ -6,7 +6,9 @@ import com.university.oms.dto.DeptRequest;
 import com.university.oms.dto.UpdateUserRequest;
 import com.university.oms.model.Department;
 import com.university.oms.model.User;
+import com.university.oms.repository.DataPersistence;
 import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.security.PasswordService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -15,14 +17,18 @@ import java.util.*;
 @Service
 public class UserManageService {
     private final InMemoryDatabase db;
+    private final DataPersistence persistence;
+    private final PasswordService passwordService;
 
     private static final Set<String> VALID_ROLES = new LinkedHashSet<>(Arrays.asList(
             "admin", "office_user", "dept_head", "school_leader",
             "office_admin", "finance_staff", "security_staff", "seal_keeper"
     ));
 
-    public UserManageService(InMemoryDatabase db) {
+    public UserManageService(InMemoryDatabase db, DataPersistence persistence, PasswordService passwordService) {
         this.db = db;
+        this.persistence = persistence;
+        this.passwordService = passwordService;
     }
 
     // ========== User CRUD ==========
@@ -46,7 +52,7 @@ public class UserManageService {
         User user = new User();
         db.fill(user, db.nextId());
         user.setUsername(request.getUsername());
-        user.setPassword(request.getPassword());
+        user.setPassword(passwordService.hash(request.getPassword()));
         user.setRealName(request.getRealName());
         user.setDeptId(request.getDeptId());
         if (request.getDeptId() != null) {
@@ -57,6 +63,7 @@ public class UserManageService {
         }
         parseRoleKeys(request.getRoleKeys(), user.getRoleKeys());
         db.users().put(user.getId(), user);
+        persistence.saveUser(user);
         return user;
     }
 
@@ -64,7 +71,7 @@ public class UserManageService {
         User user = getUser(id);
         if (request.getRealName() != null) user.setRealName(request.getRealName());
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
-            user.setPassword(request.getPassword());
+            user.setPassword(passwordService.hash(request.getPassword()));
         }
         if (request.getDeptId() != null) {
             user.setDeptId(request.getDeptId());
@@ -76,6 +83,7 @@ public class UserManageService {
             parseRoleKeys(request.getRoleKeys(), user.getRoleKeys());
         }
         user.setUpdatedAt(LocalDateTime.now());
+        persistence.saveUser(user);
         return user;
     }
 
@@ -85,6 +93,7 @@ public class UserManageService {
             throw new BusinessException("不能删除系统管理员");
         }
         db.users().remove(id);
+        persistence.deleteUser(id);
     }
 
     // ========== Department CRUD ==========
@@ -99,6 +108,7 @@ public class UserManageService {
         dept.setDeptName(request.getDeptName());
         dept.setParentId(request.getParentId() != null ? request.getParentId() : 0L);
         db.departments().put(dept.getId(), dept);
+        persistence.saveDepartment(dept);
         return dept;
     }
 
@@ -113,6 +123,7 @@ public class UserManageService {
                 user.setDeptName(dept.getDeptName());
             }
         }
+        persistence.saveDepartment(dept);
         return dept;
     }
 
@@ -123,6 +134,7 @@ public class UserManageService {
             }
         }
         db.departments().remove(id);
+        persistence.deleteDepartment(id);
     }
 
     // ========== Roles ==========

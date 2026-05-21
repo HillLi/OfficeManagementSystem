@@ -17,6 +17,8 @@ public class Meeting extends BaseEntity {
     private String securityPlanUrl;
     private String emergencyPlanUrl;
     private boolean largeActivity;
+    private Integer signInCount = 0;
+    private String minutes;
     private String status;
 
     public String getTitle() {
@@ -121,6 +123,22 @@ public class Meeting extends BaseEntity {
 
     public void setLargeActivity(boolean largeActivity) {
         this.largeActivity = largeActivity;
+    }
+
+    public Integer getSignInCount() {
+        return signInCount;
+    }
+
+    public void setSignInCount(Integer signInCount) {
+        this.signInCount = signInCount;
+    }
+
+    public String getMinutes() {
+        return minutes;
+    }
+
+    public void setMinutes(String minutes) {
+        this.minutes = minutes;
     }
 
     public String getStatus() {
