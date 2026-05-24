@@ -16,6 +16,7 @@ public class InMemoryDatabase {
     private final Map<Long, User> users = new ConcurrentHashMap<Long, User>();
     private final Map<Long, Department> departments = new ConcurrentHashMap<Long, Department>();
     private final Map<Long, Document> documents = new ConcurrentHashMap<Long, Document>();
+    private final Map<Long, DocumentDistribution> documentDistributions = new ConcurrentHashMap<Long, DocumentDistribution>();
     private final Map<Long, Seal> seals = new ConcurrentHashMap<Long, Seal>();
     private final Map<Long, SealApplication> sealApplications = new ConcurrentHashMap<Long, SealApplication>();
     private final Map<Long, MeetingRoom> rooms = new ConcurrentHashMap<Long, MeetingRoom>();
@@ -120,6 +121,7 @@ public class InMemoryDatabase {
     public Map<Long, User> users() { return users; }
     public Map<Long, Department> departments() { return departments; }
     public Map<Long, Document> documents() { return documents; }
+    public Map<Long, DocumentDistribution> documentDistributions() { return documentDistributions; }
     public Map<Long, Seal> seals() { return seals; }
     public Map<Long, SealApplication> sealApplications() { return sealApplications; }
     public Map<Long, MeetingRoom> rooms() { return rooms; }

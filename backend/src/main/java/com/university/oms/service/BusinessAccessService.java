@@ -2,6 +2,7 @@ package com.university.oms.service;
 
 import com.university.oms.common.ForbiddenException;
 import com.university.oms.model.Document;
+import com.university.oms.model.DocumentDistribution;
 import com.university.oms.model.Meeting;
 import com.university.oms.model.Report;
 import com.university.oms.model.SealApplication;
@@ -31,6 +32,21 @@ public class BusinessAccessService {
         if (!hasRole(user, "office_admin") && !hasRole(user, "admin")) {
             deny("无权归档该公文");
         }
+    }
+
+    public void requireDocumentDistribute(Document document) {
+        requireDocumentArchive(document);
+    }
+
+    public void requireDocumentReceipt(DocumentDistribution distribution) {
+        User user = AuthContext.requireUser();
+        if (!distribution.getReceiverId().equals(user.getId()) && !hasRole(user, "admin")) {
+            deny("无权签收该公文");
+        }
+    }
+
+    public void requireDocumentRemind(Document document) {
+        requireDocumentArchive(document);
     }
 
     public void requireMeetingMinutesArchive(Meeting meeting) {

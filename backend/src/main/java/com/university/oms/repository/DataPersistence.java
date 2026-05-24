@@ -8,6 +8,7 @@ public interface DataPersistence {
     void saveDepartment(Department department);
     void deleteDepartment(Long id);
     void saveDocument(Document document);
+    default void saveDocumentDistribution(DocumentDistribution distribution) { }
     void saveSealApplication(SealApplication application);
     void saveSeal(Seal seal);
     void saveMeeting(Meeting meeting);
