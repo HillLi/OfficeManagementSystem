@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS oa_document (
   applicant_id BIGINT NOT NULL,
   dept_id BIGINT NOT NULL,
   status VARCHAR(30) NOT NULL,
+  version INT DEFAULT 1,
+  distribution_status VARCHAR(30) DEFAULT 'not_distributed',
   ai_review_result JSON,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -73,6 +75,10 @@ CREATE TABLE IF NOT EXISTS oa_seal_log (
   copies INT DEFAULT 1,
   take_out TINYINT DEFAULT 0,
   matter_level VARCHAR(20),
+  take_out_reason VARCHAR(500),
+  take_out_location VARCHAR(255),
+  supervisor_id BIGINT,
+  return_deadline DATETIME,
   use_time DATETIME,
   return_time DATETIME,
   status VARCHAR(20) NOT NULL,
@@ -99,6 +105,10 @@ CREATE TABLE IF NOT EXISTS oa_meeting (
   venue_type VARCHAR(20),
   meeting_type VARCHAR(50),
   budget DECIMAL(10,2),
+  accommodation_fee DECIMAL(10,2),
+  meal_fee DECIMAL(10,2),
+  venue_fee DECIMAL(10,2),
+  other_fee DECIMAL(10,2),
   risk_report_url VARCHAR(500),
   security_plan_url VARCHAR(500),
   emergency_plan_url VARCHAR(500),
@@ -121,6 +131,9 @@ CREATE TABLE IF NOT EXISTS oa_travel (
   transport VARCHAR(50),
   budget DECIMAL(10,2),
   actual_expense DECIMAL(10,2),
+  receipt_url VARCHAR(500),
+  over_limit_reason VARCHAR(1000),
+  reimbursement_submitted TINYINT DEFAULT 0,
   status VARCHAR(30) NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -146,6 +159,35 @@ CREATE TABLE IF NOT EXISTS oa_approval_history (
   action VARCHAR(20) NOT NULL,
   opinion VARCHAR(500),
   operated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS oa_document_distribution (
+  id BIGINT PRIMARY KEY,
+  document_id BIGINT NOT NULL,
+  receiver_id BIGINT NOT NULL,
+  receiver_dept_id BIGINT NOT NULL,
+  status VARCHAR(30) NOT NULL,
+  distributed_at DATETIME,
+  received_at DATETIME,
+  reminded_at DATETIME,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_document_distribution_doc (document_id),
+  INDEX idx_document_distribution_receiver (receiver_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS oa_seal_transfer (
+  id BIGINT PRIMARY KEY,
+  seal_id BIGINT NOT NULL,
+  transferor_id BIGINT NOT NULL,
+  receiver_id BIGINT NOT NULL,
+  supervisor_id BIGINT NOT NULL,
+  material_url VARCHAR(500) NOT NULL,
+  remark VARCHAR(500),
+  transfer_time DATETIME NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_seal_transfer_seal (seal_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS sys_attachment (
@@ -233,3 +275,45 @@ CREATE TABLE IF NOT EXISTS oa_meeting_fee_standard (
   total_limit DECIMAL(10,2) NOT NULL,
   UNIQUE KEY uk_meeting_fee_standard (meeting_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DROP PROCEDURE IF EXISTS add_column_if_missing;
+DELIMITER //
+CREATE PROCEDURE add_column_if_missing(
+  IN p_table_name VARCHAR(64),
+  IN p_column_name VARCHAR(64),
+  IN p_definition VARCHAR(255)
+)
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = p_table_name
+      AND COLUMN_NAME = p_column_name
+  ) THEN
+    SET @alter_sql = CONCAT('ALTER TABLE `', p_table_name, '` ADD COLUMN `',
+      p_column_name, '` ', p_definition);
+    PREPARE alter_stmt FROM @alter_sql;
+    EXECUTE alter_stmt;
+    DEALLOCATE PREPARE alter_stmt;
+  END IF;
+END//
+DELIMITER ;
+
+CALL add_column_if_missing('oa_document', 'version', 'INT DEFAULT 1');
+CALL add_column_if_missing('oa_document', 'distribution_status', 'VARCHAR(30) DEFAULT ''not_distributed''');
+CALL add_column_if_missing('oa_seal_log', 'take_out_reason', 'VARCHAR(500)');
+CALL add_column_if_missing('oa_seal_log', 'take_out_location', 'VARCHAR(255)');
+CALL add_column_if_missing('oa_seal_log', 'supervisor_id', 'BIGINT');
+CALL add_column_if_missing('oa_seal_log', 'return_deadline', 'DATETIME');
+CALL add_column_if_missing('oa_meeting', 'accommodation_fee', 'DECIMAL(10,2)');
+CALL add_column_if_missing('oa_meeting', 'meal_fee', 'DECIMAL(10,2)');
+CALL add_column_if_missing('oa_meeting', 'venue_fee', 'DECIMAL(10,2)');
+CALL add_column_if_missing('oa_meeting', 'other_fee', 'DECIMAL(10,2)');
+CALL add_column_if_missing('oa_meeting', 'sign_in_count', 'INT DEFAULT 0');
+CALL add_column_if_missing('oa_meeting', 'minutes', 'LONGTEXT');
+CALL add_column_if_missing('oa_travel', 'receipt_url', 'VARCHAR(500)');
+CALL add_column_if_missing('oa_travel', 'over_limit_reason', 'VARCHAR(1000)');
+CALL add_column_if_missing('oa_travel', 'reimbursement_submitted', 'TINYINT DEFAULT 0');
+
+DROP PROCEDURE IF EXISTS add_column_if_missing;

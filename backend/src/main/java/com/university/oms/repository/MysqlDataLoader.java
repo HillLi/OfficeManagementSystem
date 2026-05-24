@@ -29,7 +29,9 @@ public class MysqlDataLoader {
         db.seals().clear();
         db.rooms().clear();
         db.documents().clear();
+        db.documentDistributions().clear();
         db.sealApplications().clear();
+        db.sealTransfers().clear();
         db.meetings().clear();
         db.travels().clear();
         db.reports().clear();
@@ -45,7 +47,9 @@ public class MysqlDataLoader {
         loadSeals();
         loadRooms();
         loadDocuments();
+        loadDocumentDistributions();
         loadSealApplications();
+        loadSealTransfers();
         loadMeetings();
         loadTravels();
         loadReports();
@@ -130,7 +134,25 @@ public class MysqlDataLoader {
             d.setApplicantId(rs.getLong("applicant_id"));
             d.setDeptId(rs.getLong("dept_id"));
             d.setStatus(rs.getString("status"));
+            int version = rs.getInt("version");
+            d.setVersion(version > 0 ? version : 1);
+            d.setDistributionStatus(rs.getString("distribution_status"));
             db.documents().put(d.getId(), d);
+        });
+    }
+
+    private void loadDocumentDistributions() {
+        jdbcTemplate.query("SELECT * FROM oa_document_distribution", rs -> {
+            DocumentDistribution d = new DocumentDistribution();
+            db.fill(d, rs.getLong("id"));
+            d.setDocumentId(rs.getLong("document_id"));
+            d.setReceiverId(rs.getLong("receiver_id"));
+            d.setReceiverDeptId(rs.getLong("receiver_dept_id"));
+            d.setStatus(rs.getString("status"));
+            d.setDistributedAt(toLocalDateTime(rs, "distributed_at"));
+            d.setReceivedAt(toLocalDateTime(rs, "received_at"));
+            d.setRemindedAt(toLocalDateTime(rs, "reminded_at"));
+            db.documentDistributions().put(d.getId(), d);
         });
     }
 
@@ -145,10 +167,29 @@ public class MysqlDataLoader {
             a.setCopies(rs.getInt("copies"));
             a.setTakeOut(rs.getInt("take_out") == 1);
             a.setMatterLevel(rs.getString("matter_level"));
+            a.setTakeOutReason(rs.getString("take_out_reason"));
+            a.setTakeOutLocation(rs.getString("take_out_location"));
+            a.setSupervisorId((Long) rs.getObject("supervisor_id"));
+            a.setReturnDeadline(toLocalDateTime(rs, "return_deadline"));
             a.setUseTime(toLocalDateTime(rs, "use_time"));
             a.setReturnTime(toLocalDateTime(rs, "return_time"));
             a.setStatus(rs.getString("status"));
             db.sealApplications().put(a.getId(), a);
+        });
+    }
+
+    private void loadSealTransfers() {
+        jdbcTemplate.query("SELECT * FROM oa_seal_transfer", rs -> {
+            SealTransfer t = new SealTransfer();
+            db.fill(t, rs.getLong("id"));
+            t.setSealId(rs.getLong("seal_id"));
+            t.setTransferorId(rs.getLong("transferor_id"));
+            t.setReceiverId(rs.getLong("receiver_id"));
+            t.setSupervisorId(rs.getLong("supervisor_id"));
+            t.setMaterialUrl(rs.getString("material_url"));
+            t.setRemark(rs.getString("remark"));
+            t.setTransferTime(toLocalDateTime(rs, "transfer_time"));
+            db.sealTransfers().put(t.getId(), t);
         });
     }
 
@@ -165,6 +206,10 @@ public class MysqlDataLoader {
             m.setVenueType(rs.getString("venue_type"));
             m.setMeetingType(rs.getString("meeting_type"));
             m.setBudget(rs.getBigDecimal("budget"));
+            m.setAccommodationFee(rs.getBigDecimal("accommodation_fee"));
+            m.setMealFee(rs.getBigDecimal("meal_fee"));
+            m.setVenueFee(rs.getBigDecimal("venue_fee"));
+            m.setOtherFee(rs.getBigDecimal("other_fee"));
             m.setRiskReportUrl(rs.getString("risk_report_url"));
             m.setSecurityPlanUrl(rs.getString("security_plan_url"));
             m.setEmergencyPlanUrl(rs.getString("emergency_plan_url"));
@@ -190,6 +235,9 @@ public class MysqlDataLoader {
             t.setTransport(rs.getString("transport"));
             t.setBudget(rs.getBigDecimal("budget"));
             t.setActualExpense(rs.getBigDecimal("actual_expense"));
+            t.setReceiptUrl(rs.getString("receipt_url"));
+            t.setOverLimitReason(rs.getString("over_limit_reason"));
+            t.setReimbursementSubmitted(rs.getInt("reimbursement_submitted") == 1);
             t.setStatus(rs.getString("status"));
             db.travels().put(t.getId(), t);
         });
@@ -299,7 +347,9 @@ public class MysqlDataLoader {
         Long value = jdbcTemplate.queryForObject(
                 "SELECT GREATEST(" +
                         "COALESCE((SELECT MAX(id) FROM oa_document),0)," +
+                        "COALESCE((SELECT MAX(id) FROM oa_document_distribution),0)," +
                         "COALESCE((SELECT MAX(id) FROM oa_seal_log),0)," +
+                        "COALESCE((SELECT MAX(id) FROM oa_seal_transfer),0)," +
                         "COALESCE((SELECT MAX(id) FROM oa_meeting),0)," +
                         "COALESCE((SELECT MAX(id) FROM oa_travel),0)," +
                         "COALESCE((SELECT MAX(id) FROM oa_report),0)," +

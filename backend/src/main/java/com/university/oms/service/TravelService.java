@@ -103,7 +103,10 @@ public class TravelService {
         if (request.getReceiptUrl() == null || request.getReceiptUrl().trim().isEmpty()) {
             throw new BusinessException("差旅报销必须提交票据附件");
         }
-        if (travel.getCheckResult() != null && request.getActualExpense().compareTo(travel.getCheckResult().getStandardAmount()) > 0
+        if (travel.getCheckResult() == null) {
+            travel.setCheckResult(expenseStrategy.check(travel));
+        }
+        if (request.getActualExpense().compareTo(travel.getCheckResult().getStandardAmount()) > 0
                 && (request.getOverLimitReason() == null || request.getOverLimitReason().trim().isEmpty())) {
             throw new BusinessException("实际费用超出标准时必须填写超标说明");
         }

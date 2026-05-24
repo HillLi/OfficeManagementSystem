@@ -2,6 +2,7 @@ package com.university.oms;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.university.oms.repository.InMemoryDatabase;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -25,6 +26,9 @@ class RegulatoryRulesTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private InMemoryDatabase db;
 
     @Test
     void largeActivityRequiresFifteenWorkingDaysLeadTime() throws Exception {
@@ -127,6 +131,19 @@ class RegulatoryRulesTest {
         assertEquals("archived", archived.get("status").asText());
         JsonNode instances = getJson("/api/workflow/instances", userToken).get("data");
         assertTrue(contains(instances, "bizId", overLimitId, "status", "archived"));
+    }
+
+    @Test
+    void reimbursementStillChecksLimitAfterTravelIsReloadedFromDatabase() throws Exception {
+        String userToken = login("user");
+        long travelId = approvedTravel(userToken, login("head"), login("finance"));
+        db.travels().get(travelId).setCheckResult(null);
+
+        mockMvc.perform(post("/api/travels/" + travelId + "/reimburse")
+                        .header("Authorization", bearer(userToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"actualExpense\":5000,\"receiptUrl\":\"/receipts/reloaded.pdf\"}"))
+                .andExpect(status().isBadRequest());
     }
 
     private long approvedTravel(String userToken, String headToken, String financeToken) throws Exception {
