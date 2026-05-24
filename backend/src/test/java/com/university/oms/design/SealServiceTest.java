@@ -68,6 +68,10 @@ class SealServiceTest {
         req.setPurpose("外带测试");
         req.setMaterialUrl("/files/test.pdf");
         req.setTakeOut(true);
+        req.setTakeOutReason("外出签署");
+        req.setTakeOutLocation("合作单位");
+        req.setSupervisorId(8L);
+        req.setExpectedReturnTime(java.time.LocalDateTime.now().plusDays(2));
 
         SealApplication app = service.apply(req);
         assertNotNull(app.getReturnDeadline(), "外带申请应设置归还截止日期");

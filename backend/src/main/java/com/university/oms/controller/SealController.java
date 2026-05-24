@@ -2,8 +2,10 @@ package com.university.oms.controller;
 
 import com.university.oms.common.ApiResponse;
 import com.university.oms.dto.SealApplyRequest;
+import com.university.oms.dto.SealTransferRequest;
 import com.university.oms.model.Seal;
 import com.university.oms.model.SealApplication;
+import com.university.oms.model.SealTransfer;
 import com.university.oms.service.SealService;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,5 +44,15 @@ public class SealController {
     @PostMapping("/applications/{id}/returned")
     public ApiResponse<SealApplication> returned(@PathVariable Long id, @RequestParam Long keeperId) {
         return ApiResponse.ok(service.markReturned(id, keeperId));
+    }
+
+    @PostMapping("/transfers")
+    public ApiResponse<SealTransfer> transfer(@Valid @RequestBody SealTransferRequest request) {
+        return ApiResponse.ok(service.transfer(request));
+    }
+
+    @GetMapping("/transfers")
+    public ApiResponse<List<SealTransfer>> transfers() {
+        return ApiResponse.ok(service.transfers());
     }
 }

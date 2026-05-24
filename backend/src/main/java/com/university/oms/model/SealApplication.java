@@ -10,6 +10,9 @@ public class SealApplication extends BaseEntity {
     private Integer copies;
     private boolean takeOut;
     private String matterLevel;
+    private String takeOutReason;
+    private String takeOutLocation;
+    private Long supervisorId;
     private String status;
     private LocalDateTime useTime;
     private LocalDateTime returnTime;
@@ -70,6 +73,13 @@ public class SealApplication extends BaseEntity {
     public void setMatterLevel(String matterLevel) {
         this.matterLevel = matterLevel;
     }
+
+    public String getTakeOutReason() { return takeOutReason; }
+    public void setTakeOutReason(String takeOutReason) { this.takeOutReason = takeOutReason; }
+    public String getTakeOutLocation() { return takeOutLocation; }
+    public void setTakeOutLocation(String takeOutLocation) { this.takeOutLocation = takeOutLocation; }
+    public Long getSupervisorId() { return supervisorId; }
+    public void setSupervisorId(Long supervisorId) { this.supervisorId = supervisorId; }
 
     public String getStatus() {
         return status;

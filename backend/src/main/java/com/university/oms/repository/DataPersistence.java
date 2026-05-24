@@ -11,6 +11,7 @@ public interface DataPersistence {
     default void saveDocumentDistribution(DocumentDistribution distribution) { }
     void saveSealApplication(SealApplication application);
     void saveSeal(Seal seal);
+    default void saveSealTransfer(SealTransfer transfer) { }
     void saveMeeting(Meeting meeting);
     void saveTravel(Travel travel);
     void saveReport(Report report);

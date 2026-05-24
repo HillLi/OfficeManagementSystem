@@ -20,6 +20,10 @@ public class MeetingRequest {
     private String venueType = "室内";
     private String meetingType = "国内管理会议";
     private BigDecimal budget = BigDecimal.ZERO;
+    private BigDecimal accommodationFee;
+    private BigDecimal mealFee;
+    private BigDecimal venueFee;
+    private BigDecimal otherFee;
     private String riskReportUrl;
     private String securityPlanUrl;
     private String emergencyPlanUrl;
@@ -42,6 +46,14 @@ public class MeetingRequest {
     public void setMeetingType(String meetingType) { this.meetingType = meetingType; }
     public BigDecimal getBudget() { return budget; }
     public void setBudget(BigDecimal budget) { this.budget = budget; }
+    public BigDecimal getAccommodationFee() { return accommodationFee; }
+    public void setAccommodationFee(BigDecimal accommodationFee) { this.accommodationFee = accommodationFee; }
+    public BigDecimal getMealFee() { return mealFee; }
+    public void setMealFee(BigDecimal mealFee) { this.mealFee = mealFee; }
+    public BigDecimal getVenueFee() { return venueFee; }
+    public void setVenueFee(BigDecimal venueFee) { this.venueFee = venueFee; }
+    public BigDecimal getOtherFee() { return otherFee; }
+    public void setOtherFee(BigDecimal otherFee) { this.otherFee = otherFee; }
     public String getRiskReportUrl() { return riskReportUrl; }
     public void setRiskReportUrl(String riskReportUrl) { this.riskReportUrl = riskReportUrl; }
     public String getSecurityPlanUrl() { return securityPlanUrl; }

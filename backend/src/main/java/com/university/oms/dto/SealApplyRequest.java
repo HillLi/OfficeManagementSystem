@@ -2,6 +2,7 @@ package com.university.oms.dto;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
+import java.time.LocalDateTime;
 
 public class SealApplyRequest {
     @NotNull(message = "印章不能为空")
@@ -14,6 +15,10 @@ public class SealApplyRequest {
     private Integer copies = 1;
     private boolean takeOut;
     private String matterLevel = "常规事项";
+    private String takeOutReason;
+    private String takeOutLocation;
+    private Long supervisorId;
+    private LocalDateTime expectedReturnTime;
 
     public Long getSealId() {
         return sealId;
@@ -70,4 +75,13 @@ public class SealApplyRequest {
     public void setMatterLevel(String matterLevel) {
         this.matterLevel = matterLevel;
     }
+
+    public String getTakeOutReason() { return takeOutReason; }
+    public void setTakeOutReason(String takeOutReason) { this.takeOutReason = takeOutReason; }
+    public String getTakeOutLocation() { return takeOutLocation; }
+    public void setTakeOutLocation(String takeOutLocation) { this.takeOutLocation = takeOutLocation; }
+    public Long getSupervisorId() { return supervisorId; }
+    public void setSupervisorId(Long supervisorId) { this.supervisorId = supervisorId; }
+    public LocalDateTime getExpectedReturnTime() { return expectedReturnTime; }
+    public void setExpectedReturnTime(LocalDateTime expectedReturnTime) { this.expectedReturnTime = expectedReturnTime; }
 }
