@@ -105,6 +105,8 @@ public class DocumentService {
         document.setAiReviewResult(result);
         document.setUpdatedAt(LocalDateTime.now());
         persistence.saveDocument(document);
+        workflowService.audit("document", "ai_review", "document", id,
+                "密级：" + document.getSecrecyLevel() + "，结果：" + (result.isPassed() ? "通过" : "阻断或待修正"));
         return result;
     }
 

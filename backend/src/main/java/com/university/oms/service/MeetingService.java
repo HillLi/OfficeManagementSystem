@@ -28,13 +28,15 @@ public class MeetingService {
     private final DataPersistence persistence;
     private final Map<String, BigDecimal> meetingFeeStandards;
     private final WorkflowService workflowService;
+    private final BusinessAccessService accessService;
 
     public MeetingService(InMemoryDatabase db, ApprovalService approvalService, DataPersistence persistence,
-                          WorkflowService workflowService) {
+                          WorkflowService workflowService, BusinessAccessService accessService) {
         this.db = db;
         this.approvalService = approvalService;
         this.persistence = persistence;
         this.workflowService = workflowService;
+        this.accessService = accessService;
         this.meetingFeeStandards = db.meetingFeeStandards();
     }
 
@@ -121,6 +123,7 @@ public class MeetingService {
         if (meeting == null) {
             throw new BusinessException("会议不存在");
         }
+        accessService.requireMeetingMinutesArchive(meeting);
         if (!"approved".equals(meeting.getStatus())) {
             throw new BusinessException("只有审批通过的会议可以归档纪要");
         }

@@ -16,7 +16,7 @@ public class SecrecyCheckDecorator implements DocumentProcessor {
     @Override
     public AiReviewResult process(Document document) {
         String level = document.getSecrecyLevel();
-        if ("秘密".equals(level) || "机密".equals(level) || "绝密".equals(level)) {
+        if ("内部".equals(level) || "秘密".equals(level) || "机密".equals(level) || "绝密".equals(level)) {
             AiReviewResult blocked = new AiReviewResult();
             blocked.setPassed(false);
             blocked.setRecommendedSecrecyLevel(level);

@@ -19,13 +19,15 @@ public class ReportService {
     private final ApprovalService approvalService;
     private final DataPersistence persistence;
     private final WorkflowService workflowService;
+    private final BusinessAccessService accessService;
 
     public ReportService(InMemoryDatabase db, ApprovalService approvalService, DataPersistence persistence,
-                         WorkflowService workflowService) {
+                         WorkflowService workflowService, BusinessAccessService accessService) {
         this.db = db;
         this.approvalService = approvalService;
         this.persistence = persistence;
         this.workflowService = workflowService;
+        this.accessService = accessService;
     }
 
     public List<Report> list() {
@@ -72,6 +74,7 @@ public class ReportService {
         if (report == null) {
             throw new BusinessException("请示报告不存在");
         }
+        accessService.requireReportReply(report);
         if (!"approved".equals(report.getStatus())) {
             throw new BusinessException("只有审批通过的请示报告可以批复归档");
         }

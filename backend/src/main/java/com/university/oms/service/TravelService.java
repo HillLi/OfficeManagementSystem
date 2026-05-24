@@ -24,6 +24,7 @@ public class TravelService {
     private final TravelExpenseStrategy expenseStrategy;
     private final DataPersistence persistence;
     private final WorkflowService workflowService;
+    private final BusinessAccessService accessService;
 
     private static final Map<String, List<String>> ALLOWED_TRANSPORT = new HashMap<>();
     static {
@@ -36,12 +37,13 @@ public class TravelService {
     }
 
     public TravelService(InMemoryDatabase db, ApprovalService approvalService, TravelExpenseStrategy expenseStrategy,
-                         DataPersistence persistence, WorkflowService workflowService) {
+                         DataPersistence persistence, WorkflowService workflowService, BusinessAccessService accessService) {
         this.db = db;
         this.approvalService = approvalService;
         this.expenseStrategy = expenseStrategy;
         this.persistence = persistence;
         this.workflowService = workflowService;
+        this.accessService = accessService;
     }
 
     public List<Travel> list() {
@@ -94,6 +96,7 @@ public class TravelService {
         if (travel == null) {
             throw new BusinessException("差旅申请不存在");
         }
+        accessService.requireTravelReimburse(travel);
         if (!"approved".equals(travel.getStatus())) {
             throw new BusinessException("只有审批通过的差旅可以提交报销");
         }

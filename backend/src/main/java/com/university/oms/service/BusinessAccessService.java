@@ -33,6 +33,31 @@ public class BusinessAccessService {
         }
     }
 
+    public void requireMeetingMinutesArchive(Meeting meeting) {
+        User user = AuthContext.requireUser();
+        if (!meeting.getOrganizerId().equals(user.getId())
+                && !hasRole(user, "office_admin")
+                && !hasRole(user, "admin")) {
+            deny("无权归档该会议纪要");
+        }
+    }
+
+    public void requireReportReply(Report report) {
+        User user = AuthContext.requireUser();
+        if (!hasRole(user, "office_admin")
+                && !hasRole(user, "school_leader")
+                && !hasRole(user, "admin")) {
+            deny("无权批复归档该请示报告");
+        }
+    }
+
+    public void requireTravelReimburse(Travel travel) {
+        User user = AuthContext.requireUser();
+        if (!travel.getApplicantId().equals(user.getId()) && !hasRole(user, "admin")) {
+            deny("无权提交该差旅报销");
+        }
+    }
+
     public void requireBusinessRead(String bizType, Long bizId) {
         if (!canReadBusiness(bizType, bizId)) {
             deny("无权访问该业务数据");
