@@ -6,6 +6,7 @@ import com.university.oms.model.SealApplication;
 import com.university.oms.repository.InMemoryDatabase;
 import com.university.oms.repository.NoopDataPersistence;
 import com.university.oms.service.ApprovalService;
+import com.university.oms.service.BusinessAccessService;
 import com.university.oms.service.SealService;
 import com.university.oms.service.WorkflowService;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,11 +26,12 @@ class SealServiceTest {
         db.init();
         ApprovalFlowConfig flowConfig = new ApprovalFlowConfig();
         flowConfig.init();
-        WorkflowService workflowService = new WorkflowService(db, new NoopDataPersistence(), flowConfig);
+        BusinessAccessService accessService = new BusinessAccessService(db);
+        WorkflowService workflowService = new WorkflowService(db, new NoopDataPersistence(), flowConfig, accessService);
         service = new SealService(db,
                 new ApprovalService(db, new NoopDataPersistence(),
                         flowConfig, new StateFactory(flowConfig),
-                        new StatusChangeNotifier(new ArrayList<>()), workflowService),
+                        new StatusChangeNotifier(new ArrayList<>()), workflowService, accessService),
                 new NoopDataPersistence(), workflowService);
     }
 

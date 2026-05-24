@@ -21,16 +21,19 @@ public class ApprovalService {
     private final StateFactory stateFactory;
     private final StatusChangeNotifier notifier;
     private final WorkflowService workflowService;
+    private final BusinessAccessService accessService;
 
     public ApprovalService(InMemoryDatabase db, DataPersistence persistence,
                            ApprovalFlowConfig flowConfig, StateFactory stateFactory,
-                           StatusChangeNotifier notifier, WorkflowService workflowService) {
+                           StatusChangeNotifier notifier, WorkflowService workflowService,
+                           BusinessAccessService accessService) {
         this.db = db;
         this.persistence = persistence;
         this.flowConfig = flowConfig;
         this.stateFactory = stateFactory;
         this.notifier = notifier;
         this.workflowService = workflowService;
+        this.accessService = accessService;
     }
 
     public ApprovalRecord record(String bizType, Long bizId, Long operatorId, String action, String opinion) {
@@ -47,9 +50,13 @@ public class ApprovalService {
     }
 
     public List<ApprovalRecord> list(String bizType, Long bizId) {
+        if (bizType != null && bizId != null) {
+            accessService.requireBusinessRead(bizType, bizId);
+        }
         return db.approvals().stream()
                 .filter(r -> bizType == null || r.getBizType().equals(bizType))
                 .filter(r -> bizId == null || r.getBizId().equals(bizId))
+                .filter(r -> bizType != null && bizId != null || accessService.canReadBusiness(r.getBizType(), r.getBizId()))
                 .collect(Collectors.toList());
     }
 

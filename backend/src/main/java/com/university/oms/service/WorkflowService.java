@@ -19,15 +19,19 @@ public class WorkflowService {
     private final InMemoryDatabase db;
     private final DataPersistence persistence;
     private final ApprovalFlowConfig flowConfig;
+    private final BusinessAccessService accessService;
 
-    public WorkflowService(InMemoryDatabase db, DataPersistence persistence, ApprovalFlowConfig flowConfig) {
+    public WorkflowService(InMemoryDatabase db, DataPersistence persistence, ApprovalFlowConfig flowConfig,
+                           BusinessAccessService accessService) {
         this.db = db;
         this.persistence = persistence;
         this.flowConfig = flowConfig;
+        this.accessService = accessService;
     }
 
     public Attachment addAttachment(AttachmentRequest request) {
         User user = AuthContext.requireUser();
+        accessService.requireBusinessRead(request.getBizType(), request.getBizId());
         Attachment attachment = new Attachment();
         db.fill(attachment, db.nextId());
         attachment.setBizType(request.getBizType());
@@ -43,9 +47,13 @@ public class WorkflowService {
     }
 
     public List<Attachment> attachments(String bizType, Long bizId) {
+        if (bizType != null && bizId != null) {
+            accessService.requireBusinessRead(bizType, bizId);
+        }
         return db.attachments().stream()
                 .filter(a -> bizType == null || a.getBizType().equals(bizType))
                 .filter(a -> bizId == null || a.getBizId().equals(bizId))
+                .filter(a -> bizType != null && bizId != null || accessService.canReadBusiness(a.getBizType(), a.getBizId()))
                 .collect(Collectors.toList());
     }
 
