@@ -53,8 +53,7 @@ public class DocumentService {
         }
         List<Document> scoped = new ArrayList<Document>();
         for (Document document : documents) {
-            if (document.getApplicantId().equals(user.getId()) || document.getDeptId().equals(user.getDeptId())
-                    && user.getRoleKeys().contains("dept_head")) {
+            if (accessService.canReadBusiness("document", document.getId())) {
                 scoped.add(document);
             }
         }

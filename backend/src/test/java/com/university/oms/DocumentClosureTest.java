@@ -50,6 +50,27 @@ class DocumentClosureTest {
     }
 
     @Test
+    void assignedReceiverCanSeeAndReceiptDistributedDocument() throws Exception {
+        String userToken = login("user");
+        String headToken = login("head");
+        String officeToken = login("office");
+        String leaderToken = login("leader");
+        String keeperToken = login("keeper");
+
+        long documentId = approvedDocument(userToken, headToken, officeToken, leaderToken);
+        JsonNode distribution = postJson("/api/documents/" + documentId + "/distributions",
+                "{\"receiverId\":8,\"receiverDeptId\":1}", officeToken).get("data");
+        JsonNode documents = getJson("/api/documents", keeperToken).get("data");
+        JsonNode distributions = getJson("/api/documents/" + documentId + "/distributions", keeperToken).get("data");
+
+        assertTrue(contains(documents, "status", "approved", "id", documentId));
+        assertTrue(contains(distributions, "status", "distributed", "id", distribution.get("id").asLong()));
+        JsonNode received = postJson("/api/documents/" + documentId + "/distributions/"
+                + distribution.get("id").asLong() + "/receipt", "{}", keeperToken).get("data");
+        assertEquals("received", received.get("status").asText());
+    }
+
+    @Test
     void rejectedDocumentResubmissionIncrementsVersionAndKeepsRejectionHistory() throws Exception {
         String userToken = login("user");
         String headToken = login("head");

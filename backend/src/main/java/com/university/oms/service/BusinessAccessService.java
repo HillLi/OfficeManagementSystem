@@ -88,7 +88,8 @@ public class BusinessAccessService {
         if ("document".equals(bizType)) {
             Document document = db.documents().get(bizId);
             return document != null && canReadForApplicant(user, document.getApplicantId(), document.getDeptId(),
-                    hasRole(user, "office_admin") || hasRole(user, "school_leader"));
+                    hasRole(user, "office_admin") || hasRole(user, "school_leader"))
+                    || isDocumentReceiver(user, bizId);
         }
         if ("meeting".equals(bizType)) {
             Meeting meeting = db.meetings().get(bizId);
@@ -122,6 +123,15 @@ public class BusinessAccessService {
     private Long departmentOf(Long userId) {
         User user = db.users().get(userId);
         return user == null ? null : user.getDeptId();
+    }
+
+    private boolean isDocumentReceiver(User user, Long documentId) {
+        for (DocumentDistribution distribution : db.documentDistributions().values()) {
+            if (documentId.equals(distribution.getDocumentId()) && user.getId().equals(distribution.getReceiverId())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean hasRole(User user, String role) {
