@@ -24,6 +24,12 @@ public class AuthController {
         return ApiResponse.ok(authService.login(request));
     }
 
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(@RequestHeader(value = "Authorization", required = false) String authorization) {
+        authService.logout(authorization);
+        return ApiResponse.ok(null);
+    }
+
     @GetMapping("/users")
     public ApiResponse<List<User>> users() {
         return ApiResponse.ok(authService.users());

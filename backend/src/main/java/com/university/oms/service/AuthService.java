@@ -44,4 +44,12 @@ public class AuthService {
     public List<User> users() {
         return new ArrayList<User>(db.users().values());
     }
+
+    public void logout(String authorization) {
+        if (authorization != null && authorization.startsWith("Bearer ")) {
+            tokenService.revoke(authorization.substring("Bearer ".length()).trim());
+        } else {
+            tokenService.revoke(authorization);
+        }
+    }
 }

@@ -24,3 +24,6 @@ Thumbs.db
 
 # Claude
 .claude/
+
+# Local isolated worktrees
+.worktrees/

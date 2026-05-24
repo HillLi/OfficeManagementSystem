@@ -5,13 +5,14 @@ import com.university.oms.repository.InMemoryDatabase;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class AuthTokenService {
-    private final Map<String, Long> tokens = new ConcurrentHashMap<String, Long>();
+    private final Map<String, TokenRecord> tokens = new ConcurrentHashMap<String, TokenRecord>();
     private final SecureRandom random = new SecureRandom();
     private final InMemoryDatabase db;
 
@@ -23,7 +24,7 @@ public class AuthTokenService {
         byte[] bytes = new byte[32];
         random.nextBytes(bytes);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-        tokens.put(token, user.getId());
+        tokens.put(token, new TokenRecord(user.getId(), LocalDateTime.now().plusHours(8)));
         return token;
     }
 
@@ -31,7 +32,30 @@ public class AuthTokenService {
         if (token == null || token.trim().isEmpty()) {
             return null;
         }
-        Long userId = tokens.get(token);
-        return userId == null ? null : db.users().get(userId);
+        TokenRecord record = tokens.get(token);
+        if (record == null) {
+            return null;
+        }
+        if (record.expiresAt.isBefore(LocalDateTime.now())) {
+            tokens.remove(token);
+            return null;
+        }
+        return db.users().get(record.userId);
+    }
+
+    public void revoke(String token) {
+        if (token != null) {
+            tokens.remove(token);
+        }
+    }
+
+    private static class TokenRecord {
+        private final Long userId;
+        private final LocalDateTime expiresAt;
+
+        private TokenRecord(Long userId, LocalDateTime expiresAt) {
+            this.userId = userId;
+            this.expiresAt = expiresAt;
+        }
     }
 }
