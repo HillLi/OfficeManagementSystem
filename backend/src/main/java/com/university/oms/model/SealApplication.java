@@ -17,6 +17,8 @@ public class SealApplication extends BaseEntity {
     private LocalDateTime useTime;
     private LocalDateTime returnTime;
     private LocalDateTime returnDeadline;
+    private String sealName;
+    private int materialCount;
 
     public Long getSealId() {
         return sealId;
@@ -111,5 +113,21 @@ public class SealApplication extends BaseEntity {
 
     public void setReturnDeadline(LocalDateTime returnDeadline) {
         this.returnDeadline = returnDeadline;
+    }
+
+    public String getSealName() {
+        return sealName;
+    }
+
+    public void setSealName(String sealName) {
+        this.sealName = sealName;
+    }
+
+    public int getMaterialCount() {
+        return materialCount;
+    }
+
+    public void setMaterialCount(int materialCount) {
+        this.materialCount = materialCount;
     }
 }

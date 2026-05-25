@@ -22,6 +22,14 @@ class MysqlSchemaContractTest {
         assertTrue(schema.contains("accommodation_fee"));
         assertTrue(schema.contains("receipt_url"));
         assertTrue(schema.contains("over_limit_reason"));
+        assertTrue(schema.contains("original_name"));
+        assertTrue(schema.contains("storage_path"));
+        assertTrue(schema.contains("file_size"));
+        assertTrue(schema.contains("content_type"));
+        assertTrue(schema.contains("deleted_by"));
+        assertTrue(schema.contains("deleted_at"));
+        assertTrue(schema.contains("delete_reason"));
+        assertTrue(schema.contains("CALL add_column_if_missing('sys_attachment', 'storage_path'"));
         assertFalse(schema.contains("ADD COLUMN IF NOT EXISTS"));
         assertTrue(schema.contains("CREATE PROCEDURE add_column_if_missing"));
         assertTrue(schema.contains("CALL add_column_if_missing('oa_meeting', 'sign_in_count'"));

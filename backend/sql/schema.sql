@@ -195,10 +195,19 @@ CREATE TABLE IF NOT EXISTS sys_attachment (
   biz_type VARCHAR(20) NOT NULL,
   biz_id BIGINT NOT NULL,
   file_name VARCHAR(255) NOT NULL,
+  original_name VARCHAR(255),
   file_url VARCHAR(500) NOT NULL,
+  storage_path VARCHAR(1000),
+  file_size BIGINT,
+  content_type VARCHAR(120),
   secrecy_level VARCHAR(20) DEFAULT '公开',
   uploader_id BIGINT NOT NULL,
+  deleted TINYINT DEFAULT 0,
+  deleted_by BIGINT,
+  deleted_at DATETIME,
+  delete_reason VARCHAR(500),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_attachment_biz (biz_type, biz_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -315,5 +324,14 @@ CALL add_column_if_missing('oa_meeting', 'minutes', 'LONGTEXT');
 CALL add_column_if_missing('oa_travel', 'receipt_url', 'VARCHAR(500)');
 CALL add_column_if_missing('oa_travel', 'over_limit_reason', 'VARCHAR(1000)');
 CALL add_column_if_missing('oa_travel', 'reimbursement_submitted', 'TINYINT DEFAULT 0');
+CALL add_column_if_missing('sys_attachment', 'original_name', 'VARCHAR(255)');
+CALL add_column_if_missing('sys_attachment', 'storage_path', 'VARCHAR(1000)');
+CALL add_column_if_missing('sys_attachment', 'file_size', 'BIGINT');
+CALL add_column_if_missing('sys_attachment', 'content_type', 'VARCHAR(120)');
+CALL add_column_if_missing('sys_attachment', 'deleted', 'TINYINT DEFAULT 0');
+CALL add_column_if_missing('sys_attachment', 'deleted_by', 'BIGINT');
+CALL add_column_if_missing('sys_attachment', 'deleted_at', 'DATETIME');
+CALL add_column_if_missing('sys_attachment', 'delete_reason', 'VARCHAR(500)');
+CALL add_column_if_missing('sys_attachment', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
 
 DROP PROCEDURE IF EXISTS add_column_if_missing;

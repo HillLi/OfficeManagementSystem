@@ -2,12 +2,16 @@ package com.university.oms.service;
 
 import com.university.oms.common.BusinessException;
 import com.university.oms.design.ApprovalFlowConfig;
+import com.university.oms.dto.AttachmentDeleteRequest;
 import com.university.oms.dto.AttachmentRequest;
+import com.university.oms.dto.AttachmentUpdateRequest;
 import com.university.oms.model.*;
 import com.university.oms.repository.DataPersistence;
 import com.university.oms.repository.InMemoryDatabase;
 import com.university.oms.security.AuthContext;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -20,16 +24,21 @@ public class WorkflowService {
     private final DataPersistence persistence;
     private final ApprovalFlowConfig flowConfig;
     private final BusinessAccessService accessService;
+    private final AttachmentStorageService storageService;
 
     public WorkflowService(InMemoryDatabase db, DataPersistence persistence, ApprovalFlowConfig flowConfig,
-                           BusinessAccessService accessService) {
+                           BusinessAccessService accessService, AttachmentStorageService storageService) {
         this.db = db;
         this.persistence = persistence;
         this.flowConfig = flowConfig;
         this.accessService = accessService;
+        this.storageService = storageService;
     }
 
     public Attachment addAttachment(AttachmentRequest request) {
+        if ("seal".equals(request.getBizType())) {
+            throw new BusinessException("用印材料请通过文件上传接口提交");
+        }
         User user = AuthContext.requireUser();
         accessService.requireBusinessRead(request.getBizType(), request.getBizId());
         Attachment attachment = new Attachment();
@@ -47,14 +56,97 @@ public class WorkflowService {
     }
 
     public List<Attachment> attachments(String bizType, Long bizId) {
+        return attachments(bizType, bizId, false);
+    }
+
+    public List<Attachment> attachments(String bizType, Long bizId, boolean includeDeleted) {
         if (bizType != null && bizId != null) {
             accessService.requireBusinessRead(bizType, bizId);
+        }
+        if (includeDeleted) {
+            accessService.requireViewDeletedAttachments();
         }
         return db.attachments().stream()
                 .filter(a -> bizType == null || a.getBizType().equals(bizType))
                 .filter(a -> bizId == null || a.getBizId().equals(bizId))
+                .filter(a -> includeDeleted || !a.isDeleted())
                 .filter(a -> bizType != null && bizId != null || accessService.canReadBusiness(a.getBizType(), a.getBizId()))
                 .collect(Collectors.toList());
+    }
+
+    public Attachment uploadAttachment(String bizType, Long bizId, String secrecyLevel, MultipartFile file) {
+        User user = AuthContext.requireUser();
+        accessService.requireAttachmentUpload(bizType, bizId);
+        Attachment attachment = new Attachment();
+        db.fill(attachment, db.nextId());
+        attachment.setBizType(bizType);
+        attachment.setBizId(bizId);
+        attachment.setOriginalName(file.getOriginalFilename());
+        attachment.setFileName(file.getOriginalFilename());
+        attachment.setFileSize(file.getSize());
+        attachment.setContentType(file.getContentType());
+        attachment.setSecrecyLevel(secrecyLevel == null || secrecyLevel.trim().isEmpty() ? "内部" : secrecyLevel);
+        attachment.setUploaderId(user.getId());
+        attachment.setStoragePath(storageService.store(attachment.getId(), file));
+        attachment.setFileUrl("/api/workflow/attachments/" + attachment.getId() + "/download");
+        db.attachments().add(attachment);
+        persistence.saveAttachment(attachment);
+        audit(bizType, "upload_attachment", bizType, bizId, attachment.getFileName());
+        return attachment;
+    }
+
+    public Attachment attachment(Long id) {
+        for (Attachment attachment : db.attachments()) {
+            if (attachment.getId().equals(id)) {
+                return attachment;
+            }
+        }
+        throw new BusinessException("材料不存在");
+    }
+
+    public Resource downloadAttachment(Long id) {
+        Attachment attachment = attachment(id);
+        if (attachment.isDeleted()) {
+            throw new BusinessException("材料已删除，不可下载");
+        }
+        accessService.requireBusinessRead(attachment.getBizType(), attachment.getBizId());
+        audit(attachment.getBizType(), "download_attachment", attachment.getBizType(), attachment.getBizId(),
+                attachment.getFileName());
+        return storageService.load(attachment.getStoragePath());
+    }
+
+    public Attachment updateAttachment(Long id, AttachmentUpdateRequest request) {
+        Attachment attachment = activeAttachment(id);
+        accessService.requireAttachmentEdit(attachment.getBizType(), attachment.getBizId());
+        attachment.setFileName(request.getFileName());
+        attachment.setSecrecyLevel(request.getSecrecyLevel());
+        attachment.setUpdatedAt(LocalDateTime.now());
+        persistence.saveAttachment(attachment);
+        audit(attachment.getBizType(), "update_attachment", attachment.getBizType(), attachment.getBizId(),
+                attachment.getFileName());
+        return attachment;
+    }
+
+    public Attachment deleteAttachment(Long id, AttachmentDeleteRequest request) {
+        Attachment attachment = activeAttachment(id);
+        accessService.requireAttachmentDelete(attachment.getBizType(), attachment.getBizId());
+        attachment.setDeleted(true);
+        attachment.setDeletedBy(AuthContext.requireUser().getId());
+        attachment.setDeletedAt(LocalDateTime.now());
+        attachment.setDeleteReason(request.getReason());
+        attachment.setUpdatedAt(LocalDateTime.now());
+        persistence.saveAttachment(attachment);
+        audit(attachment.getBizType(), "delete_attachment", attachment.getBizType(), attachment.getBizId(),
+                request.getReason());
+        return attachment;
+    }
+
+    private Attachment activeAttachment(Long id) {
+        Attachment attachment = attachment(id);
+        if (attachment.isDeleted()) {
+            throw new BusinessException("材料已删除");
+        }
+        return attachment;
     }
 
     public AuditLog audit(String module, String action, String bizType, Long bizId, String detail) {

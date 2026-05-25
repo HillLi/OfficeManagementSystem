@@ -279,9 +279,19 @@ public class MysqlDataLoader {
             a.setBizType(rs.getString("biz_type"));
             a.setBizId(rs.getLong("biz_id"));
             a.setFileName(rs.getString("file_name"));
+            a.setOriginalName(rs.getString("original_name"));
             a.setFileUrl(rs.getString("file_url"));
+            a.setStoragePath(rs.getString("storage_path"));
+            Number fileSize = (Number) rs.getObject("file_size");
+            a.setFileSize(fileSize == null ? null : fileSize.longValue());
+            a.setContentType(rs.getString("content_type"));
             a.setSecrecyLevel(rs.getString("secrecy_level"));
             a.setUploaderId(rs.getLong("uploader_id"));
+            a.setDeleted(rs.getInt("deleted") == 1);
+            Number deletedBy = (Number) rs.getObject("deleted_by");
+            a.setDeletedBy(deletedBy == null ? null : deletedBy.longValue());
+            a.setDeletedAt(toLocalDateTime(rs, "deleted_at"));
+            a.setDeleteReason(rs.getString("delete_reason"));
             db.attachments().add(a);
         });
     }

@@ -59,14 +59,12 @@ class OfficeManagementSystemIntegrationTest {
     }
 
     @Test
-    void sealApplyRequiresMaterial() {
+    void sealApplyCreatesDraftBeforeMaterialUpload() {
         SealApplyRequest request = new SealApplyRequest();
         request.setSealId(1L);
         request.setApplicantId(2L);
         request.setPurpose("测试用印");
 
-        BusinessException ex = assertThrows(BusinessException.class, () -> sealService.apply(request));
-
-        assertTrue(ex.getMessage().contains("用印材料"));
+        assertEquals("draft", sealService.apply(request).getStatus());
     }
 }

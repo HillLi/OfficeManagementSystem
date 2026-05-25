@@ -36,6 +36,11 @@ public class SealController {
         return ApiResponse.ok(service.apply(request));
     }
 
+    @PostMapping("/applications/{id}/submit")
+    public ApiResponse<SealApplication> submit(@PathVariable Long id) {
+        return ApiResponse.ok(service.submit(id));
+    }
+
     @PostMapping("/applications/{id}/used")
     public ApiResponse<SealApplication> used(@PathVariable Long id, @RequestParam Long keeperId) {
         return ApiResponse.ok(service.markUsed(id, keeperId));

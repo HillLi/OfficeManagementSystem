@@ -131,9 +131,13 @@ public class JdbcDataPersistence implements DataPersistence {
     @Override
     public void saveAttachment(Attachment a) {
         jdbcTemplate.update("REPLACE INTO sys_attachment " +
-                        "(id, biz_type, biz_id, file_name, file_url, secrecy_level, uploader_id, created_at) VALUES (?,?,?,?,?,?,?,?)",
-                a.getId(), a.getBizType(), a.getBizId(), a.getFileName(), a.getFileUrl(), a.getSecrecyLevel(),
-                a.getUploaderId(), a.getCreatedAt());
+                        "(id, biz_type, biz_id, file_name, original_name, file_url, storage_path, file_size, content_type, " +
+                        "secrecy_level, uploader_id, deleted, deleted_by, deleted_at, delete_reason, created_at, updated_at) " +
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                a.getId(), a.getBizType(), a.getBizId(), a.getFileName(), a.getOriginalName(), a.getFileUrl(),
+                a.getStoragePath(), a.getFileSize(), a.getContentType(), a.getSecrecyLevel(), a.getUploaderId(),
+                a.isDeleted() ? 1 : 0, a.getDeletedBy(), a.getDeletedAt(), a.getDeleteReason(),
+                a.getCreatedAt(), a.getUpdatedAt());
     }
 
     @Override
