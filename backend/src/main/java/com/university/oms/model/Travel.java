@@ -14,6 +14,9 @@ public class Travel extends BaseEntity {
     private String transport;
     private BigDecimal budget;
     private BigDecimal actualExpense;
+    private String receiptUrl;
+    private String overLimitReason;
+    private boolean reimbursementSubmitted;
     private TravelCheckResult checkResult;
     private String status;
 
@@ -96,6 +99,13 @@ public class Travel extends BaseEntity {
     public void setActualExpense(BigDecimal actualExpense) {
         this.actualExpense = actualExpense;
     }
+
+    public String getReceiptUrl() { return receiptUrl; }
+    public void setReceiptUrl(String receiptUrl) { this.receiptUrl = receiptUrl; }
+    public String getOverLimitReason() { return overLimitReason; }
+    public void setOverLimitReason(String overLimitReason) { this.overLimitReason = overLimitReason; }
+    public boolean isReimbursementSubmitted() { return reimbursementSubmitted; }
+    public void setReimbursementSubmitted(boolean reimbursementSubmitted) { this.reimbursementSubmitted = reimbursementSubmitted; }
 
     public TravelCheckResult getCheckResult() {
         return checkResult;

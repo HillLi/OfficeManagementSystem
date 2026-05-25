@@ -1,9 +1,12 @@
 package com.university.oms.service;
 
 import com.university.oms.common.BusinessException;
+import com.university.oms.common.ForbiddenException;
 import com.university.oms.dto.SealApplyRequest;
+import com.university.oms.dto.SealTransferRequest;
 import com.university.oms.model.Seal;
 import com.university.oms.model.SealApplication;
+import com.university.oms.model.SealTransfer;
 import com.university.oms.repository.DataPersistence;
 import com.university.oms.repository.InMemoryDatabase;
 import com.university.oms.model.User;
@@ -60,6 +63,10 @@ public class SealService {
         if (request.getMaterialUrl() == null || request.getMaterialUrl().trim().isEmpty()) {
             throw new BusinessException("用印材料不能为空，严禁在空白纸张上用印");
         }
+        if (request.isTakeOut() && (blank(request.getTakeOutReason()) || blank(request.getTakeOutLocation())
+                || request.getSupervisorId() == null || request.getExpectedReturnTime() == null)) {
+            throw new BusinessException("外带用印必须填写原因、地点、监交人和预计归还时间");
+        }
         SealApplication application = new SealApplication();
         db.fill(application, db.nextId());
         application.setSealId(request.getSealId());
@@ -69,9 +76,12 @@ public class SealService {
         application.setCopies(request.getCopies());
         application.setTakeOut(request.isTakeOut());
         application.setMatterLevel(request.getMatterLevel());
+        application.setTakeOutReason(request.getTakeOutReason());
+        application.setTakeOutLocation(request.getTakeOutLocation());
+        application.setSupervisorId(request.getSupervisorId());
         application.setStatus(seal.getSealName().contains("北京大学") ? "pending_office" : "pending_dept");
         if (request.isTakeOut()) {
-            application.setReturnDeadline(LocalDateTime.now().plusDays(7));
+            application.setReturnDeadline(request.getExpectedReturnTime());
         }
         db.sealApplications().put(application.getId(), application);
         persistence.saveSealApplication(application);
@@ -93,6 +103,35 @@ public class SealService {
         approvalService.record("seal", id, operatorId, "use", "用印登记");
         workflowService.audit("seal", "use", "seal", id, "用印登记");
         return app;
+    }
+
+    public SealTransfer transfer(SealTransferRequest request) {
+        Long operatorId = AuthContext.currentUserIdOr(null);
+        requireKeeper(operatorId);
+        if (!db.seals().containsKey(request.getSealId())) {
+            throw new BusinessException("印章不存在");
+        }
+        if (!db.users().containsKey(request.getReceiverId()) || !db.users().containsKey(request.getSupervisorId())) {
+            throw new BusinessException("移交接收人或监交人不存在");
+        }
+        SealTransfer transfer = new SealTransfer();
+        db.fill(transfer, db.nextId());
+        transfer.setSealId(request.getSealId());
+        transfer.setTransferorId(operatorId);
+        transfer.setReceiverId(request.getReceiverId());
+        transfer.setSupervisorId(request.getSupervisorId());
+        transfer.setMaterialUrl(request.getMaterialUrl());
+        transfer.setRemark(request.getRemark());
+        transfer.setTransferTime(LocalDateTime.now());
+        db.sealTransfers().put(transfer.getId(), transfer);
+        persistence.saveSealTransfer(transfer);
+        workflowService.audit("seal", "transfer", "seal", request.getSealId(), "移交记录#" + transfer.getId());
+        return transfer;
+    }
+
+    public List<SealTransfer> transfers() {
+        requireKeeper(AuthContext.currentUserIdOr(null));
+        return new ArrayList<SealTransfer>(db.sealTransfers().values());
     }
 
     public SealApplication markReturned(Long id, Long keeperId) {
@@ -127,7 +166,11 @@ public class SealService {
         User user = db.users().get(userId);
         if (user == null || !(user.getRoleKeys().contains("seal_keeper") || user.getRoleKeys().contains("office_admin")
                 || user.getRoleKeys().contains("admin"))) {
-            throw new BusinessException("只有印章保管人或党办校办人员可以登记用印和归还");
+            throw new ForbiddenException("只有印章保管人或党办校办人员可以登记用印、归还和移交");
         }
+    }
+
+    private boolean blank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 }

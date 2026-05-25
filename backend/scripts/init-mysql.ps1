@@ -1,7 +1,7 @@
 param(
   [string]$MysqlBin = "D:\dev\mysql8\mysql-8.0.39-winx64\bin\mysql.exe",
   [string]$User = "root",
-  [string]$Password = "",
+  [string]$Password = "123456",
   [string]$HostName = "localhost",
   [int]$Port = 3306
 )

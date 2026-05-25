@@ -11,6 +11,8 @@ public class Document extends BaseEntity {
     private Long applicantId;
     private Long deptId;
     private String status;
+    private Integer version = 1;
+    private String distributionStatus = "not_distributed";
     private AiReviewResult aiReviewResult;
 
     public String getDocNo() {
@@ -91,6 +93,22 @@ public class Document extends BaseEntity {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Integer getVersion() {
+        return version;
+    }
+
+    public void setVersion(Integer version) {
+        this.version = version;
+    }
+
+    public String getDistributionStatus() {
+        return distributionStatus;
+    }
+
+    public void setDistributionStatus(String distributionStatus) {
+        this.distributionStatus = distributionStatus;
     }
 
     public AiReviewResult getAiReviewResult() {

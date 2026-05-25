@@ -77,6 +77,10 @@ public class ApprovalService {
         } else {
             newStatus = state.approve(operator);
         }
+        if (entity instanceof Travel && "approved".equals(newStatus)
+                && ((Travel) entity).isReimbursementSubmitted()) {
+            newStatus = "archived";
+        }
 
         setStatus(entity, newStatus, operatorId);
         record(bizType, bizId, operatorId, request.getAction(), request.getOpinion());
@@ -119,6 +123,16 @@ public class ApprovalService {
             return "meeting_large";
         }
         if ("seal".equals(bizType)) {
+            SealApplication application = (SealApplication) entity;
+            boolean major = "重大事项".equals(application.getMatterLevel());
+            Seal seal = db.seals().get(application.getSealId());
+            boolean schoolSeal = seal != null && seal.getSealName().contains("北京大学");
+            if (major && schoolSeal) {
+                return "seal_school_major";
+            }
+            if (major) {
+                return "seal_dept_major";
+            }
             return "pending_office".equals(currentStatus) ? "seal_office" : "seal_dept";
         }
         return bizType;

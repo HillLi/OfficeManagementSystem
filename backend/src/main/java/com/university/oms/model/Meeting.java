@@ -13,6 +13,10 @@ public class Meeting extends BaseEntity {
     private String venueType;
     private String meetingType;
     private BigDecimal budget;
+    private BigDecimal accommodationFee;
+    private BigDecimal mealFee;
+    private BigDecimal venueFee;
+    private BigDecimal otherFee;
     private String riskReportUrl;
     private String securityPlanUrl;
     private String emergencyPlanUrl;
@@ -92,6 +96,15 @@ public class Meeting extends BaseEntity {
     public void setBudget(BigDecimal budget) {
         this.budget = budget;
     }
+
+    public BigDecimal getAccommodationFee() { return accommodationFee; }
+    public void setAccommodationFee(BigDecimal accommodationFee) { this.accommodationFee = accommodationFee; }
+    public BigDecimal getMealFee() { return mealFee; }
+    public void setMealFee(BigDecimal mealFee) { this.mealFee = mealFee; }
+    public BigDecimal getVenueFee() { return venueFee; }
+    public void setVenueFee(BigDecimal venueFee) { this.venueFee = venueFee; }
+    public BigDecimal getOtherFee() { return otherFee; }
+    public void setOtherFee(BigDecimal otherFee) { this.otherFee = otherFee; }
 
     public String getRiskReportUrl() {
         return riskReportUrl;

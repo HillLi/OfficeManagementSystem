@@ -2,6 +2,7 @@ package com.university.oms.service;
 
 import com.university.oms.common.ForbiddenException;
 import com.university.oms.model.Document;
+import com.university.oms.model.DocumentDistribution;
 import com.university.oms.model.Meeting;
 import com.university.oms.model.Report;
 import com.university.oms.model.SealApplication;
@@ -33,6 +34,46 @@ public class BusinessAccessService {
         }
     }
 
+    public void requireDocumentDistribute(Document document) {
+        requireDocumentArchive(document);
+    }
+
+    public void requireDocumentReceipt(DocumentDistribution distribution) {
+        User user = AuthContext.requireUser();
+        if (!distribution.getReceiverId().equals(user.getId()) && !hasRole(user, "admin")) {
+            deny("无权签收该公文");
+        }
+    }
+
+    public void requireDocumentRemind(Document document) {
+        requireDocumentArchive(document);
+    }
+
+    public void requireMeetingMinutesArchive(Meeting meeting) {
+        User user = AuthContext.requireUser();
+        if (!meeting.getOrganizerId().equals(user.getId())
+                && !hasRole(user, "office_admin")
+                && !hasRole(user, "admin")) {
+            deny("无权归档该会议纪要");
+        }
+    }
+
+    public void requireReportReply(Report report) {
+        User user = AuthContext.requireUser();
+        if (!hasRole(user, "office_admin")
+                && !hasRole(user, "school_leader")
+                && !hasRole(user, "admin")) {
+            deny("无权批复归档该请示报告");
+        }
+    }
+
+    public void requireTravelReimburse(Travel travel) {
+        User user = AuthContext.requireUser();
+        if (!travel.getApplicantId().equals(user.getId()) && !hasRole(user, "admin")) {
+            deny("无权提交该差旅报销");
+        }
+    }
+
     public void requireBusinessRead(String bizType, Long bizId) {
         if (!canReadBusiness(bizType, bizId)) {
             deny("无权访问该业务数据");
@@ -47,7 +88,8 @@ public class BusinessAccessService {
         if ("document".equals(bizType)) {
             Document document = db.documents().get(bizId);
             return document != null && canReadForApplicant(user, document.getApplicantId(), document.getDeptId(),
-                    hasRole(user, "office_admin") || hasRole(user, "school_leader"));
+                    hasRole(user, "office_admin") || hasRole(user, "school_leader"))
+                    || isDocumentReceiver(user, bizId);
         }
         if ("meeting".equals(bizType)) {
             Meeting meeting = db.meetings().get(bizId);
@@ -81,6 +123,15 @@ public class BusinessAccessService {
     private Long departmentOf(Long userId) {
         User user = db.users().get(userId);
         return user == null ? null : user.getDeptId();
+    }
+
+    private boolean isDocumentReceiver(User user, Long documentId) {
+        for (DocumentDistribution distribution : db.documentDistributions().values()) {
+            if (documentId.equals(distribution.getDocumentId()) && user.getId().equals(distribution.getReceiverId())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean hasRole(User user, String role) {

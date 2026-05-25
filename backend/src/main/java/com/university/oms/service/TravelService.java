@@ -24,6 +24,7 @@ public class TravelService {
     private final TravelExpenseStrategy expenseStrategy;
     private final DataPersistence persistence;
     private final WorkflowService workflowService;
+    private final BusinessAccessService accessService;
 
     private static final Map<String, List<String>> ALLOWED_TRANSPORT = new HashMap<>();
     static {
@@ -36,12 +37,13 @@ public class TravelService {
     }
 
     public TravelService(InMemoryDatabase db, ApprovalService approvalService, TravelExpenseStrategy expenseStrategy,
-                         DataPersistence persistence, WorkflowService workflowService) {
+                         DataPersistence persistence, WorkflowService workflowService, BusinessAccessService accessService) {
         this.db = db;
         this.approvalService = approvalService;
         this.expenseStrategy = expenseStrategy;
         this.persistence = persistence;
         this.workflowService = workflowService;
+        this.accessService = accessService;
     }
 
     public List<Travel> list() {
@@ -94,21 +96,33 @@ public class TravelService {
         if (travel == null) {
             throw new BusinessException("差旅申请不存在");
         }
+        accessService.requireTravelReimburse(travel);
         if (!"approved".equals(travel.getStatus())) {
             throw new BusinessException("只有审批通过的差旅可以提交报销");
         }
+        if (request.getReceiptUrl() == null || request.getReceiptUrl().trim().isEmpty()) {
+            throw new BusinessException("差旅报销必须提交票据附件");
+        }
+        if (travel.getCheckResult() == null) {
+            travel.setCheckResult(expenseStrategy.check(travel));
+        }
+        if (request.getActualExpense().compareTo(travel.getCheckResult().getStandardAmount()) > 0
+                && (request.getOverLimitReason() == null || request.getOverLimitReason().trim().isEmpty())) {
+            throw new BusinessException("实际费用超出标准时必须填写超标说明");
+        }
         travel.setActualExpense(request.getActualExpense());
+        travel.setReceiptUrl(request.getReceiptUrl());
+        travel.setOverLimitReason(request.getOverLimitReason());
+        travel.setReimbursementSubmitted(true);
         travel.setStatus("pending_finance");
         travel.setUpdatedAt(java.time.LocalDateTime.now());
         persistence.saveTravel(travel);
-        if (request.getReceiptUrl() != null && !request.getReceiptUrl().trim().isEmpty()) {
-            com.university.oms.dto.AttachmentRequest attachment = new com.university.oms.dto.AttachmentRequest();
-            attachment.setBizType("travel");
-            attachment.setBizId(id);
-            attachment.setFileName("差旅报销凭证");
-            attachment.setFileUrl(request.getReceiptUrl());
-            workflowService.addAttachment(attachment);
-        }
+        com.university.oms.dto.AttachmentRequest attachment = new com.university.oms.dto.AttachmentRequest();
+        attachment.setBizType("travel");
+        attachment.setBizId(id);
+        attachment.setFileName("差旅报销凭证");
+        attachment.setFileUrl(request.getReceiptUrl());
+        workflowService.addAttachment(attachment);
         approvalService.record("travel", id, AuthContext.currentUserIdOr(travel.getApplicantId()), "reimburse", "提交报销");
         workflowService.startFlow("travel", id, travel.getStatus(), travel.getApplicantId());
         return travel;

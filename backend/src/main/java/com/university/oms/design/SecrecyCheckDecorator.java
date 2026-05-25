@@ -16,7 +16,7 @@ public class SecrecyCheckDecorator implements DocumentProcessor {
     @Override
     public AiReviewResult process(Document document) {
         String level = document.getSecrecyLevel();
-        if ("秘密".equals(level) || "机密".equals(level) || "绝密".equals(level)) {
+        if (restrictedLevel(level)) {
             AiReviewResult blocked = new AiReviewResult();
             blocked.setPassed(false);
             blocked.setRecommendedSecrecyLevel(level);
@@ -24,5 +24,16 @@ public class SecrecyCheckDecorator implements DocumentProcessor {
             return blocked;
         }
         return wrapped.process(document);
+    }
+
+    private boolean restrictedLevel(String level) {
+        if (level == null) {
+            return false;
+        }
+        String normalized = level.trim().toLowerCase();
+        return "内部".equals(level) || "秘密".equals(level) || "机密".equals(level) || "绝密".equals(level)
+                || "internal".equals(normalized) || "secret".equals(normalized)
+                || "confidential".equals(normalized) || "top_secret".equals(normalized)
+                || "top-secret".equals(normalized);
     }
 }

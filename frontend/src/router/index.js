@@ -1,13 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import Approvals from '../views/Approvals.vue'
 import Dashboard from '../views/Dashboard.vue'
 import Documents from '../views/Documents.vue'
-import Seals from '../views/Seals.vue'
-import Meetings from '../views/Meetings.vue'
-import Travels from '../views/Travels.vue'
-import Reports from '../views/Reports.vue'
-import Approvals from '../views/Approvals.vue'
-import UserManage from '../views/UserManage.vue'
 import Login from '../views/Login.vue'
+import Meetings from '../views/Meetings.vue'
+import Reports from '../views/Reports.vue'
+import Seals from '../views/Seals.vue'
+import Statistics from '../views/Statistics.vue'
+import Travels from '../views/Travels.vue'
+import UserManage from '../views/UserManage.vue'
 
 const routes = [
   { path: '/login', component: Login, meta: { public: true } },
@@ -19,6 +20,7 @@ const routes = [
   { path: '/travels', component: Travels },
   { path: '/reports', component: Reports },
   { path: '/approvals', component: Approvals },
+  { path: '/statistics', component: Statistics },
   { path: '/admin/users', component: UserManage, meta: { requiresAdmin: true } }
 ]
 
@@ -33,7 +35,7 @@ router.beforeEach((to, from, next) => {
     next('/login')
   } else if (to.meta.requiresAdmin) {
     const user = JSON.parse(sessionStorage.getItem('oms_user') || 'null')
-    if (user && user.roleKeys && user.roleKeys.includes('admin')) {
+    if (user?.roleKeys?.includes('admin')) {
       next()
     } else {
       next('/dashboard')
