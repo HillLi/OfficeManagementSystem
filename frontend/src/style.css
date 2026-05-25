@@ -59,7 +59,7 @@ body {
 
 .page-grid {
   display: grid;
-  grid-template-columns: 380px 1fr;
+  grid-template-columns: minmax(310px, 380px) minmax(480px, 1fr);
   gap: 14px;
   align-items: start;
 }
@@ -70,24 +70,35 @@ body {
 
 .chart-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(240px, 1fr));
   gap: 14px;
   margin-top: 14px;
 }
 
-.toolbar {
+.toolbar,
+.table-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+}
+
+.table-actions {
+  margin-top: 0;
+}
+
+.rule-note {
+  margin: 8px 0 0;
+  color: #c45656;
+  font-size: 13px;
 }
 
 @media (max-width: 900px) {
   .main {
     grid-template-columns: 1fr;
   }
-  .page-grid {
-    grid-template-columns: 1fr;
-  }
+
+  .page-grid,
   .chart-grid {
     grid-template-columns: 1fr;
   }

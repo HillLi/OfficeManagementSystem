@@ -14,6 +14,9 @@ http.interceptors.request.use((config) => {
 })
 
 http.interceptors.response.use((response) => {
+  if (response.config.responseType === 'blob') {
+    return response.data
+  }
   const body = response.data
   if (!body.success) {
     return Promise.reject(new Error(body.message || '请求失败'))
@@ -23,23 +26,44 @@ http.interceptors.response.use((response) => {
 
 export const api = {
   login: (data) => http.post('/auth/login', data),
+  logout: () => http.post('/auth/logout'),
   dashboard: () => http.get('/dashboard'),
+  statistics: () => http.get('/statistics'),
+  exportStatistics: () => http.get('/statistics/export', { responseType: 'blob' }),
   users: () => http.get('/auth/users'),
+
   documents: () => http.get('/documents'),
   createDocument: (data) => http.post('/documents', data),
   submitDocument: (id) => http.post(`/documents/${id}/submit`),
+  archiveDocument: (id) => http.post(`/documents/${id}/archive`),
+  documentDistributions: (id) => http.get(`/documents/${id}/distributions`),
+  distributeDocument: (id, data) => http.post(`/documents/${id}/distributions`, data),
+  receiveDocument: (id, distributionId) => http.post(`/documents/${id}/distributions/${distributionId}/receipt`),
+  remindDocument: (id, distributionId) => http.post(`/documents/${id}/distributions/${distributionId}/remind`),
   aiDraft: (data) => http.post('/documents/ai-draft', data),
   aiReview: (id) => http.post(`/documents/${id}/ai-review`),
+
   seals: () => http.get('/seals'),
   sealApps: () => http.get('/seals/applications'),
   createSealApp: (data) => http.post('/seals/applications', data),
+  markSealUsed: (id, keeperId) => http.post(`/seals/applications/${id}/used`, null, { params: { keeperId } }),
+  returnSeal: (id, keeperId) => http.post(`/seals/applications/${id}/returned`, null, { params: { keeperId } }),
+  sealTransfers: () => http.get('/seals/transfers'),
+  createSealTransfer: (data) => http.post('/seals/transfers', data),
+
   rooms: () => http.get('/meetings/rooms'),
   meetings: () => http.get('/meetings'),
   createMeeting: (data) => http.post('/meetings', data),
+  archiveMeetingMinutes: (id, data) => http.post(`/meetings/${id}/minutes`, data),
+
   travels: () => http.get('/travels'),
   createTravel: (data) => http.post('/travels', data),
+  reimburseTravel: (id, data) => http.post(`/travels/${id}/reimburse`, data),
+
   reports: () => http.get('/reports'),
   createReport: (data) => http.post('/reports', data),
+  replyReport: (id, data) => http.post(`/reports/${id}/reply`, data),
+
   approvals: (params) => http.get('/approvals', { params }),
   approve: (bizType, bizId, data) => http.post(`/approvals/${bizType}/${bizId}`, data),
   addAttachment: (data) => http.post('/workflow/attachments', data),
@@ -49,20 +73,13 @@ export const api = {
   markNotificationRead: (id) => http.post(`/workflow/notifications/${id}/read`),
   flowInstances: () => http.get('/workflow/instances'),
   flowTasks: (params) => http.get('/workflow/tasks', { params }),
-  archiveDocument: (id) => http.post(`/documents/${id}/archive`),
-  archiveMeetingMinutes: (id, data) => http.post(`/meetings/${id}/minutes`, data),
-  reimburseTravel: (id, data) => http.post(`/travels/${id}/reimburse`, data),
-  replyReport: (id, data) => http.post(`/reports/${id}/reply`, data),
 
-  // Admin - User management
   adminUsers: () => http.get('/admin/users'),
   adminUser: (id) => http.get(`/admin/users/${id}`),
   adminCreateUser: (data) => http.post('/admin/users', data),
   adminUpdateUser: (id, data) => http.put(`/admin/users/${id}`, data),
   adminDeleteUser: (id) => http.delete(`/admin/users/${id}`),
   adminRoles: () => http.get('/admin/roles'),
-
-  // Admin - Department management
   adminDepts: () => http.get('/admin/depts'),
   adminCreateDept: (data) => http.post('/admin/depts', data),
   adminUpdateDept: (id, data) => http.put(`/admin/depts/${id}`, data),

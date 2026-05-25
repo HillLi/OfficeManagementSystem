@@ -17,7 +17,8 @@
           <el-menu-item index="/meetings">会议管理</el-menu-item>
           <el-menu-item index="/travels">差旅审批</el-menu-item>
           <el-menu-item index="/reports">请示报告</el-menu-item>
-          <el-menu-item index="/approvals">审批记录</el-menu-item>
+          <el-menu-item index="/approvals">审批任务</el-menu-item>
+          <el-menu-item index="/statistics">统计报表</el-menu-item>
           <el-menu-item v-if="isAdmin" index="/admin/users">用户管理</el-menu-item>
         </el-menu>
       </aside>
@@ -29,17 +30,22 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
-import { useUserStore } from './stores/user'
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { api } from './api'
+import { useUserStore } from './stores/user'
 import Login from './views/Login.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
 const isAdmin = computed(() => userStore.roleKeys.includes('admin'))
 
-const handleLogout = () => {
-  userStore.logout()
-  router.push('/login')
+const handleLogout = async () => {
+  try {
+    await api.logout()
+  } finally {
+    userStore.logout()
+    router.push('/login')
+  }
 }
 </script>
