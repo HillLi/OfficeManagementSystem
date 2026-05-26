@@ -48,6 +48,25 @@ public class JdbcDataPersistence implements DataPersistence {
     }
 
     @Override
+    public void saveDictionaryType(DictionaryType type) {
+        jdbcTemplate.update("REPLACE INTO sys_dict_type " +
+                        "(id, dict_type, dict_name, system_type, enabled, remark, created_at, updated_at) " +
+                        "VALUES (?,?,?,?,?,?,?,?)",
+                type.getId(), type.getDictType(), type.getDictName(), type.isSystemType() ? 1 : 0,
+                type.isEnabled() ? 1 : 0, type.getRemark(), type.getCreatedAt(), type.getUpdatedAt());
+    }
+
+    @Override
+    public void saveDictionaryItem(DictionaryItem item) {
+        jdbcTemplate.update("REPLACE INTO sys_dict_item " +
+                        "(id, dict_type, dict_code, dict_label, sort_order, enabled, system_item, remark, created_at, updated_at) " +
+                        "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                item.getId(), item.getDictType(), item.getDictCode(), item.getDictLabel(), item.getSortOrder(),
+                item.isEnabled() ? 1 : 0, item.isSystemItem() ? 1 : 0, item.getRemark(),
+                item.getCreatedAt(), item.getUpdatedAt());
+    }
+
+    @Override
     public void saveDocument(Document d) {
         jdbcTemplate.update("REPLACE INTO oa_document " +
                         "(id, doc_no, title, doc_type, urgency, secrecy_level, knowledge_scope, content, applicant_id, dept_id, status, version, distribution_status, ai_review_result, created_at, updated_at) " +

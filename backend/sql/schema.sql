@@ -38,6 +38,33 @@ CREATE TABLE IF NOT EXISTS sys_user_role (
   PRIMARY KEY (user_id, role_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS sys_dict_type (
+  id BIGINT PRIMARY KEY,
+  dict_type VARCHAR(60) NOT NULL UNIQUE,
+  dict_name VARCHAR(100) NOT NULL,
+  system_type TINYINT DEFAULT 0,
+  enabled TINYINT DEFAULT 1,
+  remark VARCHAR(255),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_dict_type_enabled (enabled)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS sys_dict_item (
+  id BIGINT PRIMARY KEY,
+  dict_type VARCHAR(60) NOT NULL,
+  dict_code VARCHAR(100) NOT NULL,
+  dict_label VARCHAR(100) NOT NULL,
+  sort_order INT DEFAULT 0,
+  enabled TINYINT DEFAULT 1,
+  system_item TINYINT DEFAULT 0,
+  remark VARCHAR(255),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_dict_item_code (dict_type, dict_code),
+  INDEX idx_dict_item_type_enabled (dict_type, enabled, sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS oa_document (
   id BIGINT PRIMARY KEY,
   doc_no VARCHAR(50),
