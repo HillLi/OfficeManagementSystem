@@ -11,6 +11,8 @@ public class NoopDataPersistence implements DataPersistence {
     public void deleteUser(Long id) { }
     public void saveDepartment(Department department) { }
     public void deleteDepartment(Long id) { }
+    public void saveDictionaryType(DictionaryType type) { }
+    public void saveDictionaryItem(DictionaryItem item) { }
     public void saveDocument(Document document) { }
     public void saveSealApplication(SealApplication application) { }
     public void saveSeal(Seal seal) { }

@@ -7,6 +7,8 @@ public interface DataPersistence {
     void deleteUser(Long id);
     void saveDepartment(Department department);
     void deleteDepartment(Long id);
+    void saveDictionaryType(DictionaryType type);
+    void saveDictionaryItem(DictionaryItem item);
     void saveDocument(Document document);
     default void saveDocumentDistribution(DocumentDistribution distribution) { }
     void saveSealApplication(SealApplication application);

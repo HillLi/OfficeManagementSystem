@@ -24,6 +24,8 @@ public class MysqlDataLoader {
 
     @PostConstruct
     public void load() {
+        db.dictionaryTypes().clear();
+        db.dictionaryItems().clear();
         db.departments().clear();
         db.users().clear();
         db.seals().clear();
@@ -42,6 +44,8 @@ public class MysqlDataLoader {
         db.flowInstances().clear();
         db.flowTasks().clear();
 
+        loadDictionaryTypes();
+        loadDictionaryItems();
         loadDepartments();
         loadUsers();
         loadSeals();
@@ -60,6 +64,38 @@ public class MysqlDataLoader {
         loadFlowInstances();
         loadFlowTasks();
         db.ensureNextIdAtLeast(maxId());
+    }
+
+    private void loadDictionaryTypes() {
+        jdbcTemplate.query("SELECT * FROM sys_dict_type", rs -> {
+            DictionaryType type = new DictionaryType();
+            type.setId(rs.getLong("id"));
+            type.setCreatedAt(toLocalDateTime(rs, "created_at"));
+            type.setUpdatedAt(toLocalDateTime(rs, "updated_at"));
+            type.setDictType(rs.getString("dict_type"));
+            type.setDictName(rs.getString("dict_name"));
+            type.setSystemType(rs.getInt("system_type") == 1);
+            type.setEnabled(rs.getInt("enabled") == 1);
+            type.setRemark(rs.getString("remark"));
+            db.dictionaryTypes().put(type.getDictType(), type);
+        });
+    }
+
+    private void loadDictionaryItems() {
+        jdbcTemplate.query("SELECT * FROM sys_dict_item", rs -> {
+            DictionaryItem item = new DictionaryItem();
+            item.setId(rs.getLong("id"));
+            item.setCreatedAt(toLocalDateTime(rs, "created_at"));
+            item.setUpdatedAt(toLocalDateTime(rs, "updated_at"));
+            item.setDictType(rs.getString("dict_type"));
+            item.setDictCode(rs.getString("dict_code"));
+            item.setDictLabel(rs.getString("dict_label"));
+            item.setSortOrder(rs.getInt("sort_order"));
+            item.setEnabled(rs.getInt("enabled") == 1);
+            item.setSystemItem(rs.getInt("system_item") == 1);
+            item.setRemark(rs.getString("remark"));
+            db.dictionaryItems().put(db.dictionaryItemKey(item.getDictType(), item.getDictCode()), item);
+        });
     }
 
     private void loadDepartments() {
@@ -367,6 +403,8 @@ public class MysqlDataLoader {
                         "COALESCE((SELECT MAX(id) FROM sys_attachment),0)," +
                         "COALESCE((SELECT MAX(id) FROM sys_operation_log),0)," +
                         "COALESCE((SELECT MAX(id) FROM sys_notification),0)," +
+                        "COALESCE((SELECT MAX(id) FROM sys_dict_type),0)," +
+                        "COALESCE((SELECT MAX(id) FROM sys_dict_item),0)," +
                         "COALESCE((SELECT MAX(id) FROM oa_flow_instance),0)," +
                         "COALESCE((SELECT MAX(id) FROM oa_flow_task),0)," +
                         "1000)",
