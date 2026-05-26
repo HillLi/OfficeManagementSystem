@@ -141,7 +141,7 @@ private final Map<String, DictionaryType> dictionaryTypes = new ConcurrentHashMa
 private final Map<String, DictionaryItem> dictionaryItems = new ConcurrentHashMap<String, DictionaryItem>();
 public Map<String, DictionaryType> dictionaryTypes() { return dictionaryTypes; }
 public Map<String, DictionaryItem> dictionaryItems() { return dictionaryItems; }
-private String dictKey(String type, String code) { return type + ":" + code; }
+public String dictionaryItemKey(String type, String code) { return type.length() + ":" + type + code; }
 ```
 
 Add helpers and call them once for every row in the Dictionary Seed Contract during `init()`:
@@ -166,7 +166,7 @@ private void addDictItem(Long id, String type, String code, String label, int or
     item.setSortOrder(order);
     item.setEnabled(true);
     item.setSystemItem(systemItem);
-    dictionaryItems.put(dictKey(type, code), item);
+    dictionaryItems.put(dictionaryItemKey(type, code), item);
 }
 ```
 
@@ -244,7 +244,7 @@ private void loadDictionaryItems() {
         item.setEnabled(rs.getInt("enabled") == 1);
         item.setSystemItem(rs.getInt("system_item") == 1);
         item.setRemark(rs.getString("remark"));
-        db.dictionaryItems().put(item.getDictType() + ":" + item.getDictCode(), item);
+        db.dictionaryItems().put(db.dictionaryItemKey(item.getDictType(), item.getDictCode()), item);
     });
 }
 ```
@@ -416,7 +416,7 @@ private static final Set<String> SYSTEM_TYPES = new LinkedHashSet<String>(
                 "flow_node", "role_key", "secrecy_level"));
 
 public void requireEnabled(String type, String code, String label) {
-    DictionaryItem item = db.dictionaryItems().get(type + ":" + code);
+    DictionaryItem item = db.dictionaryItems().get(db.dictionaryItemKey(type, code));
     if (item == null || !item.isEnabled()) {
         throw new BusinessException(label + "不在可选字典范围内：" + code);
     }
