@@ -293,7 +293,7 @@ void authenticatedUserReceivesVersionedDictionaryCatalog() throws Exception {
 
 @Test
 void ordinaryUserCannotMaintainDictionaries() throws Exception {
-    mockMvc.perform(put("/api/admin/dictionaries/items/meeting_type/国内管理会议")
+    mockMvc.perform(put("/api/admin/dictionaries/types/meeting_type/items/国内管理会议")
             .header("Authorization", bearer(login("user")))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"dictLabel\":\"教学会议\",\"sortOrder\":1,\"enabled\":true,\"remark\":\"\"}"))
@@ -303,7 +303,7 @@ void ordinaryUserCannotMaintainDictionaries() throws Exception {
 @Test
 void adminCanRenameOrdinaryItemAndDisabledItemsRemainInCatalog() throws Exception {
     String admin = login("admin");
-    putJson("/api/admin/dictionaries/items/meeting_type/国内管理会议",
+    putJson("/api/admin/dictionaries/types/meeting_type/items/国内管理会议",
             "{\"dictLabel\":\"国内行政管理会议\",\"sortOrder\":1,\"enabled\":false,\"remark\":\"暂不新增\"}", admin);
     JsonNode data = getJson("/api/dictionaries", admin).get("data");
     JsonNode item = findItem(data, "meeting_type", "国内管理会议");
@@ -324,7 +324,7 @@ void adminCanCreateAndDisableOrdinaryDictionaryType() throws Exception {
 @Test
 void adminCannotDisableOrRenameCodeOfProtectedItem() throws Exception {
     String admin = login("admin");
-    mockMvc.perform(put("/api/admin/dictionaries/items/business_status/draft")
+    mockMvc.perform(put("/api/admin/dictionaries/types/business_status/items/draft")
             .header("Authorization", bearer(admin))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"dictCode\":\"new_draft\",\"dictLabel\":\"待拟稿\",\"sortOrder\":1,\"enabled\":false}"))
