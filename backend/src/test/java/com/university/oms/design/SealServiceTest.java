@@ -1,11 +1,11 @@
 package com.university.oms.design;
 
-import com.university.oms.common.BusinessException;
 import com.university.oms.dto.SealApplyRequest;
 import com.university.oms.model.SealApplication;
 import com.university.oms.repository.InMemoryDatabase;
 import com.university.oms.repository.NoopDataPersistence;
 import com.university.oms.service.ApprovalService;
+import com.university.oms.service.AttachmentStorageService;
 import com.university.oms.service.BusinessAccessService;
 import com.university.oms.service.SealService;
 import com.university.oms.service.WorkflowService;
@@ -27,7 +27,8 @@ class SealServiceTest {
         ApprovalFlowConfig flowConfig = new ApprovalFlowConfig();
         flowConfig.init();
         BusinessAccessService accessService = new BusinessAccessService(db);
-        WorkflowService workflowService = new WorkflowService(db, new NoopDataPersistence(), flowConfig, accessService);
+        WorkflowService workflowService = new WorkflowService(db, new NoopDataPersistence(), flowConfig, accessService,
+                new AttachmentStorageService("target/test-uploads/seal-service"));
         service = new SealService(db,
                 new ApprovalService(db, new NoopDataPersistence(),
                         flowConfig, new StateFactory(flowConfig),
@@ -36,18 +37,18 @@ class SealServiceTest {
     }
 
     @Test
-    void applySealMissingMaterialThrows() {
+    void applyWithoutMaterialCreatesDraft() {
         SealApplyRequest req = new SealApplyRequest();
         req.setSealId(1L);
         req.setApplicantId(2L);
         req.setPurpose("测试");
-        req.setMaterialUrl("");
 
-        assertThrows(BusinessException.class, () -> service.apply(req));
+        SealApplication app = service.apply(req);
+        assertEquals("draft", app.getStatus());
     }
 
     @Test
-    void applyWithMaterialSucceeds() {
+    void legacyMaterialUrlDoesNotSkipDraftSubmission() {
         SealApplyRequest req = new SealApplyRequest();
         req.setSealId(1L);
         req.setApplicantId(2L);
@@ -57,7 +58,7 @@ class SealServiceTest {
 
         SealApplication app = service.apply(req);
         assertNotNull(app);
-        assertEquals("pending_office", app.getStatus());
+        assertEquals("draft", app.getStatus());
     }
 
     @Test

@@ -3,9 +3,9 @@
   <div v-else class="layout">
     <header class="header">
       <div class="brand">高校办公管理系统</div>
-      <div>
+      <div class="account">
         当前用户：{{ userStore.realName }}
-        <el-button size="small" style="margin-left:12px" @click="handleLogout">退出</el-button>
+        <el-button size="small" @click="handleLogout">退出</el-button>
       </div>
     </header>
     <main class="main">

@@ -23,6 +23,13 @@ body {
   font-weight: 700;
 }
 
+.account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+}
+
 .main {
   display: grid;
   grid-template-columns: 220px 1fr;
@@ -94,8 +101,41 @@ body {
 }
 
 @media (max-width: 900px) {
+  .header {
+    height: auto;
+    min-height: 56px;
+    padding: 10px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
   .main {
     grid-template-columns: 1fr;
+    min-height: calc(100vh - 96px);
+  }
+
+  .side {
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid #e3e8ef;
+  }
+
+  .side .el-menu {
+    display: flex;
+    width: max-content;
+    min-width: 100%;
+    border-right: 0;
+  }
+
+  .side .el-menu-item {
+    flex: 0 0 auto;
+    height: 48px;
+    line-height: 48px;
+  }
+
+  .content {
+    padding: 12px;
   }
 
   .page-grid,

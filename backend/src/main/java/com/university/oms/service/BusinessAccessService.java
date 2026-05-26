@@ -80,6 +80,47 @@ public class BusinessAccessService {
         }
     }
 
+    public void requireAttachmentUpload(String bizType, Long bizId) {
+        if (!"seal".equals(bizType)) {
+            deny("当前业务不支持文件上传");
+        }
+        SealApplication application = requireSealApplication(bizId);
+        User user = AuthContext.requireUser();
+        if (!application.getApplicantId().equals(user.getId()) && !hasRole(user, "admin")) {
+            deny("无权上传该用印申请材料");
+        }
+        if (!"draft".equals(application.getStatus())) {
+            deny("只有草稿用印申请可以上传材料");
+        }
+    }
+
+    public void requireAttachmentEdit(String bizType, Long bizId) {
+        SealApplication application = requireSealMaterialApplication(bizType, bizId);
+        User user = AuthContext.requireUser();
+        if (!"draft".equals(application.getStatus()) || !application.getApplicantId().equals(user.getId())) {
+            deny("只有申请人可在草稿阶段修改材料");
+        }
+    }
+
+    public void requireAttachmentDelete(String bizType, Long bizId) {
+        SealApplication application = requireSealMaterialApplication(bizType, bizId);
+        User user = AuthContext.requireUser();
+        if ("draft".equals(application.getStatus()) && application.getApplicantId().equals(user.getId())) {
+            return;
+        }
+        if (hasRole(user, "office_admin") || hasRole(user, "admin")) {
+            return;
+        }
+        deny("无权删除该用印材料");
+    }
+
+    public void requireViewDeletedAttachments() {
+        User user = AuthContext.requireUser();
+        if (!hasRole(user, "office_admin") && !hasRole(user, "admin")) {
+            deny("无权查看已删除材料记录");
+        }
+    }
+
     public boolean canReadBusiness(String bizType, Long bizId) {
         User user = AuthContext.requireUser();
         if (hasRole(user, "admin")) {
@@ -132,6 +173,21 @@ public class BusinessAccessService {
             }
         }
         return false;
+    }
+
+    private SealApplication requireSealMaterialApplication(String bizType, Long bizId) {
+        if (!"seal".equals(bizType)) {
+            deny("该业务暂不支持材料维护");
+        }
+        return requireSealApplication(bizId);
+    }
+
+    private SealApplication requireSealApplication(Long bizId) {
+        SealApplication application = db.sealApplications().get(bizId);
+        if (application == null) {
+            deny("用印申请不存在");
+        }
+        return application;
     }
 
     private boolean hasRole(User user, String role) {

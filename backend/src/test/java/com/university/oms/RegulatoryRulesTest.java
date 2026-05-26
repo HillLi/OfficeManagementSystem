@@ -8,13 +8,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -53,9 +56,17 @@ class RegulatoryRulesTest {
 
         JsonNode application = postJson("/api/seals/applications",
                 "{\"sealId\":2,\"applicantId\":2,\"purpose\":\"重大合同用印\","
-                        + "\"materialUrl\":\"/files/contract.pdf\",\"matterLevel\":\"重大事项\"}", userToken).get("data");
+                        + "\"matterLevel\":\"重大事项\"}", userToken).get("data");
+        long applicationId = application.get("id").asLong();
+        MockMultipartFile file = new MockMultipartFile("file", "contract.pdf", MediaType.APPLICATION_PDF_VALUE,
+                "approved material".getBytes(StandardCharsets.UTF_8));
+        mockMvc.perform(multipart("/api/workflow/attachments/upload").file(file)
+                        .param("bizType", "seal").param("bizId", String.valueOf(applicationId))
+                        .header("Authorization", bearer(userToken)))
+                .andExpect(status().isOk());
+        application = postJson("/api/seals/applications/" + applicationId + "/submit", "{}", userToken).get("data");
         assertEquals("pending_dept", application.get("status").asText());
-        JsonNode afterHead = postJson("/api/approvals/seal/" + application.get("id").asLong(),
+        JsonNode afterHead = postJson("/api/approvals/seal/" + applicationId,
                 "{\"action\":\"approve\",\"opinion\":\"同意\"}", headToken).get("data");
         assertEquals("pending_office", afterHead.get("status").asText());
     }
