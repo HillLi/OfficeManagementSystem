@@ -94,7 +94,7 @@ public class MysqlDataLoader {
             item.setEnabled(rs.getInt("enabled") == 1);
             item.setSystemItem(rs.getInt("system_item") == 1);
             item.setRemark(rs.getString("remark"));
-            db.dictionaryItems().put(item.getDictType() + ":" + item.getDictCode(), item);
+            db.dictionaryItems().put(db.dictionaryItemKey(item.getDictType(), item.getDictCode()), item);
         });
     }
 

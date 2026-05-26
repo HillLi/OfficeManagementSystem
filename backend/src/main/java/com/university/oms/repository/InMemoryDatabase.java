@@ -196,11 +196,11 @@ public class InMemoryDatabase {
         item.setSortOrder(order);
         item.setEnabled(true);
         item.setSystemItem(systemItem);
-        dictionaryItems.put(dictKey(type, code), item);
+        dictionaryItems.put(dictionaryItemKey(type, code), item);
     }
 
-    private String dictKey(String type, String code) {
-        return type + ":" + code;
+    public String dictionaryItemKey(String type, String code) {
+        return type.length() + ":" + type + code;
     }
 
     private void addDept(Long id, String name, Long parentId) {
