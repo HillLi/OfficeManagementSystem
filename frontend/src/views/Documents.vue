@@ -5,10 +5,10 @@
       <el-form label-position="top">
         <el-form-item label="标题"><el-input v-model="form.title" /></el-form-item>
         <el-form-item label="文种">
-          <el-select v-model="form.docType"><el-option v-for="item in docTypes" :key="item" :value="item" /></el-select>
+          <el-select v-model="form.docType"><el-option v-for="item in optionsOf('document_type')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
         </el-form-item>
         <el-form-item label="密级">
-          <el-select v-model="form.secrecyLevel"><el-option v-for="item in levels" :key="item" :value="item" /></el-select>
+          <el-select v-model="form.secrecyLevel"><el-option v-for="item in optionsOf('secrecy_level')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
         </el-form-item>
         <el-form-item label="正文"><el-input v-model="form.content" type="textarea" :rows="6" /></el-form-item>
       </el-form>
@@ -23,9 +23,9 @@
       <el-table :data="rows" border>
         <el-table-column prop="title" label="标题" min-width="185" />
         <el-table-column prop="version" label="版本" width="65" />
-        <el-table-column prop="secrecyLevel" label="密级" width="74" />
-        <el-table-column prop="status" label="流程状态" width="112" />
-        <el-table-column prop="distributionStatus" label="签收状态" width="112" />
+        <el-table-column label="密级" width="74"><template #default="{ row }">{{ labelOf('secrecy_level', row.secrecyLevel) }}</template></el-table-column>
+        <el-table-column label="流程状态" width="112"><template #default="{ row }">{{ labelOf('business_status', row.status) }}</template></el-table-column>
+        <el-table-column label="签收状态" width="112"><template #default="{ row }">{{ labelOf('distribution_status', row.distributionStatus) }}</template></el-table-column>
         <el-table-column label="办理" min-width="310">
           <template #default="{ row }">
             <div class="table-actions">
@@ -43,14 +43,18 @@
 
     <el-dialog v-model="distributionDialog" title="公文分发与签收" width="820px">
       <el-form v-if="canManage" :inline="true">
-        <el-form-item label="接收人 ID"><el-input-number v-model="distributionForm.receiverId" :min="1" /></el-form-item>
-        <el-form-item label="接收部门 ID"><el-input-number v-model="distributionForm.receiverDeptId" :min="1" /></el-form-item>
+        <el-form-item label="接收人">
+          <el-select v-model="distributionForm.receiverId" filterable @change="selectReceiver">
+            <el-option v-for="user in userOptions" :key="user.id" :label="user.realName" :value="user.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="接收部门"><el-input :model-value="selectedReceiver?.deptName || '-'" disabled /></el-form-item>
         <el-form-item><el-button type="primary" @click="distribute">发起分发</el-button></el-form-item>
       </el-form>
       <el-table :data="distributions" border>
-        <el-table-column prop="receiverId" label="接收人" width="90" />
-        <el-table-column prop="receiverDeptId" label="部门" width="80" />
-        <el-table-column prop="status" label="状态" width="112" />
+        <el-table-column label="接收人" width="112"><template #default="{ row }">{{ userName(row.receiverId) }}</template></el-table-column>
+        <el-table-column label="部门" min-width="126"><template #default="{ row }">{{ userDepartment(row.receiverId) }}</template></el-table-column>
+        <el-table-column label="状态" width="112"><template #default="{ row }">{{ labelOf('distribution_status', row.status) }}</template></el-table-column>
         <el-table-column prop="distributedAt" label="分发时间" width="176" />
         <el-table-column prop="receivedAt" label="签收时间" width="176" />
         <el-table-column label="办理" width="150">
@@ -69,14 +73,14 @@
         <el-form-item label="文件名"><el-input v-model="attachmentForm.fileName" /></el-form-item>
         <el-form-item label="文件地址"><el-input v-model="attachmentForm.fileUrl" /></el-form-item>
         <el-form-item label="密级">
-          <el-select v-model="attachmentForm.secrecyLevel"><el-option v-for="item in levels" :key="item" :value="item" /></el-select>
+          <el-select v-model="attachmentForm.secrecyLevel"><el-option v-for="item in optionsOf('secrecy_level')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
         </el-form-item>
       </el-form>
       <el-button type="primary" @click="addAttachment">保存附件</el-button>
       <el-table :data="attachments" border style="margin-top: 12px">
         <el-table-column prop="fileName" label="文件名" />
         <el-table-column prop="fileUrl" label="地址" />
-        <el-table-column prop="secrecyLevel" label="密级" width="90" />
+        <el-table-column label="密级" width="90"><template #default="{ row }">{{ labelOf('secrecy_level', row.secrecyLevel) }}</template></el-table-column>
       </el-table>
     </el-dialog>
   </div>
@@ -86,17 +90,20 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
+import { useDictionaryStore } from '../stores/dictionary'
 
+const dictionaryStore = useDictionaryStore()
+const labelOf = dictionaryStore.labelOf
+const optionsOf = dictionaryStore.optionsOf
 const currentUser = JSON.parse(sessionStorage.getItem('oms_user') || '{"id":0,"roleKeys":[]}')
 const canManage = computed(() => currentUser.roleKeys?.some((role) => ['office_admin', 'admin'].includes(role)))
 const rows = ref([])
+const userOptions = ref([])
 const attachments = ref([])
 const distributions = ref([])
 const attachmentDialog = ref(false)
 const distributionDialog = ref(false)
 const currentDocument = ref(null)
-const docTypes = ['通知', '决定', '请示', '批复', '报告', '函', '公告']
-const levels = ['公开', '内部', '秘密', '机密', '绝密']
 const form = reactive({
   title: '关于开展办公管理系统试运行的通知',
   docType: '通知',
@@ -106,10 +113,16 @@ const form = reactive({
 })
 const attachmentForm = reactive({ fileName: '', fileUrl: '', secrecyLevel: '公开' })
 const distributionForm = reactive({ receiverId: 2, receiverDeptId: 1 })
+const selectedReceiver = computed(() => userOptions.value.find((user) => user.id === distributionForm.receiverId))
 
 const canAi = (document) => ['公开', 'public'].includes(document.secrecyLevel)
 const hasDistribution = (document) => document.distributionStatus && document.distributionStatus !== 'not_distributed'
 const load = async () => { rows.value = await api.documents() }
+const userName = (id) => userOptions.value.find((user) => user.id === id)?.realName || `#${id}`
+const userDepartment = (id) => userOptions.value.find((user) => user.id === id)?.deptName || '-'
+const selectReceiver = () => {
+  distributionForm.receiverDeptId = selectedReceiver.value?.deptId || null
+}
 
 const save = async () => {
   await api.createDocument(form)
@@ -180,5 +193,9 @@ const addAttachment = async () => {
   attachments.value = await api.attachments({ bizType: 'document', bizId: currentDocument.value.id })
 }
 
-onMounted(load)
+onMounted(async () => {
+  userOptions.value = await api.userOptions()
+  selectReceiver()
+  await load()
+})
 </script>

@@ -31,6 +31,9 @@ export const api = {
   statistics: () => http.get('/statistics'),
   exportStatistics: () => http.get('/statistics/export', { responseType: 'blob' }),
   users: () => http.get('/auth/users'),
+  userOptions: () => http.get('/auth/user-options'),
+  dictionaries: () => http.get('/dictionaries'),
+  dictionaryVersion: () => http.get('/dictionaries/version'),
 
   documents: () => http.get('/documents'),
   createDocument: (data) => http.post('/documents', data),
@@ -88,5 +91,11 @@ export const api = {
   adminDepts: () => http.get('/admin/depts'),
   adminCreateDept: (data) => http.post('/admin/depts', data),
   adminUpdateDept: (id, data) => http.put(`/admin/depts/${id}`, data),
-  adminDeleteDept: (id) => http.delete(`/admin/depts/${id}`)
+  adminDeleteDept: (id) => http.delete(`/admin/depts/${id}`),
+  adminDictionaryTypes: () => http.get('/admin/dictionaries/types'),
+  adminDictionaryItems: (type) => http.get(`/admin/dictionaries/types/${encodeURIComponent(type)}/items`),
+  adminCreateDictionaryType: (data) => http.post('/admin/dictionaries/types', data),
+  adminUpdateDictionaryType: (type, data) => http.put(`/admin/dictionaries/types/${encodeURIComponent(type)}`, data),
+  adminCreateDictionaryItem: (type, data) => http.post(`/admin/dictionaries/types/${encodeURIComponent(type)}/items`, data),
+  adminUpdateDictionaryItem: (type, code, data) => http.put(`/admin/dictionaries/types/${encodeURIComponent(type)}/items/${encodeURIComponent(code)}`, data)
 }

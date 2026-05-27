@@ -20,11 +20,13 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
+import { useDictionaryStore } from '../stores/dictionary'
 import { api } from '../api'
 
 const emit = defineEmits(['login-success'])
 const router = useRouter()
 const userStore = useUserStore()
+const dictionaryStore = useDictionaryStore()
 const loading = ref(false)
 const error = ref('')
 const form = reactive({ username: 'user', password: '123456' })
@@ -35,6 +37,12 @@ const doLogin = async () => {
   try {
     const result = await api.login(form)
     userStore.setUser(result.user, result.token)
+    try {
+      await dictionaryStore.refresh(true)
+    } catch (refreshError) {
+      userStore.logout()
+      throw refreshError
+    }
     emit('login-success')
     router.push('/dashboard')
   } catch (e) {

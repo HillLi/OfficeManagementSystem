@@ -12,7 +12,7 @@
         <el-form-item label="份数"><el-input-number v-model="form.copies" :min="1" /></el-form-item>
         <el-form-item label="事项等级">
           <el-select v-model="form.matterLevel">
-            <el-option v-for="level in matterLevels" :key="level" :label="level" :value="level" />
+            <el-option v-for="level in optionsOf('matter_level')" :key="level.value" :label="level.label" :value="level.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="是否外带">
@@ -21,7 +21,11 @@
         <template v-if="form.takeOut">
           <el-form-item label="外带原因"><el-input v-model="form.takeOutReason" /></el-form-item>
           <el-form-item label="使用地点"><el-input v-model="form.takeOutLocation" /></el-form-item>
-          <el-form-item label="监督人 ID"><el-input-number v-model="form.supervisorId" :min="1" /></el-form-item>
+          <el-form-item label="监督人">
+            <el-select v-model="form.supervisorId" filterable>
+              <el-option v-for="user in userOptions" :key="user.id" :label="user.realName" :value="user.id" />
+            </el-select>
+          </el-form-item>
           <el-form-item label="预计归还时间">
             <el-date-picker v-model="form.expectedReturnTime" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" />
           </el-form-item>
@@ -40,9 +44,9 @@
         <el-table-column prop="materialCount" label="材料" width="72">
           <template #default="{ row }">{{ row.materialCount }} 份</template>
         </el-table-column>
-        <el-table-column prop="matterLevel" label="事项等级" width="96" />
+        <el-table-column label="事项等级" width="96"><template #default="{ row }">{{ labelOf('matter_level', row.matterLevel) }}</template></el-table-column>
         <el-table-column label="外带" width="62"><template #default="{ row }">{{ row.takeOut ? '是' : '否' }}</template></el-table-column>
-        <el-table-column prop="status" label="状态" width="116" />
+        <el-table-column label="状态" width="116"><template #default="{ row }">{{ labelOf('business_status', row.status) }}</template></el-table-column>
         <el-table-column label="办理" min-width="260">
           <template #default="{ row }">
             <div class="table-actions">
@@ -65,8 +69,16 @@
             <el-option v-for="seal in seals" :key="seal.id" :label="seal.sealName" :value="seal.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="接收人 ID"><el-input-number v-model="transferForm.receiverId" :min="1" /></el-form-item>
-        <el-form-item label="监督人 ID"><el-input-number v-model="transferForm.supervisorId" :min="1" /></el-form-item>
+        <el-form-item label="接收人">
+          <el-select v-model="transferForm.receiverId" filterable>
+            <el-option v-for="user in userOptions" :key="user.id" :label="user.realName" :value="user.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="监督人">
+          <el-select v-model="transferForm.supervisorId" filterable>
+            <el-option v-for="user in userOptions" :key="user.id" :label="user.realName" :value="user.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="移交凭证地址"><el-input v-model="transferForm.materialUrl" /></el-form-item>
         <el-form-item label="备注"><el-input v-model="transferForm.remark" /></el-form-item>
       </el-form>
@@ -78,8 +90,8 @@
         <el-table-column label="印章名称" min-width="170">
           <template #default="{ row }">{{ sealName(row.sealId) }}</template>
         </el-table-column>
-        <el-table-column prop="receiverId" label="接收人" width="76" />
-        <el-table-column prop="supervisorId" label="监督人" width="76" />
+        <el-table-column label="接收人" width="112"><template #default="{ row }">{{ userName(row.receiverId) }}</template></el-table-column>
+        <el-table-column label="监督人" width="112"><template #default="{ row }">{{ userName(row.supervisorId) }}</template></el-table-column>
         <el-table-column prop="materialUrl" label="移交凭证" min-width="120" />
         <el-table-column prop="transferTime" label="移交时间" width="172" />
       </el-table>
@@ -94,7 +106,7 @@
           <el-button>选择文件</el-button>
         </el-upload>
         <el-select v-model="uploadSecrecy" class="secrecy-select" aria-label="材料密级">
-          <el-option v-for="level in secrecyLevels" :key="level" :label="level" :value="level" />
+          <el-option v-for="level in optionsOf('secrecy_level')" :key="level.value" :label="level.label" :value="level.value" />
         </el-select>
         <el-button type="primary" :disabled="!selectedFile" @click="uploadMaterial">上传材料</el-button>
       </div>
@@ -102,7 +114,7 @@
       <el-checkbox v-if="canViewDeleted" v-model="includeDeleted" @change="loadMaterials">显示已删除材料</el-checkbox>
       <el-table :data="materials" border class="material-table">
         <el-table-column prop="fileName" label="材料名称" min-width="190" />
-        <el-table-column prop="secrecyLevel" label="密级" width="82" />
+        <el-table-column label="密级" width="82"><template #default="{ row }">{{ labelOf('secrecy_level', row.secrecyLevel) }}</template></el-table-column>
         <el-table-column label="大小" width="86"><template #default="{ row }">{{ fileSize(row.fileSize) }}</template></el-table-column>
         <el-table-column prop="createdAt" label="上传时间" width="168" />
         <el-table-column label="状态" width="76"><template #default="{ row }">{{ row.deleted ? '已删除' : '有效' }}</template></el-table-column>
@@ -123,7 +135,7 @@
         <el-form-item label="材料名称"><el-input v-model="editForm.fileName" /></el-form-item>
         <el-form-item label="密级">
           <el-select v-model="editForm.secrecyLevel">
-            <el-option v-for="level in secrecyLevels" :key="level" :label="level" :value="level" />
+            <el-option v-for="level in optionsOf('secrecy_level')" :key="level.value" :label="level.label" :value="level.value" />
           </el-select>
         </el-form-item>
       </el-form>
@@ -136,11 +148,16 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
+import { useDictionaryStore } from '../stores/dictionary'
 
+const dictionaryStore = useDictionaryStore()
+const labelOf = dictionaryStore.labelOf
+const optionsOf = dictionaryStore.optionsOf
 const currentUser = JSON.parse(sessionStorage.getItem('oms_user') || '{"id":0,"roleKeys":[]}')
 const canManage = computed(() => currentUser.roleKeys?.some((role) => ['seal_keeper', 'office_admin', 'admin'].includes(role)))
 const canViewDeleted = computed(() => currentUser.roleKeys?.some((role) => ['office_admin', 'admin'].includes(role)))
 const seals = ref([])
+const userOptions = ref([])
 const apps = ref([])
 const transfers = ref([])
 const materials = ref([])
@@ -151,8 +168,6 @@ const includeDeleted = ref(false)
 const uploadFiles = ref([])
 const selectedFile = ref(null)
 const uploadSecrecy = ref('内部')
-const matterLevels = ['常规事项', '一般事项', '重大事项']
-const secrecyLevels = ['公开', '内部', '秘密', '机密', '绝密']
 const form = reactive({
   sealId: 1,
   applicantId: currentUser.id || 2,
@@ -178,14 +193,17 @@ const canUpload = computed(() => currentApplication.value?.status === 'draft'
   && currentApplication.value?.applicantId === currentUser.id)
 
 const sealName = (sealId) => seals.value.find((seal) => seal.id === sealId)?.sealName || `印章 #${sealId}`
+const userName = (userId) => userOptions.value.find((user) => user.id === userId)?.realName || `#${userId}`
 const canSubmit = (row) => row.status === 'draft' && row.applicantId === currentUser.id
 const canEdit = (row) => !row.deleted && canUpload.value
 const canDelete = (row) => !row.deleted && (canUpload.value || canViewDeleted.value)
 const fileSize = (bytes) => bytes == null ? '-' : bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`
 
 const load = async () => {
-  seals.value = await api.seals()
-  apps.value = await api.sealApps()
+  const [sealRows, appRows, optionRows] = await Promise.all([api.seals(), api.sealApps(), api.userOptions()])
+  seals.value = sealRows
+  apps.value = appRows
+  userOptions.value = optionRows
   if (canManage.value) transfers.value = await api.sealTransfers()
 }
 const saveDraft = async () => {

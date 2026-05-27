@@ -100,7 +100,7 @@ class ClosureAndAiSecurityTest {
         assertFalse(blocked.get("passed").asBoolean());
 
         JsonNode importedInternal = postJson("/api/documents",
-                "{\"title\":\"关于导入历史资料的通知\",\"docType\":\"通知\",\"secrecyLevel\":\"internal\","
+                "{\"title\":\"关于导入历史资料的通知\",\"docType\":\"通知\",\"secrecyLevel\":\"内部\","
                         + "\"content\":\"这是由历史系统导入的内部资料正文内容，必须保持与中文密级数据相同的外部智能服务访问限制。\","
                         + "\"applicantId\":2}", userToken);
         long importedInternalId = importedInternal.get("data").get("id").asLong();

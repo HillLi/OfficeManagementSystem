@@ -110,26 +110,17 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
+import { useDictionaryStore } from '../stores/dictionary'
 
+const dictionaryStore = useDictionaryStore()
 const activeTab = ref('users')
 const users = ref([])
 const depts = ref([])
 const allRoles = ref([])
 const saving = ref(false)
 
-// ---- Role label map ----
-const ROLE_LABELS = {
-  admin: '系统管理员',
-  office_user: '办公人员',
-  dept_head: '部门负责人',
-  school_leader: '校领导',
-  office_admin: '办公室主任',
-  finance_staff: '财务人员',
-  security_staff: '保卫处',
-  seal_keeper: '印章管理员'
-}
 function roleLabel(key) {
-  return ROLE_LABELS[key] || key
+  return dictionaryStore.labelOf('role_key', key)
 }
 
 // ---- Dept name map ----

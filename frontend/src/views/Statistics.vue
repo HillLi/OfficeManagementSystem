@@ -37,7 +37,10 @@
 import { computed, onMounted, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../api'
+import { useDictionaryStore } from '../stores/dictionary'
 
+const dictionaryStore = useDictionaryStore()
+const labelOf = dictionaryStore.labelOf
 const stats = reactive({
   documentCount: 0,
   pendingDocumentCount: 0,
@@ -52,7 +55,9 @@ const stats = reactive({
 })
 
 const documentStatusRows = computed(() =>
-  Object.entries(stats.documentStatusDistribution || {}).map(([status, count]) => ({ status, count }))
+  Object.entries(stats.documentStatusDistribution || {}).map(([status, count]) => ({
+    status: labelOf('business_status', status), count
+  }))
 )
 const monthlyRows = computed(() =>
   Object.entries(stats.monthlyBusinessCounts || {}).map(([month, count]) => ({ month, count }))

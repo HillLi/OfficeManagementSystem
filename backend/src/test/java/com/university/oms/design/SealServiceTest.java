@@ -7,6 +7,7 @@ import com.university.oms.repository.NoopDataPersistence;
 import com.university.oms.service.ApprovalService;
 import com.university.oms.service.AttachmentStorageService;
 import com.university.oms.service.BusinessAccessService;
+import com.university.oms.service.DictionaryService;
 import com.university.oms.service.SealService;
 import com.university.oms.service.WorkflowService;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,13 +28,14 @@ class SealServiceTest {
         ApprovalFlowConfig flowConfig = new ApprovalFlowConfig();
         flowConfig.init();
         BusinessAccessService accessService = new BusinessAccessService(db);
+        DictionaryService dictionaryService = new DictionaryService(db, new NoopDataPersistence());
         WorkflowService workflowService = new WorkflowService(db, new NoopDataPersistence(), flowConfig, accessService,
-                new AttachmentStorageService("target/test-uploads/seal-service"));
+                new AttachmentStorageService("target/test-uploads/seal-service"), dictionaryService);
         service = new SealService(db,
                 new ApprovalService(db, new NoopDataPersistence(),
                         flowConfig, new StateFactory(flowConfig),
                         new StatusChangeNotifier(new ArrayList<>()), workflowService, accessService),
-                new NoopDataPersistence(), workflowService);
+                new NoopDataPersistence(), workflowService, dictionaryService);
     }
 
     @Test

@@ -3,10 +3,10 @@
     <div class="panel wide">
       <h3>待办任务</h3>
       <el-table :data="tasks" border>
-        <el-table-column prop="bizType" label="业务" width="100" />
+        <el-table-column label="业务" width="100"><template #default="{ row }">{{ labelOf('biz_type', row.bizType) }}</template></el-table-column>
         <el-table-column prop="bizId" label="业务 ID" width="90" />
-        <el-table-column prop="nodeKey" label="当前节点" width="150" />
-        <el-table-column prop="approverRole" label="处理角色" width="140" />
+        <el-table-column label="当前节点" width="150"><template #default="{ row }">{{ labelOf('flow_node', row.nodeKey) }}</template></el-table-column>
+        <el-table-column label="处理角色" width="140"><template #default="{ row }">{{ labelOf('role_key', row.approverRole) }}</template></el-table-column>
         <el-table-column prop="dueTime" label="截止时间" min-width="170" />
         <el-table-column label="办理" width="155">
           <template #default="{ row }">
@@ -36,16 +36,16 @@
     <div class="panel">
       <h3>流程实例</h3>
       <el-table :data="instances" border>
-        <el-table-column prop="bizType" label="业务" width="90" />
+        <el-table-column label="业务" width="90"><template #default="{ row }">{{ labelOf('biz_type', row.bizType) }}</template></el-table-column>
         <el-table-column prop="bizId" label="ID" width="70" />
-        <el-table-column prop="currentNodeKey" label="节点" width="130" />
-        <el-table-column prop="status" label="状态" />
+        <el-table-column label="节点" width="130"><template #default="{ row }">{{ labelOf('flow_node', row.currentNodeKey) }}</template></el-table-column>
+        <el-table-column label="状态"><template #default="{ row }">{{ labelOf('business_status', row.status) }}</template></el-table-column>
       </el-table>
     </div>
     <div class="panel wide">
       <h3>审批记录</h3>
       <el-table :data="rows" border>
-        <el-table-column prop="bizType" label="业务类型" width="110" />
+        <el-table-column label="业务类型" width="110"><template #default="{ row }">{{ labelOf('biz_type', row.bizType) }}</template></el-table-column>
         <el-table-column prop="bizId" label="业务 ID" width="90" />
         <el-table-column prop="operatorId" label="操作人" width="90" />
         <el-table-column prop="action" label="动作" width="100" />
@@ -60,7 +60,10 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
+import { useDictionaryStore } from '../stores/dictionary'
 
+const dictionaryStore = useDictionaryStore()
+const labelOf = dictionaryStore.labelOf
 const rows = ref([])
 const tasks = ref([])
 const notifications = ref([])

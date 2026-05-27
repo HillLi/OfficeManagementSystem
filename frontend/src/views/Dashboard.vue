@@ -32,9 +32,12 @@ import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/compon
 import { init, use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { api } from '../api'
+import { useDictionaryStore } from '../stores/dictionary'
 
 use([BarChart, GaugeChart, PieChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
 
+const dictionaryStore = useDictionaryStore()
+const labelOf = dictionaryStore.labelOf
 const stats = reactive({
   documentCount: 0, pendingDocumentCount: 0, sealApplyCount: 0,
   meetingCount: 0, travelCount: 0, reportCount: 0, largeActivityCount: 0,
@@ -65,7 +68,7 @@ function initCharts() {
       tooltip: { trigger: 'item' },
       series: [{
         type: 'pie', radius: ['40%', '70%'],
-        data: Object.entries(statusDist).map(([name, value]) => ({ name, value })),
+        data: Object.entries(statusDist).map(([name, value]) => ({ name: labelOf('business_status', name), value })),
         emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.3)' } }
       }]
     })

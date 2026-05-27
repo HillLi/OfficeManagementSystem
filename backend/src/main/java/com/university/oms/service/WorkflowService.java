@@ -25,14 +25,17 @@ public class WorkflowService {
     private final ApprovalFlowConfig flowConfig;
     private final BusinessAccessService accessService;
     private final AttachmentStorageService storageService;
+    private final DictionaryService dictionaryService;
 
     public WorkflowService(InMemoryDatabase db, DataPersistence persistence, ApprovalFlowConfig flowConfig,
-                           BusinessAccessService accessService, AttachmentStorageService storageService) {
+                           BusinessAccessService accessService, AttachmentStorageService storageService,
+                           DictionaryService dictionaryService) {
         this.db = db;
         this.persistence = persistence;
         this.flowConfig = flowConfig;
         this.accessService = accessService;
         this.storageService = storageService;
+        this.dictionaryService = dictionaryService;
     }
 
     public Attachment addAttachment(AttachmentRequest request) {
@@ -41,6 +44,7 @@ public class WorkflowService {
         }
         User user = AuthContext.requireUser();
         accessService.requireBusinessRead(request.getBizType(), request.getBizId());
+        dictionaryService.requireEnabled("secrecy_level", request.getSecrecyLevel(), "材料密级");
         Attachment attachment = new Attachment();
         db.fill(attachment, db.nextId());
         attachment.setBizType(request.getBizType());
@@ -77,6 +81,8 @@ public class WorkflowService {
     public Attachment uploadAttachment(String bizType, Long bizId, String secrecyLevel, MultipartFile file) {
         User user = AuthContext.requireUser();
         accessService.requireAttachmentUpload(bizType, bizId);
+        String resolvedSecrecyLevel = secrecyLevel == null || secrecyLevel.trim().isEmpty() ? "内部" : secrecyLevel;
+        dictionaryService.requireEnabled("secrecy_level", resolvedSecrecyLevel, "材料密级");
         Attachment attachment = new Attachment();
         db.fill(attachment, db.nextId());
         attachment.setBizType(bizType);
@@ -85,7 +91,7 @@ public class WorkflowService {
         attachment.setFileName(file.getOriginalFilename());
         attachment.setFileSize(file.getSize());
         attachment.setContentType(file.getContentType());
-        attachment.setSecrecyLevel(secrecyLevel == null || secrecyLevel.trim().isEmpty() ? "内部" : secrecyLevel);
+        attachment.setSecrecyLevel(resolvedSecrecyLevel);
         attachment.setUploaderId(user.getId());
         attachment.setStoragePath(storageService.store(attachment.getId(), file));
         attachment.setFileUrl("/api/workflow/attachments/" + attachment.getId() + "/download");
@@ -118,6 +124,7 @@ public class WorkflowService {
     public Attachment updateAttachment(Long id, AttachmentUpdateRequest request) {
         Attachment attachment = activeAttachment(id);
         accessService.requireAttachmentEdit(attachment.getBizType(), attachment.getBizId());
+        dictionaryService.requireEnabled("secrecy_level", request.getSecrecyLevel(), "材料密级");
         attachment.setFileName(request.getFileName());
         attachment.setSecrecyLevel(request.getSecrecyLevel());
         attachment.setUpdatedAt(LocalDateTime.now());

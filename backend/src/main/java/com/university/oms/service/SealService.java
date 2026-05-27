@@ -24,13 +24,15 @@ public class SealService {
     private final ApprovalService approvalService;
     private final DataPersistence persistence;
     private final WorkflowService workflowService;
+    private final DictionaryService dictionaryService;
 
     public SealService(InMemoryDatabase db, ApprovalService approvalService, DataPersistence persistence,
-                       WorkflowService workflowService) {
+                       WorkflowService workflowService, DictionaryService dictionaryService) {
         this.db = db;
         this.approvalService = approvalService;
         this.persistence = persistence;
         this.workflowService = workflowService;
+        this.dictionaryService = dictionaryService;
     }
 
     public List<Seal> seals() {
@@ -58,6 +60,7 @@ public class SealService {
     }
 
     public SealApplication apply(SealApplyRequest request) {
+        dictionaryService.requireEnabled("matter_level", request.getMatterLevel(), "事项等级");
         Long applicantId = AuthContext.currentUserIdOr(request.getApplicantId());
         requireSeal(request.getSealId());
         if (request.isTakeOut() && (blank(request.getTakeOutReason()) || blank(request.getTakeOutLocation())
