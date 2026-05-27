@@ -1,30 +1,25 @@
 <template>
   <div class="dictionary-page">
-    <div class="panel dictionary-toolbar">
+    <div class="dictionary-header">
       <div>
         <h2>字典管理</h2>
         <p>维护可选业务值。停用项目不会出现在新建表单中，历史记录仍可显示。</p>
       </div>
       <el-button type="primary" @click="openType()">新增类型</el-button>
     </div>
-    <div class="dictionary-grid">
-      <div class="panel">
-        <el-table :data="types" border highlight-current-row @current-change="selectType">
-          <el-table-column prop="dictName" label="字典类型" min-width="128" />
-          <el-table-column label="状态" width="74">
-            <template #default="{ row }">{{ row.enabled ? '启用' : '停用' }}</template>
-          </el-table-column>
-          <el-table-column label="操作" width="78">
-            <template #default="{ row }"><el-button link @click.stop="openType(row)">编辑</el-button></template>
-          </el-table-column>
-        </el-table>
-      </div>
-      <div class="panel">
+    <el-tabs v-model="selectedType" @tab-change="selectType">
+      <el-tab-pane v-for="type in types" :key="type.dictType" :label="type.dictName" :name="type.dictType" lazy>
         <div class="items-title">
-          <h3>{{ activeType?.dictName || '请选择字典类型' }}</h3>
-          <el-button v-if="activeType" type="primary" @click="openItem()">新增项目</el-button>
+          <div class="type-summary">
+            <el-tag :type="type.enabled ? 'success' : 'info'">{{ type.enabled ? '启用' : '停用' }}</el-tag>
+            <span>{{ type.remark || '维护该类型下的字典项目' }}</span>
+          </div>
+          <div class="item-actions">
+            <el-button @click="openType(type)">编辑类型</el-button>
+            <el-button type="primary" @click="openItem()">新增项目</el-button>
+          </div>
         </div>
-        <el-table v-if="activeType" :data="items" border>
+        <el-table :data="items" border stripe>
           <el-table-column prop="dictCode" label="代码" min-width="140" />
           <el-table-column prop="dictLabel" label="显示值" min-width="120" />
           <el-table-column prop="sortOrder" label="排序" width="70" />
@@ -35,8 +30,8 @@
             <template #default="{ row }"><el-button link @click="openItem(row)">编辑</el-button></template>
           </el-table-column>
         </el-table>
-      </div>
-    </div>
+      </el-tab-pane>
+    </el-tabs>
 
     <el-dialog v-model="typeDialog" :title="editingType ? '编辑字典类型' : '新增字典类型'" width="460px">
       <el-form label-position="top">
@@ -68,7 +63,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
@@ -77,7 +72,6 @@ const dictionaryStore = useDictionaryStore()
 const types = ref([])
 const items = ref([])
 const selectedType = ref('')
-const activeType = computed(() => types.value.find((type) => type.dictType === selectedType.value))
 const typeDialog = ref(false)
 const itemDialog = ref(false)
 const editingType = ref(null)
@@ -88,7 +82,9 @@ const itemForm = reactive({ dictCode: '', dictLabel: '', sortOrder: 0, enabled: 
 
 async function loadTypes() {
   types.value = await api.adminDictionaryTypes()
-  if (!selectedType.value && types.value.length) selectedType.value = types.value[0].dictType
+  if (!types.value.some((type) => type.dictType === selectedType.value)) {
+    selectedType.value = types.value[0]?.dictType || ''
+  }
   if (selectedType.value) await loadItems()
 }
 
@@ -96,9 +92,9 @@ async function loadItems() {
   items.value = selectedType.value ? await api.adminDictionaryItems(selectedType.value) : []
 }
 
-function selectType(type) {
-  if (!type) return
-  selectedType.value = type.dictType
+function selectType(dictType) {
+  if (!dictType) return
+  selectedType.value = dictType
   loadItems()
 }
 
@@ -153,35 +149,40 @@ onMounted(loadTypes)
 </script>
 
 <style scoped>
-.dictionary-toolbar,
+.dictionary-header,
 .items-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
 }
-.dictionary-toolbar {
+.dictionary-header {
   margin-bottom: 14px;
 }
-.dictionary-toolbar h2,
-.items-title h3 {
+.dictionary-header h2 {
   margin: 0;
 }
-.dictionary-toolbar p {
+.dictionary-header p {
   margin: 8px 0 0;
   color: #657487;
-}
-.dictionary-grid {
-  display: grid;
-  grid-template-columns: minmax(260px, 340px) minmax(480px, 1fr);
-  gap: 14px;
 }
 .items-title {
   margin-bottom: 12px;
 }
-@media (max-width: 900px) {
-  .dictionary-grid {
-    grid-template-columns: 1fr;
+.type-summary,
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.type-summary {
+  color: #657487;
+}
+@media (max-width: 600px) {
+  .dictionary-header,
+  .items-title {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>

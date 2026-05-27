@@ -1,101 +1,105 @@
 <template>
-  <div class="page-grid">
-    <div class="panel">
-      <h3>用印申请</h3>
-      <el-form label-position="top">
-        <el-form-item label="印章">
-          <el-select v-model="form.sealId">
-            <el-option v-for="seal in seals" :key="seal.id" :label="seal.sealName" :value="seal.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="用途"><el-input v-model="form.purpose" /></el-form-item>
-        <el-form-item label="份数"><el-input-number v-model="form.copies" :min="1" /></el-form-item>
-        <el-form-item label="事项等级">
-          <el-select v-model="form.matterLevel">
-            <el-option v-for="level in optionsOf('matter_level')" :key="level.value" :label="level.label" :value="level.value" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="是否外带">
-          <el-switch v-model="form.takeOut" active-text="外带" inactive-text="在馆使用" />
-        </el-form-item>
-        <template v-if="form.takeOut">
-          <el-form-item label="外带原因"><el-input v-model="form.takeOutReason" /></el-form-item>
-          <el-form-item label="使用地点"><el-input v-model="form.takeOutLocation" /></el-form-item>
-          <el-form-item label="监督人">
-            <el-select v-model="form.supervisorId" filterable>
-              <el-option v-for="user in userOptions" :key="user.id" :label="user.realName" :value="user.id" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="预计归还时间">
-            <el-date-picker v-model="form.expectedReturnTime" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" />
-          </el-form-item>
-        </template>
-      </el-form>
-      <el-button type="primary" @click="saveDraft">保存草稿并上传材料</el-button>
-      <p class="rule-note">申请须上传真实材料文件后方可提交审批。</p>
-      <p v-if="form.takeOut" class="rule-note">外带用印须登记监督人、地点及预计归还时间。</p>
-    </div>
+  <div class="seal-page">
+    <h2 class="page-title">用印管理</h2>
+    <el-tabs v-model="activeTab">
+      <el-tab-pane label="用印申请" name="application">
+        <div class="tab-form">
+          <el-form label-position="top">
+            <el-form-item label="印章">
+              <el-select v-model="form.sealId">
+                <el-option v-for="seal in seals" :key="seal.id" :label="seal.sealName" :value="seal.id" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="用途"><el-input v-model="form.purpose" /></el-form-item>
+            <el-form-item label="份数"><el-input-number v-model="form.copies" :min="1" /></el-form-item>
+            <el-form-item label="事项等级">
+              <el-select v-model="form.matterLevel">
+                <el-option v-for="level in optionsOf('matter_level')" :key="level.value" :label="level.label" :value="level.value" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="是否外带">
+              <el-switch v-model="form.takeOut" active-text="外带" inactive-text="在馆使用" />
+            </el-form-item>
+            <template v-if="form.takeOut">
+              <el-form-item label="外带原因"><el-input v-model="form.takeOutReason" /></el-form-item>
+              <el-form-item label="使用地点"><el-input v-model="form.takeOutLocation" /></el-form-item>
+              <el-form-item label="监督人">
+                <el-select v-model="form.supervisorId" filterable>
+                  <el-option v-for="user in userOptions" :key="user.id" :label="user.realName" :value="user.id" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="预计归还时间">
+                <el-date-picker v-model="form.expectedReturnTime" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" />
+              </el-form-item>
+            </template>
+          </el-form>
+          <el-button type="primary" @click="saveDraft">保存草稿并上传材料</el-button>
+          <p class="rule-note">申请须上传真实材料文件后方可提交审批。</p>
+          <p v-if="form.takeOut" class="rule-note">外带用印须登记监督人、地点及预计归还时间。</p>
+        </div>
+      </el-tab-pane>
 
-    <div class="panel wide">
-      <h3>用印办理记录</h3>
-      <el-table :data="apps" border>
-        <el-table-column prop="sealName" label="印章名称" min-width="178" />
-        <el-table-column prop="purpose" label="用途" min-width="150" />
-        <el-table-column prop="materialCount" label="材料" width="72">
-          <template #default="{ row }">{{ row.materialCount }} 份</template>
-        </el-table-column>
-        <el-table-column label="事项等级" width="96"><template #default="{ row }">{{ labelOf('matter_level', row.matterLevel) }}</template></el-table-column>
-        <el-table-column label="外带" width="62"><template #default="{ row }">{{ row.takeOut ? '是' : '否' }}</template></el-table-column>
-        <el-table-column label="状态" width="116"><template #default="{ row }">{{ labelOf('business_status', row.status) }}</template></el-table-column>
-        <el-table-column label="办理" min-width="260">
-          <template #default="{ row }">
-            <div class="table-actions">
-              <el-button size="small" @click="openMaterials(row)">材料管理</el-button>
-              <el-button v-if="canSubmit(row)" size="small" type="primary"
-                :disabled="row.materialCount === 0" @click="submitDraft(row)">提交审批</el-button>
-              <el-button v-if="canManage && row.status === 'approved'" size="small" type="primary" @click="markUsed(row.id)">登记用印</el-button>
-              <el-button v-if="canManage && row.status === 'used'" size="small" type="success" @click="markReturned(row.id)">确认归还</el-button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-    </div>
+      <el-tab-pane label="办理记录" name="records">
+        <el-table :data="apps" border>
+          <el-table-column prop="sealName" label="印章名称" min-width="178" />
+          <el-table-column prop="purpose" label="用途" min-width="150" />
+          <el-table-column prop="materialCount" label="材料" width="72">
+            <template #default="{ row }">{{ row.materialCount }} 份</template>
+          </el-table-column>
+          <el-table-column label="事项等级" width="96"><template #default="{ row }">{{ labelOf('matter_level', row.matterLevel) }}</template></el-table-column>
+          <el-table-column label="外带" width="62"><template #default="{ row }">{{ row.takeOut ? '是' : '否' }}</template></el-table-column>
+          <el-table-column label="状态" width="116"><template #default="{ row }">{{ labelOf('business_status', row.status) }}</template></el-table-column>
+          <el-table-column label="办理" min-width="260">
+            <template #default="{ row }">
+              <div class="table-actions">
+                <el-button size="small" @click="openMaterials(row)">材料管理</el-button>
+                <el-button v-if="canSubmit(row)" size="small" type="primary"
+                  :disabled="row.materialCount === 0" @click="submitDraft(row)">提交审批</el-button>
+                <el-button v-if="canManage && row.status === 'approved'" size="small" type="primary" @click="markUsed(row.id)">登记用印</el-button>
+                <el-button v-if="canManage && row.status === 'used'" size="small" type="success" @click="markReturned(row.id)">确认归还</el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-tab-pane>
 
-    <div v-if="canManage" class="panel">
-      <h3>印章移交登记</h3>
-      <el-form label-position="top">
-        <el-form-item label="印章">
-          <el-select v-model="transferForm.sealId">
-            <el-option v-for="seal in seals" :key="seal.id" :label="seal.sealName" :value="seal.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="接收人">
-          <el-select v-model="transferForm.receiverId" filterable>
-            <el-option v-for="user in userOptions" :key="user.id" :label="user.realName" :value="user.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="监督人">
-          <el-select v-model="transferForm.supervisorId" filterable>
-            <el-option v-for="user in userOptions" :key="user.id" :label="user.realName" :value="user.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="移交凭证地址"><el-input v-model="transferForm.materialUrl" /></el-form-item>
-        <el-form-item label="备注"><el-input v-model="transferForm.remark" /></el-form-item>
-      </el-form>
-      <el-button type="primary" @click="createTransfer">登记移交</el-button>
-    </div>
-    <div v-if="canManage" class="panel">
-      <h3>移交记录</h3>
-      <el-table :data="transfers" border>
-        <el-table-column label="印章名称" min-width="170">
-          <template #default="{ row }">{{ sealName(row.sealId) }}</template>
-        </el-table-column>
-        <el-table-column label="接收人" width="112"><template #default="{ row }">{{ userName(row.receiverId) }}</template></el-table-column>
-        <el-table-column label="监督人" width="112"><template #default="{ row }">{{ userName(row.supervisorId) }}</template></el-table-column>
-        <el-table-column prop="materialUrl" label="移交凭证" min-width="120" />
-        <el-table-column prop="transferTime" label="移交时间" width="172" />
-      </el-table>
-    </div>
+      <el-tab-pane v-if="canManage" label="印章移交" name="transfer">
+        <div class="tab-form">
+          <el-form label-position="top">
+            <el-form-item label="印章">
+              <el-select v-model="transferForm.sealId">
+                <el-option v-for="seal in seals" :key="seal.id" :label="seal.sealName" :value="seal.id" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="接收人">
+              <el-select v-model="transferForm.receiverId" filterable>
+                <el-option v-for="user in userOptions" :key="user.id" :label="user.realName" :value="user.id" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="监督人">
+              <el-select v-model="transferForm.supervisorId" filterable>
+                <el-option v-for="user in userOptions" :key="user.id" :label="user.realName" :value="user.id" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="移交凭证地址"><el-input v-model="transferForm.materialUrl" /></el-form-item>
+            <el-form-item label="备注"><el-input v-model="transferForm.remark" /></el-form-item>
+          </el-form>
+          <el-button type="primary" @click="createTransfer">登记移交</el-button>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane v-if="canManage" label="移交记录" name="transferRecords">
+        <el-table :data="transfers" border>
+          <el-table-column label="印章名称" min-width="170">
+            <template #default="{ row }">{{ sealName(row.sealId) }}</template>
+          </el-table-column>
+          <el-table-column label="接收人" width="112"><template #default="{ row }">{{ userName(row.receiverId) }}</template></el-table-column>
+          <el-table-column label="监督人" width="112"><template #default="{ row }">{{ userName(row.supervisorId) }}</template></el-table-column>
+          <el-table-column prop="materialUrl" label="移交凭证" min-width="120" />
+          <el-table-column prop="transferTime" label="移交时间" width="172" />
+        </el-table>
+      </el-tab-pane>
+    </el-tabs>
 
     <el-dialog v-model="materialDialog" :title="materialTitle" width="min(900px, calc(100vw - 24px))">
       <el-alert v-if="currentApplication?.materialUrl && materials.length === 0" type="warning" :closable="false"
@@ -156,6 +160,7 @@ const optionsOf = dictionaryStore.optionsOf
 const currentUser = JSON.parse(sessionStorage.getItem('oms_user') || '{"id":0,"roleKeys":[]}')
 const canManage = computed(() => currentUser.roleKeys?.some((role) => ['seal_keeper', 'office_admin', 'admin'].includes(role)))
 const canViewDeleted = computed(() => currentUser.roleKeys?.some((role) => ['office_admin', 'admin'].includes(role)))
+const activeTab = ref('application')
 const seals = ref([])
 const userOptions = ref([])
 const apps = ref([])
@@ -317,8 +322,11 @@ onMounted(load)
 </script>
 
 <style scoped>
-.wide {
-  grid-column: 1 / -1;
+.page-title {
+  margin-top: 0;
+}
+.tab-form {
+  max-width: 520px;
 }
 .upload-row {
   display: flex;
