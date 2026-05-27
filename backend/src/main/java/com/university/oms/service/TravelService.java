@@ -25,6 +25,7 @@ public class TravelService {
     private final DataPersistence persistence;
     private final WorkflowService workflowService;
     private final BusinessAccessService accessService;
+    private final DictionaryService dictionaryService;
 
     private static final Map<String, List<String>> ALLOWED_TRANSPORT = new HashMap<>();
     static {
@@ -37,13 +38,15 @@ public class TravelService {
     }
 
     public TravelService(InMemoryDatabase db, ApprovalService approvalService, TravelExpenseStrategy expenseStrategy,
-                         DataPersistence persistence, WorkflowService workflowService, BusinessAccessService accessService) {
+                         DataPersistence persistence, WorkflowService workflowService, BusinessAccessService accessService,
+                         DictionaryService dictionaryService) {
         this.db = db;
         this.approvalService = approvalService;
         this.expenseStrategy = expenseStrategy;
         this.persistence = persistence;
         this.workflowService = workflowService;
         this.accessService = accessService;
+        this.dictionaryService = dictionaryService;
     }
 
     public List<Travel> list() {
@@ -65,6 +68,9 @@ public class TravelService {
     }
 
     public Travel create(TravelRequest request) {
+        dictionaryService.requireEnabled("staff_level", request.getStaffLevel(), "人员等级");
+        dictionaryService.requireEnabled("travel_type", request.getTravelType(), "出差类型");
+        dictionaryService.requireEnabled("transport_type", request.getTransport(), "交通工具");
         Long applicantId = AuthContext.currentUserIdOr(request.getApplicantId());
         if (!db.users().containsKey(applicantId)) {
             throw new BusinessException("用户不存在");

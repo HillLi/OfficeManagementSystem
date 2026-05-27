@@ -31,7 +31,7 @@ class WorkflowIntegrationTest {
         String adminToken = login("admin");
 
         JsonNode created = postJson("/api/documents",
-                "{\"title\":\"Workflow Test\",\"docType\":\"notice\",\"content\":\"content\",\"applicantId\":2}",
+                "{\"title\":\"Workflow Test\",\"docType\":\"通知\",\"content\":\"content\",\"applicantId\":2}",
                 userToken);
         long documentId = created.get("data").get("id").asLong();
 
@@ -45,7 +45,7 @@ class WorkflowIntegrationTest {
 
         postJson("/api/workflow/attachments",
                 "{\"bizType\":\"document\",\"bizId\":" + documentId
-                        + ",\"fileName\":\"draft.pdf\",\"fileUrl\":\"/uploads/draft.pdf\",\"secrecyLevel\":\"internal\"}",
+                        + ",\"fileName\":\"draft.pdf\",\"fileUrl\":\"/uploads/draft.pdf\",\"secrecyLevel\":\"内部\"}",
                 userToken);
         JsonNode attachments = getJson("/api/workflow/attachments?bizType=document&bizId=" + documentId, userToken)
                 .get("data");

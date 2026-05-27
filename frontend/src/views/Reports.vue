@@ -5,10 +5,10 @@
       <el-form label-position="top">
         <el-form-item label="标题"><el-input v-model="form.title" /></el-form-item>
         <el-form-item label="类型">
-          <el-select v-model="form.type">
-            <el-option value="请示" />
-            <el-option value="报告" />
-          </el-select>
+          <el-select v-model="form.type"><el-option v-for="item in optionsOf('report_type')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
+        </el-form-item>
+        <el-form-item label="密级">
+          <el-select v-model="form.secrecyLevel"><el-option v-for="item in optionsOf('secrecy_level')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
         </el-form-item>
         <el-form-item label="内容"><el-input v-model="form.content" type="textarea" :rows="6" /></el-form-item>
       </el-form>
@@ -18,9 +18,9 @@
       <h3>列表</h3>
       <el-table :data="rows" border>
         <el-table-column prop="title" label="标题" />
-        <el-table-column prop="type" label="类型" width="80" />
-        <el-table-column prop="secrecyLevel" label="密级" width="90" />
-        <el-table-column prop="status" label="状态" width="130" />
+        <el-table-column label="类型" width="80"><template #default="{ row }">{{ labelOf('report_type', row.type) }}</template></el-table-column>
+        <el-table-column label="密级" width="90"><template #default="{ row }">{{ labelOf('secrecy_level', row.secrecyLevel) }}</template></el-table-column>
+        <el-table-column label="状态" width="130"><template #default="{ row }">{{ labelOf('business_status', row.status) }}</template></el-table-column>
         <el-table-column label="操作" width="120">
           <template #default="{ row }">
             <el-button v-if="row.status === 'approved'" size="small" type="success" @click="reply(row)">批复归档</el-button>
@@ -35,11 +35,16 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
+import { useDictionaryStore } from '../stores/dictionary'
 
+const dictionaryStore = useDictionaryStore()
+const labelOf = dictionaryStore.labelOf
+const optionsOf = dictionaryStore.optionsOf
 const rows = ref([])
 const form = reactive({
   title: '关于系统上线试运行资源支持的请示',
   type: '请示',
+  secrecyLevel: '内部',
   content: '拟申请相关服务器资源和测试账号支持。',
   applicantId: 2
 })

@@ -30,11 +30,12 @@ public class DocumentService {
     private final DocumentProcessor processor;
     private final WorkflowService workflowService;
     private final BusinessAccessService accessService;
+    private final DictionaryService dictionaryService;
 
     public DocumentService(InMemoryDatabase db, ApprovalService approvalService,
                            AiProviderAdapter aiProvider, List<DocumentReviewStrategy> strategies,
                            DataPersistence persistence, DocumentProcessor processor, WorkflowService workflowService,
-                           BusinessAccessService accessService) {
+                           BusinessAccessService accessService, DictionaryService dictionaryService) {
         this.db = db;
         this.approvalService = approvalService;
         this.aiProvider = aiProvider;
@@ -43,6 +44,7 @@ public class DocumentService {
         this.processor = processor;
         this.workflowService = workflowService;
         this.accessService = accessService;
+        this.dictionaryService = dictionaryService;
     }
 
     public List<Document> list() {
@@ -61,6 +63,8 @@ public class DocumentService {
     }
 
     public Document create(DocumentRequest request) {
+        dictionaryService.requireEnabled("document_type", request.getDocType(), "公文文种");
+        dictionaryService.requireEnabled("secrecy_level", request.getSecrecyLevel(), "密级");
         Long applicantId = AuthContext.currentUserIdOr(request.getApplicantId());
         User applicant = db.users().get(applicantId);
         if (applicant == null) {

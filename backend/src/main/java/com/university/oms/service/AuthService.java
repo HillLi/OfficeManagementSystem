@@ -3,6 +3,7 @@ package com.university.oms.service;
 import com.university.oms.common.BusinessException;
 import com.university.oms.dto.LoginRequest;
 import com.university.oms.dto.LoginResult;
+import com.university.oms.dto.UserOption;
 import com.university.oms.model.User;
 import com.university.oms.repository.DataPersistence;
 import com.university.oms.repository.InMemoryDatabase;
@@ -43,6 +44,14 @@ public class AuthService {
 
     public List<User> users() {
         return new ArrayList<User>(db.users().values());
+    }
+
+    public List<UserOption> userOptions() {
+        List<UserOption> options = new ArrayList<UserOption>();
+        for (User user : db.users().values()) {
+            options.add(new UserOption(user.getId(), user.getRealName(), user.getDeptId(), user.getDeptName()));
+        }
+        return options;
     }
 
     public void logout(String authorization) {

@@ -31,14 +31,17 @@ public class MeetingService {
     private final Map<String, BigDecimal> meetingFeeStandards;
     private final WorkflowService workflowService;
     private final BusinessAccessService accessService;
+    private final DictionaryService dictionaryService;
 
     public MeetingService(InMemoryDatabase db, ApprovalService approvalService, DataPersistence persistence,
-                          WorkflowService workflowService, BusinessAccessService accessService) {
+                          WorkflowService workflowService, BusinessAccessService accessService,
+                          DictionaryService dictionaryService) {
         this.db = db;
         this.approvalService = approvalService;
         this.persistence = persistence;
         this.workflowService = workflowService;
         this.accessService = accessService;
+        this.dictionaryService = dictionaryService;
         this.meetingFeeStandards = db.meetingFeeStandards();
     }
 
@@ -75,6 +78,8 @@ public class MeetingService {
     }
 
     public Meeting create(MeetingRequest request) {
+        dictionaryService.requireEnabled("venue_type", request.getVenueType(), "场地类型");
+        dictionaryService.requireEnabled("meeting_type", request.getMeetingType(), "会议类别");
         if (!request.getEndTime().isAfter(request.getStartTime())) {
             throw new BusinessException("结束时间必须晚于开始时间");
         }

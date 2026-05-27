@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -43,6 +44,18 @@ class SecurityIntegrationTest {
 
         mockMvc.perform(get("/api/admin/users").header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void ordinaryUserCanReadSafeUserOptionsWithoutAccountFields() throws Exception {
+        String token = login("user");
+
+        mockMvc.perform(get("/api/auth/user-options").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id").exists())
+                .andExpect(jsonPath("$.data[0].realName").exists())
+                .andExpect(jsonPath("$.data[0].username").doesNotExist())
+                .andExpect(jsonPath("$.data[0].roleKeys").doesNotExist());
     }
 
     @Test

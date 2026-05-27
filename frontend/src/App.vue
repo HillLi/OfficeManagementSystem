@@ -20,6 +20,7 @@
           <el-menu-item index="/approvals">审批任务</el-menu-item>
           <el-menu-item index="/statistics">统计报表</el-menu-item>
           <el-menu-item v-if="isAdmin" index="/admin/users">用户管理</el-menu-item>
+          <el-menu-item v-if="isAdmin" index="/admin/dictionaries">字典管理</el-menu-item>
         </el-menu>
       </aside>
       <section class="content">
@@ -30,21 +31,34 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from './api'
 import { useUserStore } from './stores/user'
+import { useDictionaryStore } from './stores/dictionary'
 import Login from './views/Login.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
+const dictionaryStore = useDictionaryStore()
 const isAdmin = computed(() => userStore.roleKeys.includes('admin'))
+
+onMounted(async () => {
+  if (userStore.isLoggedIn) {
+    try {
+      await dictionaryStore.refresh()
+    } catch (error) {
+      dictionaryStore.restoreCached()
+    }
+  }
+})
 
 const handleLogout = async () => {
   try {
     await api.logout()
   } finally {
     userStore.logout()
+    dictionaryStore.restoreCached()
     router.push('/login')
   }
 }

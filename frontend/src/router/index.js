@@ -9,6 +9,7 @@ import Seals from '../views/Seals.vue'
 import Statistics from '../views/Statistics.vue'
 import Travels from '../views/Travels.vue'
 import UserManage from '../views/UserManage.vue'
+import DictionaryManage from '../views/DictionaryManage.vue'
 
 const routes = [
   { path: '/login', component: Login, meta: { public: true } },
@@ -21,7 +22,8 @@ const routes = [
   { path: '/reports', component: Reports },
   { path: '/approvals', component: Approvals },
   { path: '/statistics', component: Statistics },
-  { path: '/admin/users', component: UserManage, meta: { requiresAdmin: true } }
+  { path: '/admin/users', component: UserManage, meta: { requiresAdmin: true } },
+  { path: '/admin/dictionaries', component: DictionaryManage, meta: { requiresAdmin: true } }
 ]
 
 const router = createRouter({

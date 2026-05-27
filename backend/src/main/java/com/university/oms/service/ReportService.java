@@ -20,14 +20,17 @@ public class ReportService {
     private final DataPersistence persistence;
     private final WorkflowService workflowService;
     private final BusinessAccessService accessService;
+    private final DictionaryService dictionaryService;
 
     public ReportService(InMemoryDatabase db, ApprovalService approvalService, DataPersistence persistence,
-                         WorkflowService workflowService, BusinessAccessService accessService) {
+                         WorkflowService workflowService, BusinessAccessService accessService,
+                         DictionaryService dictionaryService) {
         this.db = db;
         this.approvalService = approvalService;
         this.persistence = persistence;
         this.workflowService = workflowService;
         this.accessService = accessService;
+        this.dictionaryService = dictionaryService;
     }
 
     public List<Report> list() {
@@ -48,6 +51,8 @@ public class ReportService {
     }
 
     public Report create(ReportRequest request) {
+        dictionaryService.requireEnabled("report_type", request.getType(), "请示报告类型");
+        dictionaryService.requireEnabled("secrecy_level", request.getSecrecyLevel(), "密级");
         Long applicantId = AuthContext.currentUserIdOr(request.getApplicantId());
         User applicant = db.users().get(applicantId);
         if (applicant == null) {

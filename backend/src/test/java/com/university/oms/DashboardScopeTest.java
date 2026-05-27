@@ -47,7 +47,7 @@ class DashboardScopeTest {
 
     private void createDocument(String title, String token) throws Exception {
         postJson("/api/documents",
-                "{\"title\":\"" + title + "\",\"docType\":\"notice\",\"secrecyLevel\":\"internal\","
+                "{\"title\":\"" + title + "\",\"docType\":\"通知\",\"secrecyLevel\":\"内部\","
                         + "\"content\":\"scope verification content\",\"applicantId\":2}", token);
     }
 

@@ -71,7 +71,7 @@ class AuthorizationRegressionTest {
 
     private long createSecretDocument(String userToken) throws Exception {
         JsonNode response = postJson("/api/documents",
-                "{\"title\":\"Restricted document\",\"docType\":\"notice\",\"secrecyLevel\":\"秘密\","
+                "{\"title\":\"Restricted document\",\"docType\":\"通知\",\"secrecyLevel\":\"秘密\","
                         + "\"knowledgeScope\":\"课题组\",\"content\":\"controlled content\",\"applicantId\":2}",
                 userToken);
         return response.get("data").get("id").asLong();

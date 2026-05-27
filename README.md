@@ -106,6 +106,7 @@ D:\dev\maven\apache-maven-3.9.14\bin\mvn.cmd test
 
 ```powershell
 cd frontend
+npm run test
 npm run build
 ```
 
