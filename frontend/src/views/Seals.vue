@@ -42,6 +42,7 @@
       <el-tab-pane label="办理记录" name="records">
         <el-table :data="apps" border>
           <el-table-column prop="sealName" label="印章名称" min-width="178" />
+          <el-table-column label="申请人" width="104"><template #default="{ row }">{{ originatorNameOf(row, userOptions) }}</template></el-table-column>
           <el-table-column prop="purpose" label="用途" min-width="150" />
           <el-table-column prop="materialCount" label="材料" width="72">
             <template #default="{ row }">{{ row.materialCount }} 份</template>
@@ -153,6 +154,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
+import { originatorNameOf } from '../utils/userDisplay'
 
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf

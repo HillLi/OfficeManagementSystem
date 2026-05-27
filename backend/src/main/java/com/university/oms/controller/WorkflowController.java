@@ -4,7 +4,9 @@ import com.university.oms.common.ApiResponse;
 import com.university.oms.dto.AttachmentDeleteRequest;
 import com.university.oms.dto.AttachmentRequest;
 import com.university.oms.dto.AttachmentUpdateRequest;
+import com.university.oms.dto.WorkflowGuideResponse;
 import com.university.oms.model.*;
+import com.university.oms.service.WorkflowGuideService;
 import com.university.oms.service.WorkflowService;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
@@ -22,9 +24,11 @@ import java.util.List;
 @RequestMapping("/api/workflow")
 public class WorkflowController {
     private final WorkflowService service;
+    private final WorkflowGuideService guideService;
 
-    public WorkflowController(WorkflowService service) {
+    public WorkflowController(WorkflowService service, WorkflowGuideService guideService) {
         this.service = service;
+        this.guideService = guideService;
     }
 
     @PostMapping("/attachments")
@@ -103,5 +107,11 @@ public class WorkflowController {
     @GetMapping("/tasks")
     public ApiResponse<List<FlowTask>> tasks(@RequestParam(defaultValue = "true") boolean onlyMine) {
         return ApiResponse.ok(service.tasks(onlyMine));
+    }
+
+    @GetMapping("/guide")
+    public ApiResponse<WorkflowGuideResponse> guide(@RequestParam String bizType,
+                                                     @RequestParam Long bizId) {
+        return ApiResponse.ok(guideService.guide(bizType, bizId));
     }
 }

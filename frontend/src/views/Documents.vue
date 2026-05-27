@@ -22,6 +22,7 @@
       <h3>公文列表</h3>
       <el-table :data="rows" border>
         <el-table-column prop="title" label="标题" min-width="185" />
+        <el-table-column label="原作者" width="104"><template #default="{ row }">{{ originatorNameOf(row, userOptions) }}</template></el-table-column>
         <el-table-column prop="version" label="版本" width="65" />
         <el-table-column label="密级" width="74"><template #default="{ row }">{{ labelOf('secrecy_level', row.secrecyLevel) }}</template></el-table-column>
         <el-table-column label="流程状态" width="112"><template #default="{ row }">{{ labelOf('business_status', row.status) }}</template></el-table-column>
@@ -91,6 +92,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
+import { originatorNameOf } from '../utils/userDisplay'
 
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
