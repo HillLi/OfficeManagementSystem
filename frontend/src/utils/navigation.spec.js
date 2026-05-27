@@ -1,0 +1,75 @@
+import { describe, expect, it } from 'vitest'
+import { canAccessPath, visibleMenuItems } from './navigation'
+
+function pathsFor(...roles) {
+  return visibleMenuItems(roles).map((item) => item.index)
+}
+
+describe('role based navigation', () => {
+  it('shows business entry menus to an ordinary office user only', () => {
+    expect(pathsFor('office_user')).toEqual([
+      '/dashboard',
+      '/documents',
+      '/seals',
+      '/meetings',
+      '/travels',
+      '/reports',
+      '/statistics'
+    ])
+  })
+
+  it('shows approval and business menus for business managers', () => {
+    expect(pathsFor('dept_head')).toEqual([
+      '/dashboard',
+      '/documents',
+      '/seals',
+      '/meetings',
+      '/travels',
+      '/reports',
+      '/approvals',
+      '/statistics'
+    ])
+    expect(pathsFor('school_leader')).toEqual([
+      '/dashboard',
+      '/documents',
+      '/seals',
+      '/meetings',
+      '/travels',
+      '/reports',
+      '/approvals',
+      '/statistics'
+    ])
+    expect(pathsFor('office_admin')).toEqual([
+      '/dashboard',
+      '/documents',
+      '/seals',
+      '/meetings',
+      '/reports',
+      '/approvals',
+      '/statistics'
+    ])
+  })
+
+  it('shows responsibility menus for specialist roles', () => {
+    expect(pathsFor('finance_staff')).toEqual(['/dashboard', '/travels', '/approvals', '/statistics'])
+    expect(pathsFor('security_staff')).toEqual(['/dashboard', '/meetings', '/approvals', '/statistics'])
+    expect(pathsFor('seal_keeper')).toEqual(['/dashboard', '/seals', '/statistics'])
+  })
+
+  it('limits an administrator to dashboard statistics and system administration', () => {
+    expect(pathsFor('admin')).toEqual([
+      '/dashboard',
+      '/statistics',
+      '/admin/users',
+      '/admin/dictionaries'
+    ])
+  })
+
+  it('uses the same policy for direct page navigation', () => {
+    expect(canAccessPath('/travels', ['finance_staff'])).toBe(true)
+    expect(canAccessPath('/reports', ['finance_staff'])).toBe(false)
+    expect(canAccessPath('/approvals', ['finance_staff'])).toBe(true)
+    expect(canAccessPath('/admin/dictionaries', ['office_user'])).toBe(false)
+    expect(canAccessPath('/admin/dictionaries', ['admin'])).toBe(true)
+  })
+})

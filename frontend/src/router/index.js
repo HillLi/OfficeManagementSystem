@@ -10,6 +10,7 @@ import Statistics from '../views/Statistics.vue'
 import Travels from '../views/Travels.vue'
 import UserManage from '../views/UserManage.vue'
 import DictionaryManage from '../views/DictionaryManage.vue'
+import { canAccessPath } from '../utils/navigation'
 
 const routes = [
   { path: '/login', component: Login, meta: { public: true } },
@@ -22,8 +23,8 @@ const routes = [
   { path: '/reports', component: Reports },
   { path: '/approvals', component: Approvals },
   { path: '/statistics', component: Statistics },
-  { path: '/admin/users', component: UserManage, meta: { requiresAdmin: true } },
-  { path: '/admin/dictionaries', component: DictionaryManage, meta: { requiresAdmin: true } }
+  { path: '/admin/users', component: UserManage },
+  { path: '/admin/dictionaries', component: DictionaryManage }
 ]
 
 const router = createRouter({
@@ -35,9 +36,9 @@ router.beforeEach((to, from, next) => {
   const token = sessionStorage.getItem('oms_token')
   if (!to.meta.public && !token) {
     next('/login')
-  } else if (to.meta.requiresAdmin) {
+  } else if (!to.meta.public) {
     const user = JSON.parse(sessionStorage.getItem('oms_user') || 'null')
-    if (user?.roleKeys?.includes('admin')) {
+    if (canAccessPath(to.path, user?.roleKeys || [])) {
       next()
     } else {
       next('/dashboard')
