@@ -2,7 +2,13 @@
   <div class="approval-page">
     <h2 class="page-title">审批任务</h2>
     <el-tabs v-model="activeTab">
-      <el-tab-pane v-for="tab in approvalTabs" :key="tab.name" :label="tab.label" :name="tab.name">
+      <el-tab-pane v-for="tab in approvalTabs" :key="tab.name" :name="tab.name">
+        <template #label>
+          <span class="approval-tab-label">
+            {{ tab.label }}
+            <el-badge v-if="tabBadge(tab.name) > 0" :value="tabBadge(tab.name)" class="approval-tab-badge" />
+          </span>
+        </template>
         <el-table v-if="tab.name === 'tasks'" :data="tasks" border>
           <el-table-column label="业务" width="100"><template #default="{ row }">{{ labelOf('biz_type', row.bizType) }}</template></el-table-column>
           <el-table-column prop="bizId" label="业务 ID" width="90" />
@@ -69,11 +75,14 @@ import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
+import { useActionBadgeStore } from '../stores/actionBadges'
 import { approvalTabs, defaultApprovalTab } from '../utils/approvalTabs'
+import { approvalTabBadgeCount } from '../utils/actionBadges'
 import WorkflowGuideDialog from '../components/WorkflowGuideDialog.vue'
 
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
+const actionBadgeStore = useActionBadgeStore()
 const activeTab = ref(defaultApprovalTab)
 const rows = ref([])
 const tasks = ref([])
@@ -86,7 +95,13 @@ const load = async () => {
   tasks.value = await api.flowTasks({ onlyMine: true })
   notifications.value = await api.notifications({ unreadOnly: false })
   instances.value = await api.flowInstances()
+  actionBadgeStore.setFromData(tasks.value, notifications.value)
 }
+
+const tabBadge = (tabName) => approvalTabBadgeCount(tabName, {
+  pendingTasks: actionBadgeStore.pendingTasks,
+  unreadNotifications: actionBadgeStore.unreadNotifications
+})
 
 const process = async (row, action) => {
   try {
@@ -120,5 +135,15 @@ onMounted(load)
 <style scoped>
 .page-title {
   margin-top: 0;
+}
+
+.approval-tab-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.approval-tab-badge {
+  line-height: 1;
 }
 </style>

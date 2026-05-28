@@ -1,46 +1,50 @@
 <template>
-  <div class="page-grid">
-    <div class="panel">
-      <h3>公文起草</h3>
-      <el-form label-position="top">
-        <el-form-item label="标题"><el-input v-model="form.title" /></el-form-item>
-        <el-form-item label="文种">
-          <el-select v-model="form.docType"><el-option v-for="item in optionsOf('document_type')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
-        </el-form-item>
-        <el-form-item label="密级">
-          <el-select v-model="form.secrecyLevel"><el-option v-for="item in optionsOf('secrecy_level')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
-        </el-form-item>
-        <el-form-item label="正文"><el-input v-model="form.content" type="textarea" :rows="6" /></el-form-item>
-      </el-form>
-      <div class="toolbar">
-        <el-button type="primary" @click="save">保存草稿</el-button>
-        <el-button :disabled="form.secrecyLevel !== '公开'" @click="draft">AI 起草</el-button>
-      </div>
-      <p v-if="form.secrecyLevel !== '公开'" class="rule-note">非公开公文禁止调用外部 AI。</p>
-    </div>
-    <div class="panel">
-      <h3>公文列表</h3>
-      <el-table :data="rows" border>
-        <el-table-column prop="title" label="标题" min-width="185" />
-        <el-table-column prop="version" label="版本" width="65" />
-        <el-table-column label="密级" width="74"><template #default="{ row }">{{ labelOf('secrecy_level', row.secrecyLevel) }}</template></el-table-column>
-        <el-table-column label="流程状态" width="112"><template #default="{ row }">{{ labelOf('business_status', row.status) }}</template></el-table-column>
-        <el-table-column label="签收状态" width="112"><template #default="{ row }">{{ labelOf('distribution_status', row.distributionStatus) }}</template></el-table-column>
-        <el-table-column label="办理" min-width="310">
-          <template #default="{ row }">
-            <div class="table-actions">
-              <el-button size="small" :disabled="!canAi(row)" @click="review(row.id)">AI 审查</el-button>
-              <el-button v-if="row.status === 'draft' || row.status === 'rejected'" size="small" type="primary" @click="submitFlow(row.id)">提交</el-button>
-              <el-button v-if="row.status === 'approved' && canManage" size="small" type="success" @click="archive(row.id)">归档</el-button>
-              <el-button size="small" @click="openAttachment(row)">附件</el-button>
-              <el-button size="small" @click="openFlowGuide(row)">流程导览</el-button>
-              <el-button v-if="canManage && ['approved', 'archived'].includes(row.status)" size="small" @click="openDistribution(row)">分发/签收</el-button>
-              <el-button v-else-if="hasDistribution(row)" size="small" @click="openDistribution(row)">签收记录</el-button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-    </div>
+  <div class="document-page">
+    <h2 class="page-title">公文管理</h2>
+    <el-tabs v-model="activeTab">
+      <el-tab-pane label="公文起草" name="draft">
+        <div class="tab-form">
+          <el-form label-position="top">
+            <el-form-item label="标题"><el-input v-model="form.title" /></el-form-item>
+            <el-form-item label="文种">
+              <el-select v-model="form.docType"><el-option v-for="item in optionsOf('document_type')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
+            </el-form-item>
+            <el-form-item label="密级">
+              <el-select v-model="form.secrecyLevel"><el-option v-for="item in optionsOf('secrecy_level')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
+            </el-form-item>
+            <el-form-item label="正文"><el-input v-model="form.content" type="textarea" :rows="6" /></el-form-item>
+          </el-form>
+          <div class="toolbar">
+            <el-button type="primary" @click="save">保存草稿</el-button>
+            <el-button :disabled="form.secrecyLevel !== '公开'" @click="draft">AI 起草</el-button>
+          </div>
+          <p v-if="form.secrecyLevel !== '公开'" class="rule-note">非公开公文禁止调用外部 AI。</p>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane label="公文列表" name="records">
+        <el-table :data="rows" border>
+          <el-table-column prop="title" label="标题" min-width="185" />
+          <el-table-column prop="version" label="版本" width="65" />
+          <el-table-column label="密级" width="74"><template #default="{ row }">{{ labelOf('secrecy_level', row.secrecyLevel) }}</template></el-table-column>
+          <el-table-column label="流程状态" width="112"><template #default="{ row }">{{ labelOf('business_status', row.status) }}</template></el-table-column>
+          <el-table-column label="签收状态" width="112"><template #default="{ row }">{{ labelOf('distribution_status', row.distributionStatus) }}</template></el-table-column>
+          <el-table-column label="办理" min-width="310">
+            <template #default="{ row }">
+              <div class="table-actions">
+                <el-button size="small" :disabled="!canAi(row)" @click="review(row.id)">AI 审查</el-button>
+                <el-button v-if="row.status === 'draft' || row.status === 'rejected'" size="small" type="primary" @click="submitFlow(row.id)">提交</el-button>
+                <el-button v-if="row.status === 'approved' && canManage" size="small" type="success" @click="archive(row.id)">归档</el-button>
+                <el-button size="small" @click="openAttachment(row)">附件</el-button>
+                <el-button size="small" @click="openFlowGuide(row)">流程导览</el-button>
+                <el-button v-if="canManage && ['approved', 'archived'].includes(row.status)" size="small" @click="openDistribution(row)">分发/签收</el-button>
+                <el-button v-else-if="hasDistribution(row)" size="small" @click="openDistribution(row)">签收记录</el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-tab-pane>
+    </el-tabs>
 
     <el-dialog v-model="distributionDialog" title="公文分发与签收" width="820px">
       <el-form v-if="canManage" :inline="true">
@@ -100,6 +104,7 @@ const labelOf = dictionaryStore.labelOf
 const optionsOf = dictionaryStore.optionsOf
 const currentUser = JSON.parse(sessionStorage.getItem('oms_user') || '{"id":0,"roleKeys":[]}')
 const canManage = computed(() => currentUser.roleKeys?.some((role) => ['office_admin', 'admin'].includes(role)))
+const activeTab = ref('draft')
 const rows = ref([])
 const userOptions = ref([])
 const attachments = ref([])
@@ -206,3 +211,12 @@ onMounted(async () => {
   await load()
 })
 </script>
+
+<style scoped>
+.page-title {
+  margin-top: 0;
+}
+.tab-form {
+  max-width: 520px;
+}
+</style>
