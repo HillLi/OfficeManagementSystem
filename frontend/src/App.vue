@@ -12,7 +12,10 @@
       <aside class="side">
         <el-menu :default-active="$route.path" router>
           <el-menu-item v-for="item in visibleItems" :key="item.index" :index="item.index">
-            {{ item.label }}
+            <span class="menu-label">
+              {{ item.label }}
+              <el-badge v-if="menuBadge(item) > 0" :value="menuBadge(item)" class="menu-badge" />
+            </span>
           </el-menu-item>
         </el-menu>
       </aside>
@@ -24,28 +27,45 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from './api'
 import { useUserStore } from './stores/user'
 import { useDictionaryStore } from './stores/dictionary'
+import { useActionBadgeStore } from './stores/actionBadges'
 import { visibleMenuItems } from './utils/navigation'
 import Login from './views/Login.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
 const dictionaryStore = useDictionaryStore()
+const actionBadgeStore = useActionBadgeStore()
 const visibleItems = computed(() => visibleMenuItems(userStore.roleKeys))
+const hasApprovalMenu = computed(() => visibleItems.value.some((item) => item.index === '/approvals'))
 
-onMounted(async () => {
-  if (userStore.isLoggedIn) {
+const menuBadge = (item) => item.index === '/approvals' ? actionBadgeStore.approvalTotal : 0
+
+const refreshShellData = async () => {
+  if (!userStore.isLoggedIn) {
+    actionBadgeStore.reset()
+    return
+  }
+  try {
+    await dictionaryStore.refresh()
+  } catch (error) {
+    dictionaryStore.restoreCached()
+  }
+  if (hasApprovalMenu.value) {
     try {
-      await dictionaryStore.refresh()
+      await actionBadgeStore.refresh()
     } catch (error) {
-      dictionaryStore.restoreCached()
+      actionBadgeStore.reset()
     }
   }
-})
+}
+
+onMounted(refreshShellData)
+watch(() => userStore.isLoggedIn, refreshShellData)
 
 const handleLogout = async () => {
   try {
@@ -53,7 +73,22 @@ const handleLogout = async () => {
   } finally {
     userStore.logout()
     dictionaryStore.restoreCached()
+    actionBadgeStore.reset()
     router.push('/login')
   }
 }
 </script>
+
+<style scoped>
+.menu-label {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.menu-badge {
+  margin-right: 2px;
+}
+</style>
