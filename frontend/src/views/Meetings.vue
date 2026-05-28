@@ -37,7 +37,6 @@
       <h3>会议列表</h3>
       <el-table :data="meetings" border>
         <el-table-column prop="title" label="主题" min-width="160" />
-        <el-table-column label="申请人" width="104"><template #default="{ row }">{{ originatorNameOf(row, userOptions) }}</template></el-table-column>
         <el-table-column prop="expectedCount" label="人数" width="65" />
         <el-table-column label="类别" width="130"><template #default="{ row }">{{ labelOf('meeting_type', row.meetingType) }}</template></el-table-column>
         <el-table-column label="场地" width="72"><template #default="{ row }">{{ labelOf('venue_type', row.venueType) }}</template></el-table-column>
@@ -60,7 +59,6 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
-import { originatorNameOf } from '../utils/userDisplay'
 
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
@@ -68,7 +66,6 @@ const optionsOf = dictionaryStore.optionsOf
 const currentUser = JSON.parse(sessionStorage.getItem('oms_user') || '{"id":2}')
 const rooms = ref([])
 const meetings = ref([])
-const userOptions = ref([])
 const form = reactive({
   title: '系统试运行培训会',
   roomId: 1,
@@ -93,10 +90,8 @@ const isLarge = computed(() =>
 )
 
 const load = async () => {
-  const [roomRows, meetingRows, users] = await Promise.all([api.rooms(), api.meetings(), api.userOptions()])
-  rooms.value = roomRows
-  meetings.value = meetingRows
-  userOptions.value = users
+  rooms.value = await api.rooms()
+  meetings.value = await api.meetings()
 }
 const submit = async () => {
   try {
