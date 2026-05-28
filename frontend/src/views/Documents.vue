@@ -33,6 +33,7 @@
               <el-button v-if="row.status === 'draft' || row.status === 'rejected'" size="small" type="primary" @click="submitFlow(row.id)">提交</el-button>
               <el-button v-if="row.status === 'approved' && canManage" size="small" type="success" @click="archive(row.id)">归档</el-button>
               <el-button size="small" @click="openAttachment(row)">附件</el-button>
+              <el-button size="small" @click="openFlowGuide(row)">流程导览</el-button>
               <el-button v-if="canManage && ['approved', 'archived'].includes(row.status)" size="small" @click="openDistribution(row)">分发/签收</el-button>
               <el-button v-else-if="hasDistribution(row)" size="small" @click="openDistribution(row)">签收记录</el-button>
             </div>
@@ -83,6 +84,7 @@
         <el-table-column label="密级" width="90"><template #default="{ row }">{{ labelOf('secrecy_level', row.secrecyLevel) }}</template></el-table-column>
       </el-table>
     </el-dialog>
+    <WorkflowGuideDialog ref="flowGuideDialog" />
   </div>
 </template>
 
@@ -91,6 +93,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
+import WorkflowGuideDialog from '../components/WorkflowGuideDialog.vue'
 
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
@@ -104,6 +107,7 @@ const distributions = ref([])
 const attachmentDialog = ref(false)
 const distributionDialog = ref(false)
 const currentDocument = ref(null)
+const flowGuideDialog = ref(null)
 const form = reactive({
   title: '关于开展办公管理系统试运行的通知',
   docType: '通知',
@@ -180,6 +184,9 @@ const openAttachment = async (document) => {
   attachmentForm.secrecyLevel = document.secrecyLevel || '公开'
   attachments.value = await api.attachments({ bizType: 'document', bizId: document.id })
   attachmentDialog.value = true
+}
+const openFlowGuide = (document) => {
+  flowGuideDialog.value?.open('document', document.id)
 }
 const addAttachment = async () => {
   await api.addAttachment({

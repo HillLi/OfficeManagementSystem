@@ -44,13 +44,17 @@
         <el-table-column label="大型活动" width="88"><template #default="{ row }">{{ row.largeActivity ? '是' : '否' }}</template></el-table-column>
         <el-table-column prop="signInCount" label="签到" width="65" />
         <el-table-column label="状态" width="115"><template #default="{ row }">{{ labelOf('business_status', row.status) }}</template></el-table-column>
-        <el-table-column label="办理" width="106">
+        <el-table-column label="办理" width="190">
           <template #default="{ row }">
-            <el-button v-if="row.status === 'approved'" size="small" type="success" @click="archiveMinutes(row)">纪要归档</el-button>
+            <div class="table-actions">
+              <el-button v-if="row.status === 'approved'" size="small" type="success" @click="archiveMinutes(row)">纪要归档</el-button>
+              <el-button size="small" @click="openFlowGuide(row)">流程导览</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
     </div>
+    <WorkflowGuideDialog ref="flowGuideDialog" />
   </div>
 </template>
 
@@ -59,6 +63,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
+import WorkflowGuideDialog from '../components/WorkflowGuideDialog.vue'
 
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
@@ -66,6 +71,7 @@ const optionsOf = dictionaryStore.optionsOf
 const currentUser = JSON.parse(sessionStorage.getItem('oms_user') || '{"id":2}')
 const rooms = ref([])
 const meetings = ref([])
+const flowGuideDialog = ref(null)
 const form = reactive({
   title: '系统试运行培训会',
   roomId: 1,
@@ -110,6 +116,9 @@ const archiveMinutes = async (meeting) => {
   await api.archiveMeetingMinutes(meeting.id, { minutes: value, signInCount: meeting.expectedCount })
   ElMessage.success('会议纪要已归档')
   await load()
+}
+const openFlowGuide = (meeting) => {
+  flowGuideDialog.value?.open('meeting', meeting.id)
 }
 
 onMounted(load)

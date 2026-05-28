@@ -9,11 +9,12 @@
           <el-table-column label="当前节点" width="150"><template #default="{ row }">{{ labelOf('flow_node', row.nodeKey) }}</template></el-table-column>
           <el-table-column label="处理角色" width="140"><template #default="{ row }">{{ labelOf('role_key', row.approverRole) }}</template></el-table-column>
           <el-table-column prop="dueTime" label="截止时间" min-width="170" />
-          <el-table-column label="办理" width="155">
+          <el-table-column label="办理" width="230">
             <template #default="{ row }">
               <div class="table-actions">
                 <el-button size="small" type="primary" @click="process(row, 'approve')">同意</el-button>
                 <el-button size="small" type="danger" @click="process(row, 'reject')">退回</el-button>
+                <el-button size="small" @click="openFlowGuide(row.bizType, row.bizId)">导览</el-button>
               </div>
             </template>
           </el-table-column>
@@ -37,6 +38,11 @@
           <el-table-column prop="bizId" label="ID" width="70" />
           <el-table-column label="节点" width="130"><template #default="{ row }">{{ labelOf('flow_node', row.currentNodeKey) }}</template></el-table-column>
           <el-table-column label="状态"><template #default="{ row }">{{ labelOf('business_status', row.status) }}</template></el-table-column>
+          <el-table-column label="操作" width="90">
+            <template #default="{ row }">
+              <el-button size="small" @click="openFlowGuide(row.bizType, row.bizId)">导览</el-button>
+            </template>
+          </el-table-column>
         </el-table>
 
         <el-table v-else :data="rows" border>
@@ -46,9 +52,15 @@
           <el-table-column prop="action" label="动作" width="100" />
           <el-table-column prop="opinion" label="意见" />
           <el-table-column prop="createdAt" label="时间" width="190" />
+          <el-table-column label="操作" width="90">
+            <template #default="{ row }">
+              <el-button size="small" @click="openFlowGuide(row.bizType, row.bizId)">导览</el-button>
+            </template>
+          </el-table-column>
         </el-table>
       </el-tab-pane>
     </el-tabs>
+    <WorkflowGuideDialog ref="flowGuideDialog" />
   </div>
 </template>
 
@@ -58,6 +70,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
 import { approvalTabs, defaultApprovalTab } from '../utils/approvalTabs'
+import WorkflowGuideDialog from '../components/WorkflowGuideDialog.vue'
 
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
@@ -66,6 +79,7 @@ const rows = ref([])
 const tasks = ref([])
 const notifications = ref([])
 const instances = ref([])
+const flowGuideDialog = ref(null)
 
 const load = async () => {
   rows.value = await api.approvals()
@@ -94,6 +108,10 @@ const process = async (row, action) => {
 const markRead = async (id) => {
   await api.markNotificationRead(id)
   await load()
+}
+
+const openFlowGuide = (bizType, bizId) => {
+  flowGuideDialog.value?.open(bizType, bizId)
 }
 
 onMounted(load)

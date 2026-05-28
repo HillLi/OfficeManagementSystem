@@ -21,13 +21,17 @@
         <el-table-column label="类型" width="80"><template #default="{ row }">{{ labelOf('report_type', row.type) }}</template></el-table-column>
         <el-table-column label="密级" width="90"><template #default="{ row }">{{ labelOf('secrecy_level', row.secrecyLevel) }}</template></el-table-column>
         <el-table-column label="状态" width="130"><template #default="{ row }">{{ labelOf('business_status', row.status) }}</template></el-table-column>
-        <el-table-column label="操作" width="120">
+        <el-table-column label="操作" width="190">
           <template #default="{ row }">
-            <el-button v-if="row.status === 'approved'" size="small" type="success" @click="reply(row)">批复归档</el-button>
+            <div class="table-actions">
+              <el-button v-if="row.status === 'approved'" size="small" type="success" @click="reply(row)">批复归档</el-button>
+              <el-button size="small" @click="openFlowGuide(row)">流程导览</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
     </div>
+    <WorkflowGuideDialog ref="flowGuideDialog" />
   </div>
 </template>
 
@@ -36,11 +40,13 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
+import WorkflowGuideDialog from '../components/WorkflowGuideDialog.vue'
 
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
 const optionsOf = dictionaryStore.optionsOf
 const rows = ref([])
+const flowGuideDialog = ref(null)
 const form = reactive({
   title: '关于系统上线试运行资源支持的请示',
   type: '请示',
@@ -62,6 +68,9 @@ const reply = async (row) => {
   await api.replyReport(row.id, { reply: value })
   ElMessage.success('已批复归档')
   load()
+}
+const openFlowGuide = (row) => {
+  flowGuideDialog.value?.open('report', row.id)
 }
 onMounted(load)
 </script>
