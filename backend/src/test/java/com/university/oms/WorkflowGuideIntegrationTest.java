@@ -9,6 +9,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.nio.charset.StandardCharsets;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -81,6 +83,11 @@ class WorkflowGuideIntegrationTest {
         postJson("/api/approvals/document/" + id, "{\"action\":\"approve\",\"opinion\":\"部门同意\"}", headToken);
         postJson("/api/approvals/document/" + id, "{\"action\":\"approve\",\"opinion\":\"校办同意\"}", officeToken);
         postJson("/api/approvals/document/" + id, "{\"action\":\"approve\",\"opinion\":\"签发\"}", leaderToken);
+
+        JsonNode approvedGuide = getJson("/api/workflow/guide?bizType=document&bizId=" + id, userToken).get("data");
+        assertEquals("distribute", approvedGuide.get("currentNodeKey").asText());
+        assertTrue(containsStep(approvedGuide.get("steps"), "distribute", "公文分发", "current"));
+
         JsonNode distribution = postJson("/api/documents/" + id + "/distributions",
                 "{\"receiverId\":2,\"receiverDeptId\":4}", officeToken).get("data");
         postJson("/api/documents/" + id + "/distributions/" + distribution.get("id").asLong() + "/receipt",
@@ -148,6 +155,11 @@ class WorkflowGuideIntegrationTest {
 
         assertTrue(containsStep(guide.get("steps"), "submit_reimbursement", "提交报销", "done"));
         assertTrue(containsStep(guide.get("steps"), "finance_recheck", "财务复核", "current"));
+
+        postJson("/api/approvals/travel/" + id, "{\"action\":\"approve\",\"opinion\":\"复核通过\"}", financeToken);
+        JsonNode archivedGuide = getJson("/api/workflow/guide?bizType=travel&bizId=" + id, userToken).get("data");
+        assertTrue(containsStep(archivedGuide.get("steps"), "finance_recheck", "财务复核", "done"));
+        assertTrue(stepContainsOpinion(archivedGuide.get("steps"), "finance_recheck", "复核通过"));
     }
 
     // --- Task 4: Rejection and node details ---
@@ -203,18 +215,20 @@ class WorkflowGuideIntegrationTest {
 
     private JsonNode postJson(String url, String json, String token) throws Exception {
         org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder request = post(url)
-                .contentType(MediaType.APPLICATION_JSON).content(json);
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .content(json.getBytes(StandardCharsets.UTF_8));
         if (token != null) {
             request.header("Authorization", bearer(token));
         }
         String body = mockMvc.perform(request).andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         return objectMapper.readTree(body);
     }
 
     private JsonNode getJson(String url, String token) throws Exception {
         String body = mockMvc.perform(get(url).header("Authorization", bearer(token)))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         return objectMapper.readTree(body);
     }
 

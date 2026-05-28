@@ -27,15 +27,17 @@
         <el-table-column label="人员类别" width="92"><template #default="{ row }">{{ labelOf('staff_level', row.staffLevel) }}</template></el-table-column>
         <el-table-column label="出差类型" width="120"><template #default="{ row }">{{ labelOf('travel_type', row.travelType) }}</template></el-table-column>
         <el-table-column label="交通工具" width="110"><template #default="{ row }">{{ labelOf('transport_type', row.transport) }}</template></el-table-column>
-        <el-table-column label="申请人" width="104"><template #default="{ row }">{{ originatorNameOf(row, userOptions) }}</template></el-table-column>
         <el-table-column prop="budget" label="预算" width="92" />
         <el-table-column prop="actualExpense" label="实报" width="92" />
         <el-table-column label="标准" width="92"><template #default="{ row }">{{ row.checkResult?.standardAmount }}</template></el-table-column>
         <el-table-column label="超标" width="65"><template #default="{ row }">{{ row.checkResult?.exceeded ? '是' : '否' }}</template></el-table-column>
         <el-table-column label="状态" width="128"><template #default="{ row }">{{ labelOf('business_status', row.status) }}</template></el-table-column>
-        <el-table-column label="办理" width="106">
+        <el-table-column label="办理" width="190">
           <template #default="{ row }">
-            <el-button v-if="row.status === 'approved'" size="small" type="success" @click="openReimburse(row)">报销登记</el-button>
+            <div class="table-actions">
+              <el-button v-if="row.status === 'approved'" size="small" type="success" @click="openReimburse(row)">报销登记</el-button>
+              <el-button size="small" @click="openFlowGuide(row)">流程导览</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -52,6 +54,7 @@
         <el-button type="primary" @click="reimburse">提交财务复核</el-button>
       </template>
     </el-dialog>
+    <WorkflowGuideDialog ref="flowGuideDialog" />
   </div>
 </template>
 
@@ -60,16 +63,16 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
-import { originatorNameOf } from '../utils/userDisplay'
+import WorkflowGuideDialog from '../components/WorkflowGuideDialog.vue'
 
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
 const optionsOf = dictionaryStore.optionsOf
 const currentUser = JSON.parse(sessionStorage.getItem('oms_user') || '{"id":2}')
 const rows = ref([])
-const userOptions = ref([])
 const reimburseDialog = ref(false)
 const currentTravel = ref(null)
+const flowGuideDialog = ref(null)
 const form = reactive({
   applicantId: currentUser.id || 2,
   destination: '上海',
@@ -83,11 +86,7 @@ const form = reactive({
 })
 const reimburseForm = reactive({ actualExpense: 0, receiptUrl: '', overLimitReason: '' })
 
-const load = async () => {
-  const [travelRows, users] = await Promise.all([api.travels(), api.userOptions()])
-  rows.value = travelRows
-  userOptions.value = users
-}
+const load = async () => { rows.value = await api.travels() }
 const submit = async () => {
   try {
     await api.createTravel(form)
@@ -113,6 +112,9 @@ const reimburse = async () => {
   } catch (error) {
     ElMessage.error(error.message || '报销提交失败')
   }
+}
+const openFlowGuide = (travel) => {
+  flowGuideDialog.value?.open('travel', travel.id)
 }
 
 onMounted(load)

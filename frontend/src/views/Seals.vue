@@ -42,7 +42,6 @@
       <el-tab-pane label="办理记录" name="records">
         <el-table :data="apps" border>
           <el-table-column prop="sealName" label="印章名称" min-width="178" />
-          <el-table-column label="申请人" width="104"><template #default="{ row }">{{ originatorNameOf(row, userOptions) }}</template></el-table-column>
           <el-table-column prop="purpose" label="用途" min-width="150" />
           <el-table-column prop="materialCount" label="材料" width="72">
             <template #default="{ row }">{{ row.materialCount }} 份</template>
@@ -58,6 +57,7 @@
                   :disabled="row.materialCount === 0" @click="submitDraft(row)">提交审批</el-button>
                 <el-button v-if="canManage && row.status === 'approved'" size="small" type="primary" @click="markUsed(row.id)">登记用印</el-button>
                 <el-button v-if="canManage && row.status === 'used'" size="small" type="success" @click="markReturned(row.id)">确认归还</el-button>
+                <el-button size="small" @click="openFlowGuide(row)">流程导览</el-button>
               </div>
             </template>
           </el-table-column>
@@ -146,6 +146,7 @@
       </el-form>
       <template #footer><el-button @click="editDialog = false">取消</el-button><el-button type="primary" @click="saveEdit">保存</el-button></template>
     </el-dialog>
+    <WorkflowGuideDialog ref="flowGuideDialog" />
   </div>
 </template>
 
@@ -154,7 +155,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
-import { originatorNameOf } from '../utils/userDisplay'
+import WorkflowGuideDialog from '../components/WorkflowGuideDialog.vue'
 
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
@@ -175,6 +176,7 @@ const includeDeleted = ref(false)
 const uploadFiles = ref([])
 const selectedFile = ref(null)
 const uploadSecrecy = ref('内部')
+const flowGuideDialog = ref(null)
 const form = reactive({
   sealId: 1,
   applicantId: currentUser.id || 2,
@@ -238,6 +240,9 @@ const openMaterials = async (application) => {
   selectedFile.value = null
   await loadMaterials()
   materialDialog.value = true
+}
+const openFlowGuide = (application) => {
+  flowGuideDialog.value?.open('seal', application.id)
 }
 const loadMaterials = async () => {
   if (!currentApplication.value) return

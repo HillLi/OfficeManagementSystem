@@ -48,6 +48,7 @@ public class WorkflowGuideService {
         }
         WorkflowGuideResponse guide = base("document", id, document.getTitle(), document.getStatus());
         guide.setSteps(documentSteps(id, document.getStatus()));
+        updateCurrentNodeKey(guide);
         return guide;
     }
 
@@ -62,6 +63,7 @@ public class WorkflowGuideService {
         steps.add(documentDistributionStep(id));
         steps.add(documentReceiptStep(id));
         steps.add(recordedStep("document", id, "archive", "公文归档", "business", "archive"));
+        markDocumentCurrent(steps, businessStatus);
         return steps;
     }
 
@@ -114,7 +116,9 @@ public class WorkflowGuideService {
         steps.add(recordedBusinessStep("seal", id, "use", "用印登记", "use"));
         steps.add(recordedBusinessStep("seal", id, "return", "归还确认", "return"));
         markCurrentByBusinessStatus(steps, app.getStatus());
+        markPostApprovalCurrent(steps, app.getStatus(), "approved", "use", "used", "return");
         guide.setSteps(steps);
+        updateCurrentNodeKey(guide);
         return guide;
     }
 
@@ -155,7 +159,9 @@ public class WorkflowGuideService {
         }
         steps.add(archive);
         markCurrentByBusinessStatus(steps, meeting.getStatus());
+        markPostApprovalCurrent(steps, meeting.getStatus(), "approved", "archive_minutes", null, null);
         guide.setSteps(steps);
+        updateCurrentNodeKey(guide);
         return guide;
     }
 
@@ -176,7 +182,9 @@ public class WorkflowGuideService {
         }
         steps.add(reply);
         markCurrentByBusinessStatus(steps, report.getStatus());
+        markPostApprovalCurrent(steps, report.getStatus(), "approved", "reply", null, null);
         guide.setSteps(steps);
+        updateCurrentNodeKey(guide);
         return guide;
     }
 
@@ -196,9 +204,12 @@ public class WorkflowGuideService {
         steps.add(reimburse);
         WorkflowGuideResponse.Step recheck = step("finance_recheck", "财务复核", "approval",
                 "pending_finance".equals(travel.getStatus()) && travel.isReimbursementSubmitted() ? "current" : "waiting");
+        applyTravelRecheckRecord(recheck, id, travel);
         steps.add(recheck);
         steps.add(step("archive", "归档", "business", "archived".equals(travel.getStatus()) ? "done" : "waiting"));
+        markPostApprovalCurrent(steps, travel.getStatus(), "approved", "submit_reimbursement", null, null);
         guide.setSteps(steps);
+        updateCurrentNodeKey(guide);
         return guide;
     }
 
@@ -398,6 +409,87 @@ public class WorkflowGuideService {
             if (currentStatus != null && currentStatus.equals(step.getKey()) && "waiting".equals(step.getStatus())) {
                 step.setStatus("current");
             }
+        }
+    }
+
+    private void markDocumentCurrent(List<WorkflowGuideResponse.Step> steps, String businessStatus) {
+        if ("approved".equals(businessStatus)) {
+            markWaitingStepCurrent(steps, "distribute");
+        } else if ("archived".equals(businessStatus)) {
+            markStepDone(steps, "archive");
+        }
+    }
+
+    private void markPostApprovalCurrent(List<WorkflowGuideResponse.Step> steps, String businessStatus,
+                                         String approvedStatus, String approvedNextKey,
+                                         String usedStatus, String usedNextKey) {
+        if (approvedStatus != null && approvedStatus.equals(businessStatus)) {
+            markWaitingStepCurrent(steps, approvedNextKey);
+        }
+        if (usedStatus != null && usedStatus.equals(businessStatus)) {
+            markWaitingStepCurrent(steps, usedNextKey);
+        }
+    }
+
+    private void markWaitingStepCurrent(List<WorkflowGuideResponse.Step> steps, String key) {
+        if (key == null || hasCurrentOrRejected(steps)) {
+            return;
+        }
+        for (WorkflowGuideResponse.Step step : steps) {
+            if (key.equals(step.getKey()) && "waiting".equals(step.getStatus())) {
+                step.setStatus("current");
+                return;
+            }
+        }
+    }
+
+    private void markStepDone(List<WorkflowGuideResponse.Step> steps, String key) {
+        for (WorkflowGuideResponse.Step step : steps) {
+            if (key.equals(step.getKey()) && !"rejected".equals(step.getStatus())) {
+                step.setStatus("done");
+                return;
+            }
+        }
+    }
+
+    private boolean hasCurrentOrRejected(List<WorkflowGuideResponse.Step> steps) {
+        for (WorkflowGuideResponse.Step step : steps) {
+            if ("current".equals(step.getStatus()) || "rejected".equals(step.getStatus())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void updateCurrentNodeKey(WorkflowGuideResponse guide) {
+        if (guide.getSteps() == null) {
+            return;
+        }
+        for (WorkflowGuideResponse.Step step : guide.getSteps()) {
+            if ("current".equals(step.getStatus()) || "rejected".equals(step.getStatus())) {
+                guide.setCurrentNodeKey(step.getKey());
+                return;
+            }
+        }
+    }
+
+    private void applyTravelRecheckRecord(WorkflowGuideResponse.Step step, Long id, Travel travel) {
+        if (!travel.isReimbursementSubmitted()) {
+            return;
+        }
+        ApprovalRecord latestFinanceApproval = null;
+        for (ApprovalRecord record : db.approvals()) {
+            if ("travel".equals(record.getBizType()) && id.equals(record.getBizId())
+                    && ("approve".equals(record.getAction()) || "reject".equals(record.getAction()))) {
+                latestFinanceApproval = record;
+            }
+        }
+        if (latestFinanceApproval != null && "archived".equals(travel.getStatus())) {
+            step.setOperatorId(latestFinanceApproval.getOperatorId());
+            step.setOperatorName(userName(latestFinanceApproval.getOperatorId()));
+            step.setOpinion(latestFinanceApproval.getOpinion());
+            step.setTime(latestFinanceApproval.getCreatedAt());
+            step.setStatus("reject".equals(latestFinanceApproval.getAction()) ? "rejected" : "done");
         }
     }
 

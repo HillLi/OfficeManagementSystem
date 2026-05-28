@@ -37,7 +37,6 @@
       <h3>会议列表</h3>
       <el-table :data="meetings" border>
         <el-table-column prop="title" label="主题" min-width="160" />
-        <el-table-column label="申请人" width="104"><template #default="{ row }">{{ originatorNameOf(row, userOptions) }}</template></el-table-column>
         <el-table-column prop="expectedCount" label="人数" width="65" />
         <el-table-column label="类别" width="130"><template #default="{ row }">{{ labelOf('meeting_type', row.meetingType) }}</template></el-table-column>
         <el-table-column label="场地" width="72"><template #default="{ row }">{{ labelOf('venue_type', row.venueType) }}</template></el-table-column>
@@ -45,13 +44,17 @@
         <el-table-column label="大型活动" width="88"><template #default="{ row }">{{ row.largeActivity ? '是' : '否' }}</template></el-table-column>
         <el-table-column prop="signInCount" label="签到" width="65" />
         <el-table-column label="状态" width="115"><template #default="{ row }">{{ labelOf('business_status', row.status) }}</template></el-table-column>
-        <el-table-column label="办理" width="106">
+        <el-table-column label="办理" width="190">
           <template #default="{ row }">
-            <el-button v-if="row.status === 'approved'" size="small" type="success" @click="archiveMinutes(row)">纪要归档</el-button>
+            <div class="table-actions">
+              <el-button v-if="row.status === 'approved'" size="small" type="success" @click="archiveMinutes(row)">纪要归档</el-button>
+              <el-button size="small" @click="openFlowGuide(row)">流程导览</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
     </div>
+    <WorkflowGuideDialog ref="flowGuideDialog" />
   </div>
 </template>
 
@@ -60,7 +63,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
-import { originatorNameOf } from '../utils/userDisplay'
+import WorkflowGuideDialog from '../components/WorkflowGuideDialog.vue'
 
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
@@ -68,7 +71,7 @@ const optionsOf = dictionaryStore.optionsOf
 const currentUser = JSON.parse(sessionStorage.getItem('oms_user') || '{"id":2}')
 const rooms = ref([])
 const meetings = ref([])
-const userOptions = ref([])
+const flowGuideDialog = ref(null)
 const form = reactive({
   title: '系统试运行培训会',
   roomId: 1,
@@ -93,10 +96,8 @@ const isLarge = computed(() =>
 )
 
 const load = async () => {
-  const [roomRows, meetingRows, users] = await Promise.all([api.rooms(), api.meetings(), api.userOptions()])
-  rooms.value = roomRows
-  meetings.value = meetingRows
-  userOptions.value = users
+  rooms.value = await api.rooms()
+  meetings.value = await api.meetings()
 }
 const submit = async () => {
   try {
@@ -115,6 +116,9 @@ const archiveMinutes = async (meeting) => {
   await api.archiveMeetingMinutes(meeting.id, { minutes: value, signInCount: meeting.expectedCount })
   ElMessage.success('会议纪要已归档')
   await load()
+}
+const openFlowGuide = (meeting) => {
+  flowGuideDialog.value?.open('meeting', meeting.id)
 }
 
 onMounted(load)

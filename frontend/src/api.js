@@ -81,6 +81,7 @@ export const api = {
   markNotificationRead: (id) => http.post(`/workflow/notifications/${id}/read`),
   flowInstances: () => http.get('/workflow/instances'),
   flowTasks: (params) => http.get('/workflow/tasks', { params }),
+  workflowGuide: (params) => http.get('/workflow/guide', { params }),
 
   adminUsers: () => http.get('/admin/users'),
   adminUser: (id) => http.get(`/admin/users/${id}`),
