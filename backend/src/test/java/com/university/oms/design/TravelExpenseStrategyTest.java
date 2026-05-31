@@ -22,7 +22,7 @@ class TravelExpenseStrategyTest {
 
         TravelCheckResult result = new StandardTravelExpenseStrategy().check(travel);
 
-        assertEquals(new BigDecimal("3240.0"), result.getStandardAmount());
+        assertEquals(new BigDecimal("3240"), result.getStandardAmount());
         assertFalse(result.isOverLimit());
     }
 }

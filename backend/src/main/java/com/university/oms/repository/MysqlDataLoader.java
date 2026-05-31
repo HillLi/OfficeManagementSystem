@@ -207,6 +207,10 @@ public class MysqlDataLoader {
             a.setTakeOutLocation(rs.getString("take_out_location"));
             a.setSupervisorId((Long) rs.getObject("supervisor_id"));
             a.setReturnDeadline(toLocalDateTime(rs, "return_deadline"));
+            a.setRetentionUntil(toLocalDateTime(rs, "retention_until"));
+            if (a.getRetentionUntil() == null) {
+                a.setRetentionUntil(a.getCreatedAt().plusYears(10));
+            }
             a.setUseTime(toLocalDateTime(rs, "use_time"));
             a.setReturnTime(toLocalDateTime(rs, "return_time"));
             a.setStatus(rs.getString("status"));

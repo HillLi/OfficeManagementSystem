@@ -69,6 +69,7 @@ public class SealService {
         }
         SealApplication application = new SealApplication();
         db.fill(application, db.nextId());
+        application.setRetentionUntil(application.getCreatedAt().plusYears(10));
         application.setSealId(request.getSealId());
         application.setApplicantId(applicantId);
         application.setPurpose(request.getPurpose());

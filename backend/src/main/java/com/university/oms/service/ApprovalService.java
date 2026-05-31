@@ -69,6 +69,7 @@ public class ApprovalService {
 
         BaseEntity entity = findEntity(bizType, bizId);
         String oldStatus = getStatus(entity);
+        accessService.requireBusinessApproval(operator, bizType, bizId, oldStatus, flowConfig.getRequiredRole(oldStatus));
 
         BusinessState state = stateFactory.getState(flowKey(bizType, entity, oldStatus), oldStatus);
         String newStatus;

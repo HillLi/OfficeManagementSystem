@@ -80,6 +80,12 @@ public class BusinessAccessService {
         }
     }
 
+    public void requireBusinessApproval(User user, String bizType, Long bizId, String nodeKey, String approverRole) {
+        if (!canHandleApproval(user, bizType, bizId, nodeKey, approverRole)) {
+            deny("No permission to approve this business item");
+        }
+    }
+
     public void requireAttachmentUpload(String bizType, Long bizId) {
         if (!"seal".equals(bizType)) {
             deny("当前业务不支持文件上传");
@@ -155,10 +161,51 @@ public class BusinessAccessService {
         return false;
     }
 
+    public boolean canHandleApproval(User user, String bizType, Long bizId, String nodeKey, String approverRole) {
+        if (user == null) {
+            return false;
+        }
+        if (hasRole(user, "admin")) {
+            return true;
+        }
+        if (approverRole == null || !hasRole(user, approverRole)) {
+            return false;
+        }
+        if ("dept_head".equals(approverRole)) {
+            Long deptId = businessDepartment(bizType, bizId);
+            return deptId != null && deptId.equals(user.getDeptId());
+        }
+        return true;
+    }
+
     private boolean canReadForApplicant(User user, Long applicantId, Long deptId, boolean manager) {
         return user.getId().equals(applicantId)
                 || manager
                 || (hasRole(user, "dept_head") && deptId != null && deptId.equals(user.getDeptId()));
+    }
+
+    private Long businessDepartment(String bizType, Long bizId) {
+        if ("document".equals(bizType)) {
+            Document document = db.documents().get(bizId);
+            return document == null ? null : document.getDeptId();
+        }
+        if ("meeting".equals(bizType)) {
+            Meeting meeting = db.meetings().get(bizId);
+            return meeting == null ? null : departmentOf(meeting.getOrganizerId());
+        }
+        if ("seal".equals(bizType)) {
+            SealApplication application = db.sealApplications().get(bizId);
+            return application == null ? null : departmentOf(application.getApplicantId());
+        }
+        if ("travel".equals(bizType)) {
+            Travel travel = db.travels().get(bizId);
+            return travel == null ? null : departmentOf(travel.getApplicantId());
+        }
+        if ("report".equals(bizType)) {
+            Report report = db.reports().get(bizId);
+            return report == null ? null : report.getDeptId();
+        }
+        return null;
     }
 
     private Long departmentOf(Long userId) {

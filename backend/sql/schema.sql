@@ -106,6 +106,7 @@ CREATE TABLE IF NOT EXISTS oa_seal_log (
   take_out_location VARCHAR(255),
   supervisor_id BIGINT,
   return_deadline DATETIME,
+  retention_until DATETIME,
   use_time DATETIME,
   return_time DATETIME,
   status VARCHAR(20) NOT NULL,
@@ -342,6 +343,7 @@ CALL add_column_if_missing('oa_seal_log', 'take_out_reason', 'VARCHAR(500)');
 CALL add_column_if_missing('oa_seal_log', 'take_out_location', 'VARCHAR(255)');
 CALL add_column_if_missing('oa_seal_log', 'supervisor_id', 'BIGINT');
 CALL add_column_if_missing('oa_seal_log', 'return_deadline', 'DATETIME');
+CALL add_column_if_missing('oa_seal_log', 'retention_until', 'DATETIME');
 CALL add_column_if_missing('oa_meeting', 'accommodation_fee', 'DECIMAL(10,2)');
 CALL add_column_if_missing('oa_meeting', 'meal_fee', 'DECIMAL(10,2)');
 CALL add_column_if_missing('oa_meeting', 'venue_fee', 'DECIMAL(10,2)');
