@@ -307,7 +307,7 @@ public class WorkflowService {
             return;
         }
         for (User user : db.users().values()) {
-            if (user.getRoleKeys().contains(role)) {
+            if (accessService.canHandleApproval(user, bizType, bizId, nodeKey, role)) {
                 notifyUser(user.getId(), "新的待办审批", bizType + "#" + bizId + " 等待您处理：" + nodeKey, bizType, bizId);
             }
         }
@@ -316,7 +316,8 @@ public class WorkflowService {
     private boolean canHandle(User user, FlowTask task) {
         return user.getRoleKeys().contains("admin")
                 || (task.getApproverId() != null && task.getApproverId().equals(user.getId()))
-                || (task.getApproverRole() != null && user.getRoleKeys().contains(task.getApproverRole()));
+                || accessService.canHandleApproval(user, task.getBizType(), task.getBizId(), task.getNodeKey(),
+                        task.getApproverRole());
     }
 
     private boolean canViewInstance(User user, FlowInstance instance) {
