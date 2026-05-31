@@ -151,6 +151,9 @@ public class WorkflowGuideService {
             steps.add(approvalStep("meeting", id, "pending_security", "保卫部门审核"));
         }
         steps.add(approvalStep("meeting", id, "pending_dept", "部门负责人审批"));
+        if (meeting.isLargeActivity()) {
+            steps.add(approvalStep("meeting", id, "pending_leader", "校级领导审批"));
+        }
         steps.add(step("approved", "审批通过", "approval", reached(meeting.getStatus(), "approved") ? "done" : "waiting"));
         WorkflowGuideResponse.Step archive = recordedBusinessStep("meeting", id,
                 "archive_minutes", "纪要归档", "archive_minutes");
@@ -175,6 +178,7 @@ public class WorkflowGuideService {
         steps.add(recordedBusinessStep("report", id, "submit", "提交请示报告", "submit"));
         steps.add(approvalStep("report", id, "pending_secret_review", "保密审查"));
         steps.add(approvalStep("report", id, "pending_dept", "部门负责人审批"));
+        steps.add(approvalStep("report", id, "pending_leader", "校级领导审批"));
         steps.add(step("approved", "审批通过", "approval", reached(report.getStatus(), "approved") ? "done" : "waiting"));
         WorkflowGuideResponse.Step reply = recordedBusinessStep("report", id, "reply", "批复归档", "reply");
         if ("archived".equals(report.getStatus())) {
@@ -300,12 +304,16 @@ public class WorkflowGuideService {
         } else if ("report".equals(bizType)) {
             keys.add("pending_secret_review");
             keys.add("pending_dept");
+            keys.add("pending_leader");
         } else if ("meeting".equals(bizType)) {
             Meeting meeting = db.meetings().get(id);
             if (meeting != null && meeting.isLargeActivity()) {
                 keys.add("pending_security");
             }
             keys.add("pending_dept");
+            if (meeting != null && meeting.isLargeActivity()) {
+                keys.add("pending_leader");
+            }
         } else if ("seal".equals(bizType)) {
             SealApplication app = db.sealApplications().get(id);
             if (app != null) {

@@ -27,14 +27,22 @@ public class TravelService {
     private final BusinessAccessService accessService;
     private final DictionaryService dictionaryService;
 
-    private static final Map<String, List<String>> ALLOWED_TRANSPORT = new HashMap<>();
+    private static final Map<String, List<String>> TEACHING_RESEARCH_TRANSPORT = new HashMap<String, List<String>>();
+    private static final Map<String, List<String>> OTHER_BUSINESS_TRANSPORT = new HashMap<String, List<String>>();
     static {
-        ALLOWED_TRANSPORT.put("一类", Arrays.asList("飞机", "高铁一等座", "高铁二等座", "火车软卧"));
-        ALLOWED_TRANSPORT.put("二类", Arrays.asList("高铁一等座", "高铁二等座", "火车软卧", "火车硬卧"));
-        ALLOWED_TRANSPORT.put("三类", Arrays.asList("高铁二等座", "火车硬卧", "火车硬座"));
-        ALLOWED_TRANSPORT.put("level1", ALLOWED_TRANSPORT.get("一类"));
-        ALLOWED_TRANSPORT.put("level2", ALLOWED_TRANSPORT.get("二类"));
-        ALLOWED_TRANSPORT.put("level3", ALLOWED_TRANSPORT.get("三类"));
+        TEACHING_RESEARCH_TRANSPORT.put("一类", Arrays.asList("飞机头等舱", "飞机", "高铁商务座", "高铁一等座", "火车软卧"));
+        TEACHING_RESEARCH_TRANSPORT.put("二类", Arrays.asList("飞机公务舱", "飞机经济舱", "高铁一等座", "高铁二等座", "火车软卧", "火车硬卧"));
+        TEACHING_RESEARCH_TRANSPORT.put("三类", Arrays.asList("飞机经济舱", "高铁二等座", "火车硬卧", "火车硬座"));
+        TEACHING_RESEARCH_TRANSPORT.put("level1", TEACHING_RESEARCH_TRANSPORT.get("一类"));
+        TEACHING_RESEARCH_TRANSPORT.put("level2", TEACHING_RESEARCH_TRANSPORT.get("二类"));
+        TEACHING_RESEARCH_TRANSPORT.put("level3", TEACHING_RESEARCH_TRANSPORT.get("三类"));
+
+        OTHER_BUSINESS_TRANSPORT.put("一类", Arrays.asList("飞机头等舱", "飞机", "高铁商务座", "高铁一等座", "火车软卧"));
+        OTHER_BUSINESS_TRANSPORT.put("二类", Arrays.asList("飞机经济舱", "高铁一等座", "高铁二等座", "火车软卧", "火车硬卧"));
+        OTHER_BUSINESS_TRANSPORT.put("三类", Arrays.asList("飞机经济舱", "高铁二等座", "火车硬卧", "火车硬座"));
+        OTHER_BUSINESS_TRANSPORT.put("level1", OTHER_BUSINESS_TRANSPORT.get("一类"));
+        OTHER_BUSINESS_TRANSPORT.put("level2", OTHER_BUSINESS_TRANSPORT.get("二类"));
+        OTHER_BUSINESS_TRANSPORT.put("level3", OTHER_BUSINESS_TRANSPORT.get("三类"));
     }
 
     public TravelService(InMemoryDatabase db, ApprovalService approvalService, TravelExpenseStrategy expenseStrategy,
@@ -143,12 +151,19 @@ public class TravelService {
         if (staffLevel == null || staffLevel.isEmpty()) {
             throw new BusinessException("人员类别不能为空");
         }
-        List<String> allowed = ALLOWED_TRANSPORT.get(staffLevel);
+        List<String> allowed = allowedTransport(travel.getTravelType(), staffLevel);
         if (allowed == null) {
             throw new BusinessException("未知人员类别：" + staffLevel);
         }
         if (!allowed.contains(transport)) {
             throw new BusinessException(staffLevel + "人员不允许乘坐" + transport);
         }
+    }
+
+    private List<String> allowedTransport(String travelType, String staffLevel) {
+        if ("教学科研业务".equals(travelType)) {
+            return TEACHING_RESEARCH_TRANSPORT.get(staffLevel);
+        }
+        return OTHER_BUSINESS_TRANSPORT.get(staffLevel);
     }
 }

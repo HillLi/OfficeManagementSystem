@@ -88,11 +88,11 @@ public class JdbcDataPersistence implements DataPersistence {
     @Override
     public void saveSealApplication(SealApplication a) {
         jdbcTemplate.update("REPLACE INTO oa_seal_log " +
-                        "(id, seal_id, applicant_id, purpose, material_url, copies, take_out, matter_level, take_out_reason, take_out_location, supervisor_id, return_deadline, use_time, return_time, status, created_at) " +
-                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        "(id, seal_id, applicant_id, purpose, material_url, copies, take_out, matter_level, take_out_reason, take_out_location, supervisor_id, return_deadline, retention_until, use_time, return_time, status, created_at) " +
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 a.getId(), a.getSealId(), a.getApplicantId(), a.getPurpose(), a.getMaterialUrl(), a.getCopies(),
                 a.isTakeOut() ? 1 : 0, a.getMatterLevel(), a.getTakeOutReason(), a.getTakeOutLocation(),
-                a.getSupervisorId(), a.getReturnDeadline(), a.getUseTime(), a.getReturnTime(), a.getStatus(), a.getCreatedAt());
+                a.getSupervisorId(), a.getReturnDeadline(), a.getRetentionUntil(), a.getUseTime(), a.getReturnTime(), a.getStatus(), a.getCreatedAt());
     }
 
     @Override

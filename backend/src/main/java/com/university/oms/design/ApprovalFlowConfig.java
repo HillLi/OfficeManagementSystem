@@ -21,9 +21,9 @@ public class ApprovalFlowConfig {
         flows.put("seal_dept_major", Arrays.asList("pending_dept", "pending_office", "approved"));
         flows.put("seal_school_major", Arrays.asList("pending_office", "pending_leader", "approved"));
         flows.put("meeting", Arrays.asList("pending_dept", "approved"));
-        flows.put("meeting_large", Arrays.asList("pending_security", "pending_dept", "approved"));
+        flows.put("meeting_large", Arrays.asList("pending_security", "pending_dept", "pending_leader", "approved"));
         flows.put("travel", Arrays.asList("pending_dept", "pending_finance", "approved"));
-        flows.put("report", Arrays.asList("pending_secret_review", "pending_dept", "approved"));
+        flows.put("report", Arrays.asList("pending_secret_review", "pending_dept", "pending_leader", "approved"));
 
         statusToRole.put("pending_dept", "dept_head");
         statusToRole.put("pending_office", "office_admin");

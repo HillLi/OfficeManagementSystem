@@ -70,6 +70,7 @@ public class InMemoryDatabase {
         addRoom(4L, "百周年纪念讲堂", 2000, "视频会议,音响,投影仪,灯光", "百周年纪念讲堂");
 
         meetingFeeStandards.put("国内管理会议", new BigDecimal("550"));
+        meetingFeeStandards.put("国内管理会议（讲席教授3人及以上）", new BigDecimal("600"));
         meetingFeeStandards.put("国内业务会议", new BigDecimal("950"));
         meetingFeeStandards.put("在华举办的国际会议", new BigDecimal("1200"));
     }
@@ -156,25 +157,30 @@ public class InMemoryDatabase {
         addDictItem(262L, "seal_status", "lent", "外带中", 30, false);
         addDictItem(263L, "seal_status", "retired", "已停用", 40, false);
         addDictItem(264L, "meeting_type", "国内管理会议", "国内管理会议", 10, false);
-        addDictItem(265L, "meeting_type", "国内业务会议", "国内业务会议", 20, false);
-        addDictItem(266L, "meeting_type", "在华举办的国际会议", "在华举办的国际会议", 30, false);
-        addDictItem(267L, "venue_type", "室内", "室内", 10, false);
-        addDictItem(268L, "venue_type", "室外", "室外", 20, false);
-        addDictItem(269L, "report_type", "请示", "请示", 10, false);
-        addDictItem(270L, "report_type", "报告", "报告", 20, false);
-        addDictItem(271L, "staff_level", "一类", "一类人员", 10, false);
-        addDictItem(272L, "staff_level", "二类", "二类人员", 20, false);
-        addDictItem(273L, "staff_level", "三类", "三类人员", 30, false);
-        addDictItem(274L, "travel_type", "教学科研业务", "教学科研业务", 10, false);
-        addDictItem(275L, "travel_type", "行政管理业务", "行政管理业务", 20, false);
-        addDictItem(276L, "travel_type", "学术交流", "学术交流", 30, false);
-        addDictItem(277L, "travel_type", "其他业务", "其他业务", 40, false);
-        addDictItem(278L, "transport_type", "飞机", "飞机", 10, false);
-        addDictItem(279L, "transport_type", "高铁一等座", "高铁一等座", 20, false);
-        addDictItem(280L, "transport_type", "高铁二等座", "高铁二等座", 30, false);
-        addDictItem(281L, "transport_type", "火车软卧", "火车软卧", 40, false);
-        addDictItem(282L, "transport_type", "火车硬卧", "火车硬卧", 50, false);
-        addDictItem(283L, "transport_type", "火车硬座", "火车硬座", 60, false);
+        addDictItem(265L, "meeting_type", "国内管理会议（讲席教授3人及以上）", "国内管理会议（讲席教授3人及以上）", 20, false);
+        addDictItem(266L, "meeting_type", "国内业务会议", "国内业务会议", 30, false);
+        addDictItem(267L, "meeting_type", "在华举办的国际会议", "在华举办的国际会议", 40, false);
+        addDictItem(268L, "venue_type", "室内", "室内", 10, false);
+        addDictItem(269L, "venue_type", "室外", "室外", 20, false);
+        addDictItem(270L, "report_type", "请示", "请示", 10, false);
+        addDictItem(271L, "report_type", "报告", "报告", 20, false);
+        addDictItem(272L, "staff_level", "一类", "一类人员", 10, false);
+        addDictItem(273L, "staff_level", "二类", "二类人员", 20, false);
+        addDictItem(274L, "staff_level", "三类", "三类人员", 30, false);
+        addDictItem(275L, "travel_type", "教学科研业务", "教学科研业务", 10, false);
+        addDictItem(276L, "travel_type", "行政管理业务", "行政管理业务", 20, false);
+        addDictItem(277L, "travel_type", "学术交流", "学术交流", 30, false);
+        addDictItem(278L, "travel_type", "其他业务", "其他业务", 40, false);
+        addDictItem(279L, "transport_type", "飞机头等舱", "飞机头等舱", 10, false);
+        addDictItem(280L, "transport_type", "飞机公务舱", "飞机公务舱", 20, false);
+        addDictItem(281L, "transport_type", "飞机经济舱", "飞机经济舱", 30, false);
+        addDictItem(282L, "transport_type", "飞机", "飞机", 40, false);
+        addDictItem(283L, "transport_type", "高铁商务座", "高铁商务座", 50, false);
+        addDictItem(284L, "transport_type", "高铁一等座", "高铁一等座", 60, false);
+        addDictItem(285L, "transport_type", "高铁二等座", "高铁二等座", 70, false);
+        addDictItem(286L, "transport_type", "火车软卧", "火车软卧", 80, false);
+        addDictItem(287L, "transport_type", "火车硬卧", "火车硬卧", 90, false);
+        addDictItem(288L, "transport_type", "火车硬座", "火车硬座", 100, false);
     }
 
     private void addDictType(Long id, String code, String name, boolean systemType) {
