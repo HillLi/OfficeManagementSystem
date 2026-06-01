@@ -6,7 +6,6 @@ import { dirname, resolve } from 'node:path'
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const source = readFileSync(resolve(currentDir, 'Announcements.vue'), 'utf-8')
 const apiSource = readFileSync(resolve(currentDir, '../api.js'), 'utf-8')
-const detailSource = readFileSync(resolve(currentDir, 'AnnouncementDetail.vue'), 'utf-8')
 
 describe('Announcements page department scope', () => {
   it('selects departments by name while keeping id values for persistence', () => {
@@ -28,16 +27,17 @@ describe('Announcements page department scope', () => {
     expect(apiSource).toContain('deptMap.set')
   })
 
-  it('keeps list rows as links to detail pages instead of rendering full content', () => {
+  it('keeps list rows as detail dialog triggers instead of rendering full content', () => {
     expect(source).not.toContain('<p class="content-text">{{ row.content }}</p>')
-    expect(source).toContain(':href="announcementHref(row.id)"')
-    expect(source).toContain('target="_blank"')
-    expect(source).toContain("name: 'announcement-detail'")
+    expect(source).toContain('@click.prevent="openAnnouncement(row)"')
+    expect(source).toContain('v-model="detailVisible"')
+    expect(source).toContain('{{ selectedAnnouncement.content }}')
+    expect(source).not.toContain('target="_blank"')
+    expect(source).not.toContain("name: 'announcement-detail'")
   })
 
-  it('uses a dedicated detail page to load and display the full announcement content', () => {
-    expect(apiSource).toContain('announcement: (id) => http.get(`/announcements/${id}`)')
-    expect(detailSource).toContain('api.announcement(route.params.id)')
-    expect(detailSource).toContain('{{ announcement.content }}')
+  it('uses list data for the detail dialog instead of a separate detail API route', () => {
+    expect(apiSource).not.toContain('announcement: (id) => http.get(`/announcements/${id}`)')
+    expect(source).toContain('selectedAnnouncement.value = row')
   })
 })

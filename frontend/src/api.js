@@ -69,7 +69,6 @@ export const api = {
   logout: () => http.post('/auth/logout'),
   dashboard: () => http.get('/dashboard'),
   announcements: (params) => http.get('/announcements', { params }),
-  announcement: (id) => http.get(`/announcements/${id}`),
   latestAnnouncements: (params) => http.get('/announcements/latest', { params }),
   createAnnouncement: (data) => http.post('/announcements', data),
   updateAnnouncement: (id, data) => http.put(`/announcements/${id}`, data),

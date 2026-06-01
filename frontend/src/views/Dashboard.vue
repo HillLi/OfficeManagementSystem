@@ -19,12 +19,7 @@
         <div v-for="item in latestAnnouncements" :key="item.id" class="announcement-row">
           <div>
             <el-tag v-if="item.pinned" type="danger" size="small">置顶</el-tag>
-            <a
-              class="announcement-title-link"
-              :href="announcementHref(item.id)"
-              target="_blank"
-              rel="noopener noreferrer"
-            >{{ item.title }}</a>
+            <button type="button" class="announcement-title-link" @click="openAnnouncement(item)">{{ item.title }}</button>
             <p>{{ item.content }}</p>
           </div>
           <span>{{ formatDate(item.publishedAt || item.updatedAt || item.createdAt) }}</span>
@@ -46,6 +41,27 @@
         <div ref="gaugeRef" style="height:300px"></div>
       </div>
     </div>
+
+    <el-dialog
+      v-model="detailVisible"
+      title="公告详情"
+      width="720px"
+      :close-on-click-modal="false"
+    >
+      <article v-if="selectedAnnouncement" class="announcement-detail">
+        <div class="detail-meta">
+          <el-tag v-if="selectedAnnouncement.pinned" type="danger" size="small">置顶</el-tag>
+          <el-tag size="small">{{ categoryText(selectedAnnouncement.category) }}</el-tag>
+          <span>发布范围：{{ scopeText(selectedAnnouncement) }}</span>
+          <span>{{ formatDate(selectedAnnouncement.publishedAt || selectedAnnouncement.updatedAt || selectedAnnouncement.createdAt) }}</span>
+        </div>
+        <h2>{{ selectedAnnouncement.title }}</h2>
+        <div class="detail-content">{{ selectedAnnouncement.content }}</div>
+      </article>
+      <template #footer>
+        <el-button @click="detailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -55,16 +71,16 @@ import { BarChart, GaugeChart, PieChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import { init, use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { useRouter } from 'vue-router'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
 
 use([BarChart, GaugeChart, PieChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
 
 const dictionaryStore = useDictionaryStore()
-const router = useRouter()
 const labelOf = dictionaryStore.labelOf
 const latestAnnouncements = ref([])
+const detailVisible = ref(false)
+const selectedAnnouncement = ref(null)
 const stats = reactive({
   documentCount: 0, pendingDocumentCount: 0, sealApplyCount: 0,
   meetingCount: 0, travelCount: 0, reportCount: 0, largeActivityCount: 0,
@@ -132,8 +148,17 @@ function formatDate(value) {
   return value ? String(value).replace('T', ' ').slice(0, 16) : '-'
 }
 
-function announcementHref(id) {
-  return router.resolve({ name: 'announcement-detail', params: { id } }).href
+function openAnnouncement(item) {
+  selectedAnnouncement.value = item
+  detailVisible.value = true
+}
+
+function categoryText(category) {
+  return { notice: '通知', announcement: '公告', policy: '制度' }[category] || '通知'
+}
+
+function scopeText(row) {
+  return row.targetType === 'dept' ? (row.targetDeptName || '指定部门') : '全校'
 }
 </script>
 
@@ -165,8 +190,14 @@ function announcementHref(id) {
 }
 
 .announcement-title-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
   margin-left: 6px;
   color: #1f5f8b;
+  cursor: pointer;
+  font: inherit;
   font-weight: 700;
   text-decoration: none;
 }
@@ -187,6 +218,27 @@ function announcementHref(id) {
 .announcement-row span {
   color: #657487;
   white-space: nowrap;
+}
+
+.announcement-detail h2 {
+  margin: 14px 0 16px;
+  font-size: 22px;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.detail-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #657487;
+}
+
+.detail-content {
+  white-space: pre-wrap;
+  line-height: 1.8;
+  color: #303946;
 }
 
 @media (max-width: 700px) {

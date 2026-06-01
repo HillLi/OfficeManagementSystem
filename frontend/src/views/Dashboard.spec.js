@@ -8,15 +8,18 @@ const dashboardSource = readFileSync(resolve(currentDir, 'Dashboard.vue'), 'utf-
 const routerSource = readFileSync(resolve(currentDir, '../router/index.js'), 'utf-8')
 
 describe('Dashboard announcement links', () => {
-  it('opens the selected announcement title in a new detail tab', () => {
-    expect(dashboardSource).toContain(':href="announcementHref(item.id)"')
-    expect(dashboardSource).toContain('target="_blank"')
-    expect(dashboardSource).toContain("name: 'announcement-detail'")
+  it('opens the selected announcement title in a detail dialog without a new tab', () => {
+    expect(dashboardSource).toContain('@click="openAnnouncement(item)"')
+    expect(dashboardSource).toContain('v-model="detailVisible"')
+    expect(dashboardSource).toContain(':close-on-click-modal="false"')
+    expect(dashboardSource).toContain('{{ selectedAnnouncement.content }}')
+    expect(dashboardSource).not.toContain('target="_blank"')
+    expect(dashboardSource).not.toContain('announcementHref')
   })
 
-  it('registers a dedicated announcement detail route', () => {
-    expect(routerSource).toContain("name: 'announcement-detail'")
-    expect(routerSource).toContain("path: '/announcements/:id'")
-    expect(routerSource).toContain('AnnouncementDetail')
+  it('does not register a separate announcement detail page route', () => {
+    expect(routerSource).not.toContain("name: 'announcement-detail'")
+    expect(routerSource).not.toContain("path: '/announcements/:id'")
+    expect(routerSource).not.toContain('AnnouncementDetail')
   })
 })

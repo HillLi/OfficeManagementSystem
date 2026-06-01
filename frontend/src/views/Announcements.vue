@@ -23,12 +23,11 @@
                 <el-tag v-if="row.pinned" type="danger" size="small">置顶</el-tag>
                 <el-tag size="small">{{ categoryText(row.category) }}</el-tag>
                 <h3>
-                  <a
+                  <button
+                    type="button"
                     class="announcement-title-link"
-                    :href="announcementHref(row.id)"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >{{ row.title }}</a>
+                    @click.prevent="openAnnouncement(row)"
+                  >{{ row.title }}</button>
                 </h3>
               </div>
               <span class="time">{{ formatDate(row.publishedAt || row.updatedAt || row.createdAt) }}</span>
@@ -42,12 +41,11 @@
         <el-table :data="allRows" border stripe>
           <el-table-column label="标题" min-width="220">
             <template #default="{ row }">
-              <a
+              <button
+                type="button"
                 class="table-title-link"
-                :href="announcementHref(row.id)"
-                target="_blank"
-                rel="noopener noreferrer"
-              >{{ row.title }}</a>
+                @click.prevent="openAnnouncement(row)"
+              >{{ row.title }}</button>
             </template>
           </el-table-column>
           <el-table-column label="范围" min-width="120">
@@ -74,6 +72,27 @@
         </el-table>
       </el-tab-pane>
     </el-tabs>
+
+    <el-dialog
+      v-model="detailVisible"
+      title="公告详情"
+      width="720px"
+      :close-on-click-modal="false"
+    >
+      <article v-if="selectedAnnouncement" class="announcement-detail">
+        <div class="detail-meta">
+          <el-tag v-if="selectedAnnouncement.pinned" type="danger" size="small">置顶</el-tag>
+          <el-tag size="small">{{ categoryText(selectedAnnouncement.category) }}</el-tag>
+          <span>发布范围：{{ scopeText(selectedAnnouncement) }}</span>
+          <span>{{ formatDate(selectedAnnouncement.publishedAt || selectedAnnouncement.updatedAt || selectedAnnouncement.createdAt) }}</span>
+        </div>
+        <h2>{{ selectedAnnouncement.title }}</h2>
+        <div class="detail-content">{{ selectedAnnouncement.content }}</div>
+      </article>
+      <template #footer>
+        <el-button @click="detailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="dialogVisible" :title="editing ? '编辑公告' : '新增公告'" width="620px" :close-on-click-modal="false">
       <el-form label-position="top">
@@ -110,16 +129,16 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useRouter } from 'vue-router'
 import { api } from '../api'
 import { useUserStore } from '../stores/user'
 
 const userStore = useUserStore()
-const router = useRouter()
 const activeTab = ref('published')
 const rows = ref([])
 const allRows = ref([])
 const deptOptions = ref([])
+const detailVisible = ref(false)
+const selectedAnnouncement = ref(null)
 const dialogVisible = ref(false)
 const editing = ref(null)
 const saving = ref(false)
@@ -164,6 +183,11 @@ function openEdit(row) {
     pinned: Boolean(row.pinned)
   })
   dialogVisible.value = true
+}
+
+function openAnnouncement(row) {
+  selectedAnnouncement.value = row
+  detailVisible.value = true
 }
 
 async function save() {
@@ -216,10 +240,6 @@ function deptName(deptId) {
 
 function formatDate(value) {
   return value ? String(value).replace('T', ' ').slice(0, 16) : '-'
-}
-
-function announcementHref(id) {
-  return router.resolve({ name: 'announcement-detail', params: { id } }).href
 }
 
 onMounted(load)
@@ -278,7 +298,13 @@ onMounted(load)
 
 .announcement-title-link,
 .table-title-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
   color: #1f5f8b;
+  cursor: pointer;
+  font: inherit;
   font-weight: 700;
   text-decoration: none;
 }
@@ -291,6 +317,27 @@ onMounted(load)
 .form-tip {
   margin-left: 10px;
   font-size: 13px;
+}
+
+.announcement-detail h2 {
+  margin: 14px 0 16px;
+  font-size: 22px;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.detail-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #657487;
+}
+
+.detail-content {
+  white-space: pre-wrap;
+  line-height: 1.8;
+  color: #303946;
 }
 
 @media (max-width: 700px) {
