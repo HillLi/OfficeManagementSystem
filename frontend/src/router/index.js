@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Approvals from '../views/Approvals.vue'
+import Announcements from '../views/Announcements.vue'
 import Dashboard from '../views/Dashboard.vue'
 import Documents from '../views/Documents.vue'
 import Login from '../views/Login.vue'
@@ -22,6 +23,7 @@ const routes = [
   { path: '/travels', component: Travels },
   { path: '/reports', component: Reports },
   { path: '/approvals', component: Approvals },
+  { path: '/announcements', component: Announcements },
   { path: '/statistics', component: Statistics },
   { path: '/admin/users', component: UserManage },
   { path: '/admin/dictionaries', component: DictionaryManage }

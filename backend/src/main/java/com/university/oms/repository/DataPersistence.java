@@ -21,6 +21,7 @@ public interface DataPersistence {
     void saveAttachment(Attachment attachment);
     void saveAuditLog(AuditLog auditLog);
     void saveNotification(Notification notification);
+    default void saveAnnouncement(Announcement announcement) { }
     void saveFlowInstance(FlowInstance flowInstance);
     void saveFlowTask(FlowTask flowTask);
 }

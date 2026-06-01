@@ -176,6 +176,16 @@ public class JdbcDataPersistence implements DataPersistence {
     }
 
     @Override
+    public void saveAnnouncement(Announcement a) {
+        jdbcTemplate.update("REPLACE INTO sys_announcement " +
+                        "(id, title, content, category, target_type, target_dept_id, pinned, status, publisher_id, published_at, created_at, updated_at) " +
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                a.getId(), a.getTitle(), a.getContent(), a.getCategory(), a.getTargetType(), a.getTargetDeptId(),
+                a.isPinned() ? 1 : 0, a.getStatus(), a.getPublisherId(), a.getPublishedAt(),
+                a.getCreatedAt(), a.getUpdatedAt());
+    }
+
+    @Override
     public void saveFlowInstance(FlowInstance i) {
         jdbcTemplate.update("REPLACE INTO oa_flow_instance " +
                         "(id, biz_type, biz_id, current_node_key, status, starter_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)",

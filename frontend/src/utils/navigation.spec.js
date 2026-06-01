@@ -14,6 +14,7 @@ describe('role based navigation', () => {
       '/meetings',
       '/travels',
       '/reports',
+      '/announcements',
       '/statistics'
     ])
   })
@@ -27,6 +28,7 @@ describe('role based navigation', () => {
       '/travels',
       '/reports',
       '/approvals',
+      '/announcements',
       '/statistics'
     ])
     expect(pathsFor('school_leader')).toEqual([
@@ -37,6 +39,7 @@ describe('role based navigation', () => {
       '/travels',
       '/reports',
       '/approvals',
+      '/announcements',
       '/statistics'
     ])
     expect(pathsFor('office_admin')).toEqual([
@@ -46,19 +49,21 @@ describe('role based navigation', () => {
       '/meetings',
       '/reports',
       '/approvals',
+      '/announcements',
       '/statistics'
     ])
   })
 
   it('shows responsibility menus for specialist roles', () => {
-    expect(pathsFor('finance_staff')).toEqual(['/dashboard', '/travels', '/approvals', '/statistics'])
-    expect(pathsFor('security_staff')).toEqual(['/dashboard', '/meetings', '/approvals', '/statistics'])
-    expect(pathsFor('seal_keeper')).toEqual(['/dashboard', '/seals', '/statistics'])
+    expect(pathsFor('finance_staff')).toEqual(['/dashboard', '/travels', '/approvals', '/announcements', '/statistics'])
+    expect(pathsFor('security_staff')).toEqual(['/dashboard', '/meetings', '/approvals', '/announcements', '/statistics'])
+    expect(pathsFor('seal_keeper')).toEqual(['/dashboard', '/seals', '/announcements', '/statistics'])
   })
 
   it('limits an administrator to dashboard statistics and system administration', () => {
     expect(pathsFor('admin')).toEqual([
       '/dashboard',
+      '/announcements',
       '/statistics',
       '/admin/users',
       '/admin/dictionaries'
@@ -69,6 +74,7 @@ describe('role based navigation', () => {
     expect(canAccessPath('/travels', ['finance_staff'])).toBe(true)
     expect(canAccessPath('/reports', ['finance_staff'])).toBe(false)
     expect(canAccessPath('/approvals', ['finance_staff'])).toBe(true)
+    expect(canAccessPath('/announcements', ['office_user'])).toBe(true)
     expect(canAccessPath('/admin/dictionaries', ['office_user'])).toBe(false)
     expect(canAccessPath('/admin/dictionaries', ['admin'])).toBe(true)
   })
