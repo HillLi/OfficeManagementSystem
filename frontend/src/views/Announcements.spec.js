@@ -26,4 +26,18 @@ describe('Announcements page department scope', () => {
     expect(apiSource).toContain("http.get('/auth/user-options')")
     expect(apiSource).toContain('deptMap.set')
   })
+
+  it('keeps list rows as detail dialog triggers instead of rendering full content', () => {
+    expect(source).not.toContain('<p class="content-text">{{ row.content }}</p>')
+    expect(source).toContain('@click.prevent="openAnnouncement(row)"')
+    expect(source).toContain('v-model="detailVisible"')
+    expect(source).toContain('{{ selectedAnnouncement.content }}')
+    expect(source).not.toContain('target="_blank"')
+    expect(source).not.toContain("name: 'announcement-detail'")
+  })
+
+  it('uses list data for the detail dialog instead of a separate detail API route', () => {
+    expect(apiSource).not.toContain('announcement: (id) => http.get(`/announcements/${id}`)')
+    expect(source).toContain('selectedAnnouncement.value = row')
+  })
 })

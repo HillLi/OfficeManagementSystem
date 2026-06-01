@@ -5,20 +5,21 @@ import { dirname, resolve } from 'node:path'
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const dashboardSource = readFileSync(resolve(currentDir, 'Dashboard.vue'), 'utf-8')
-const announcementsSource = readFileSync(resolve(currentDir, 'Announcements.vue'), 'utf-8')
+const routerSource = readFileSync(resolve(currentDir, '../router/index.js'), 'utf-8')
 
 describe('Dashboard announcement links', () => {
-  it('opens the selected announcement content from the latest announcement title', () => {
+  it('opens the selected announcement title in a detail dialog without a new tab', () => {
     expect(dashboardSource).toContain('@click="openAnnouncement(item)"')
-    expect(dashboardSource).toContain("path: '/announcements'")
-    expect(dashboardSource).toContain('focus: item.id')
+    expect(dashboardSource).toContain('v-model="detailVisible"')
+    expect(dashboardSource).toContain(':close-on-click-modal="false"')
+    expect(dashboardSource).toContain('{{ selectedAnnouncement.content }}')
+    expect(dashboardSource).not.toContain('target="_blank"')
+    expect(dashboardSource).not.toContain('announcementHref')
   })
 
-  it('lets the announcements page focus and highlight an announcement by route query', () => {
-    expect(announcementsSource).toContain("useRoute")
-    expect(announcementsSource).toContain(':id="`announcement-${row.id}`"')
-    expect(announcementsSource).toContain("route.query.focus")
-    expect(announcementsSource).toContain('scrollIntoView')
-    expect(announcementsSource).toContain('focusedAnnouncementId')
+  it('does not register a separate announcement detail page route', () => {
+    expect(routerSource).not.toContain("name: 'announcement-detail'")
+    expect(routerSource).not.toContain("path: '/announcements/:id'")
+    expect(routerSource).not.toContain('AnnouncementDetail')
   })
 })

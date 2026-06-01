@@ -14,20 +14,24 @@
         <div v-else class="announcement-list">
           <article
             v-for="row in publishedRows"
-            :id="`announcement-${row.id}`"
             :key="row.id"
             class="announcement-card"
-            :class="{ pinned: row.pinned, focused: focusedAnnouncementId === String(row.id) }"
+            :class="{ pinned: row.pinned }"
           >
             <div class="card-title">
               <div>
                 <el-tag v-if="row.pinned" type="danger" size="small">置顶</el-tag>
                 <el-tag size="small">{{ categoryText(row.category) }}</el-tag>
-                <h3>{{ row.title }}</h3>
+                <h3>
+                  <button
+                    type="button"
+                    class="announcement-title-link"
+                    @click.prevent="openAnnouncement(row)"
+                  >{{ row.title }}</button>
+                </h3>
               </div>
               <span class="time">{{ formatDate(row.publishedAt || row.updatedAt || row.createdAt) }}</span>
             </div>
-            <p class="content-text">{{ row.content }}</p>
             <div class="scope-text">发布范围：{{ scopeText(row) }}</div>
           </article>
         </div>
@@ -35,7 +39,15 @@
 
       <el-tab-pane v-if="canMaintain" label="公告维护" name="manage">
         <el-table :data="allRows" border stripe>
-          <el-table-column prop="title" label="标题" min-width="220" />
+          <el-table-column label="标题" min-width="220">
+            <template #default="{ row }">
+              <button
+                type="button"
+                class="table-title-link"
+                @click.prevent="openAnnouncement(row)"
+              >{{ row.title }}</button>
+            </template>
+          </el-table-column>
           <el-table-column label="范围" min-width="120">
             <template #default="{ row }">{{ scopeText(row) }}</template>
           </el-table-column>
@@ -60,6 +72,27 @@
         </el-table>
       </el-tab-pane>
     </el-tabs>
+
+    <el-dialog
+      v-model="detailVisible"
+      title="公告详情"
+      width="720px"
+      :close-on-click-modal="false"
+    >
+      <article v-if="selectedAnnouncement" class="announcement-detail">
+        <div class="detail-meta">
+          <el-tag v-if="selectedAnnouncement.pinned" type="danger" size="small">置顶</el-tag>
+          <el-tag size="small">{{ categoryText(selectedAnnouncement.category) }}</el-tag>
+          <span>发布范围：{{ scopeText(selectedAnnouncement) }}</span>
+          <span>{{ formatDate(selectedAnnouncement.publishedAt || selectedAnnouncement.updatedAt || selectedAnnouncement.createdAt) }}</span>
+        </div>
+        <h2>{{ selectedAnnouncement.title }}</h2>
+        <div class="detail-content">{{ selectedAnnouncement.content }}</div>
+      </article>
+      <template #footer>
+        <el-button @click="detailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="dialogVisible" :title="editing ? '编辑公告' : '新增公告'" width="620px" :close-on-click-modal="false">
       <el-form label-position="top">
@@ -94,23 +127,21 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useRoute } from 'vue-router'
 import { api } from '../api'
 import { useUserStore } from '../stores/user'
 
 const userStore = useUserStore()
-const route = useRoute()
 const activeTab = ref('published')
 const rows = ref([])
 const allRows = ref([])
 const deptOptions = ref([])
+const detailVisible = ref(false)
+const selectedAnnouncement = ref(null)
 const dialogVisible = ref(false)
 const editing = ref(null)
 const saving = ref(false)
-const focusedAnnouncementId = ref('')
-let focusTimer = null
 const form = reactive({
   title: '',
   content: '',
@@ -133,7 +164,6 @@ async function load() {
     allRows.value = draftRows
     deptOptions.value = depts
   }
-  await focusAnnouncementFromRoute()
 }
 
 function openCreate() {
@@ -153,6 +183,11 @@ function openEdit(row) {
     pinned: Boolean(row.pinned)
   })
   dialogVisible.value = true
+}
+
+function openAnnouncement(row) {
+  selectedAnnouncement.value = row
+  detailVisible.value = true
 }
 
 async function save() {
@@ -207,24 +242,7 @@ function formatDate(value) {
   return value ? String(value).replace('T', ' ').slice(0, 16) : '-'
 }
 
-async function focusAnnouncementFromRoute() {
-  const focusId = Array.isArray(route.query.focus) ? route.query.focus[0] : route.query.focus
-  if (!focusId) {
-    return
-  }
-  activeTab.value = 'published'
-  focusedAnnouncementId.value = String(focusId)
-  await nextTick()
-  document.getElementById(`announcement-${focusId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  clearTimeout(focusTimer)
-  focusTimer = setTimeout(() => {
-    focusedAnnouncementId.value = ''
-  }, 3000)
-}
-
 onMounted(load)
-onUnmounted(() => clearTimeout(focusTimer))
-watch(() => route.query.focus, focusAnnouncementFromRoute)
 </script>
 
 <style scoped>
@@ -273,24 +291,53 @@ watch(() => route.query.focus, focusAnnouncementFromRoute)
   box-shadow: 0 8px 24px rgba(196, 86, 86, 0.08);
 }
 
-.announcement-card.focused {
-  border-color: #409eff;
-  box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.18);
-}
-
 .card-title h3 {
   display: inline-block;
   margin-left: 8px;
 }
 
-.content-text {
-  white-space: pre-wrap;
-  line-height: 1.7;
+.announcement-title-link,
+.table-title-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #1f5f8b;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.announcement-title-link:hover,
+.table-title-link:hover {
+  text-decoration: underline;
 }
 
 .form-tip {
   margin-left: 10px;
   font-size: 13px;
+}
+
+.announcement-detail h2 {
+  margin: 14px 0 16px;
+  font-size: 22px;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.detail-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #657487;
+}
+
+.detail-content {
+  white-space: pre-wrap;
+  line-height: 1.8;
+  color: #303946;
 }
 
 @media (max-width: 700px) {
