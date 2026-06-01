@@ -1,53 +1,54 @@
 <template>
   <div class="travel-page">
-    <h2 class="page-title">差旅审批</h2>
-    <el-tabs v-model="activeTab">
-      <el-tab-pane label="差旅申请" name="application">
-        <div class="tab-form">
-          <el-form label-position="top">
-            <el-form-item label="目的地"><el-input v-model="form.destination" /></el-form-item>
-            <el-form-item label="出差事由"><el-input v-model="form.reason" /></el-form-item>
-            <el-form-item label="出发日期"><el-date-picker v-model="form.startDate" value-format="YYYY-MM-DD" /></el-form-item>
-            <el-form-item label="返回日期"><el-date-picker v-model="form.endDate" value-format="YYYY-MM-DD" /></el-form-item>
-            <el-form-item label="人员类别">
-              <el-select v-model="form.staffLevel"><el-option v-for="item in optionsOf('staff_level')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
-            </el-form-item>
-            <el-form-item label="出差类型">
-              <el-select v-model="form.travelType"><el-option v-for="item in optionsOf('travel_type')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
-            </el-form-item>
-            <el-form-item label="交通工具">
-              <el-select v-model="form.transport"><el-option v-for="item in optionsOf('transport_type')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
-            </el-form-item>
-            <el-form-item label="预算"><el-input-number v-model="form.budget" :min="0" /></el-form-item>
-          </el-form>
-          <el-button type="primary" @click="submit">提交差旅</el-button>
-        </div>
-      </el-tab-pane>
+    <div class="page-header">
+      <h2 class="page-title">差旅审批</h2>
+      <el-button type="primary" @click="applicationDialog = true">差旅申请</el-button>
+    </div>
 
-      <el-tab-pane label="办理记录" name="records">
-        <el-table :data="rows" border>
-          <el-table-column prop="destination" label="目的地" />
-          <el-table-column label="人员类别" width="92"><template #default="{ row }">{{ labelOf('staff_level', row.staffLevel) }}</template></el-table-column>
-          <el-table-column label="出差类型" width="120"><template #default="{ row }">{{ labelOf('travel_type', row.travelType) }}</template></el-table-column>
-          <el-table-column label="交通工具" width="110"><template #default="{ row }">{{ labelOf('transport_type', row.transport) }}</template></el-table-column>
-          <el-table-column prop="budget" label="预算" width="92" />
-          <el-table-column prop="actualExpense" label="实报" width="92" />
-          <el-table-column label="标准" width="92"><template #default="{ row }">{{ row.checkResult?.standardAmount }}</template></el-table-column>
-          <el-table-column label="超标" width="65"><template #default="{ row }">{{ row.checkResult?.exceeded ? '是' : '否' }}</template></el-table-column>
-          <el-table-column label="状态" width="128"><template #default="{ row }">{{ labelOf('business_status', row.status) }}</template></el-table-column>
-          <el-table-column label="办理" width="190">
-            <template #default="{ row }">
-              <div class="table-actions">
-                <el-button v-if="row.status === 'approved'" size="small" type="success" @click="openReimburse(row)">报销登记</el-button>
-                <el-button size="small" @click="openFlowGuide(row)">流程导览</el-button>
-              </div>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-tab-pane>
-    </el-tabs>
+    <el-table :data="rows" border>
+      <el-table-column prop="destination" label="目的地" />
+      <el-table-column label="人员类别" width="92"><template #default="{ row }">{{ labelOf('staff_level', row.staffLevel) }}</template></el-table-column>
+      <el-table-column label="出差类型" width="120"><template #default="{ row }">{{ labelOf('travel_type', row.travelType) }}</template></el-table-column>
+      <el-table-column label="交通工具" width="110"><template #default="{ row }">{{ labelOf('transport_type', row.transport) }}</template></el-table-column>
+      <el-table-column prop="budget" label="预算" width="92" />
+      <el-table-column prop="actualExpense" label="实报" width="92" />
+      <el-table-column label="标准" width="92"><template #default="{ row }">{{ row.checkResult?.standardAmount }}</template></el-table-column>
+      <el-table-column label="超标" width="65"><template #default="{ row }">{{ row.checkResult?.exceeded ? '是' : '否' }}</template></el-table-column>
+      <el-table-column label="状态" width="128"><template #default="{ row }">{{ labelOf('business_status', row.status) }}</template></el-table-column>
+      <el-table-column label="办理" width="190">
+        <template #default="{ row }">
+          <div class="table-actions">
+            <el-button v-if="row.status === 'approved'" size="small" type="success" @click="openReimburse(row)">报销登记</el-button>
+            <el-button size="small" @click="openFlowGuide(row)">流程导览</el-button>
+          </div>
+        </template>
+      </el-table-column>
+    </el-table>
 
-    <el-dialog v-model="reimburseDialog" title="差旅报销登记" width="520px">
+    <el-dialog v-model="applicationDialog" title="差旅申请" width="560px" :close-on-click-modal="false">
+      <el-form label-position="top">
+        <el-form-item label="目的地"><el-input v-model="form.destination" /></el-form-item>
+        <el-form-item label="出差事由"><el-input v-model="form.reason" /></el-form-item>
+        <el-form-item label="出发日期"><el-date-picker v-model="form.startDate" value-format="YYYY-MM-DD" /></el-form-item>
+        <el-form-item label="返回日期"><el-date-picker v-model="form.endDate" value-format="YYYY-MM-DD" /></el-form-item>
+        <el-form-item label="人员类别">
+          <el-select v-model="form.staffLevel"><el-option v-for="item in optionsOf('staff_level')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
+        </el-form-item>
+        <el-form-item label="出差类型">
+          <el-select v-model="form.travelType"><el-option v-for="item in optionsOf('travel_type')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
+        </el-form-item>
+        <el-form-item label="交通工具">
+          <el-select v-model="form.transport"><el-option v-for="item in optionsOf('transport_type')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
+        </el-form-item>
+        <el-form-item label="预算"><el-input-number v-model="form.budget" :min="0" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="applicationDialog = false">取消</el-button>
+        <el-button type="primary" @click="submit">提交差旅</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="reimburseDialog" title="差旅报销登记" width="520px" :close-on-click-modal="false">
       <el-form label-position="top">
         <el-form-item label="实际报销金额"><el-input-number v-model="reimburseForm.actualExpense" :min="0" /></el-form-item>
         <el-form-item label="票据附件地址"><el-input v-model="reimburseForm.receiptUrl" /></el-form-item>
@@ -73,8 +74,8 @@ const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
 const optionsOf = dictionaryStore.optionsOf
 const currentUser = JSON.parse(sessionStorage.getItem('oms_user') || '{"id":2}')
-const activeTab = ref('application')
 const rows = ref([])
+const applicationDialog = ref(false)
 const reimburseDialog = ref(false)
 const currentTravel = ref(null)
 const flowGuideDialog = ref(null)
@@ -96,6 +97,7 @@ const submit = async () => {
   try {
     await api.createTravel(form)
     ElMessage.success('差旅申请已提交')
+    applicationDialog.value = false
     await load()
   } catch (error) {
     ElMessage.error(error.message || '提交失败')
@@ -127,9 +129,6 @@ onMounted(load)
 
 <style scoped>
 .page-title {
-  margin-top: 0;
-}
-.tab-form {
-  max-width: 520px;
+  margin: 0;
 }
 </style>

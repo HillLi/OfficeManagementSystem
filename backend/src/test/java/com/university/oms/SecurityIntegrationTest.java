@@ -59,6 +59,16 @@ class SecurityIntegrationTest {
     }
 
     @Test
+    void ordinaryUserCanReadDepartmentOptionsForNameBasedSelections() throws Exception {
+        String token = login("user");
+
+        mockMvc.perform(get("/api/auth/dept-options").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id").exists())
+                .andExpect(jsonPath("$.data[0].deptName").exists());
+    }
+
+    @Test
     void approvalOperatorComesFromToken() throws Exception {
         String userToken = login("user");
         String headToken = login("head");

@@ -90,6 +90,14 @@ body {
   margin-top: 12px;
 }
 
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
 .table-actions {
   margin-top: 0;
 }
@@ -126,6 +134,11 @@ body {
     width: max-content;
     min-width: 100%;
     border-right: 0;
+  }
+
+  .page-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .side .el-menu-item {

@@ -1,5 +1,5 @@
 <template>
-  <el-dialog v-model="visible" title="流程运行导览" width="min(980px, calc(100vw - 24px))">
+  <el-dialog v-model="visible" title="流程运行导览" width="min(980px, calc(100vw - 24px))" :close-on-click-modal="false">
     <el-skeleton v-if="loading" :rows="5" animated />
     <template v-else-if="guide">
       <div class="flow-guide-header">

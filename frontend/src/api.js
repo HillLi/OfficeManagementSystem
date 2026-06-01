@@ -1,9 +1,36 @@
 import axios from 'axios'
+import { ElMessage } from 'element-plus'
 
 const http = axios.create({
   baseURL: '/api',
   timeout: 10000
 })
+
+let authExpiredHandling = false
+const AUTH_EXPIRED_MESSAGE = '用户未登录或登录已失效'
+
+export function isAuthExpiredError(error) {
+  const status = error?.response?.status
+  const message = error?.response?.data?.message || error?.message || ''
+  return status === 401 || message.includes(AUTH_EXPIRED_MESSAGE)
+}
+
+export function handleAuthExpired({
+  sessionStorage = globalThis.window?.sessionStorage || globalThis.sessionStorage,
+  location = globalThis.window?.location || globalThis.location,
+  notify = (message) => ElMessage.warning(message)
+} = {}) {
+  sessionStorage?.removeItem('oms_user')
+  sessionStorage?.removeItem('oms_token')
+  if (authExpiredHandling) {
+    return
+  }
+  authExpiredHandling = true
+  notify('用户未登录或登录已失效，请重新登录')
+  if (location?.pathname !== '/login') {
+    location?.assign?.('/login')
+  }
+}
 
 http.interceptors.request.use((config) => {
   const token = sessionStorage.getItem('oms_token')
@@ -19,9 +46,22 @@ http.interceptors.response.use((response) => {
   }
   const body = response.data
   if (!body.success) {
-    return Promise.reject(new Error(body.message || '请求失败'))
+    const error = new Error(body.message || '请求失败')
+    error.response = response
+    if (isAuthExpiredError(error)) {
+      handleAuthExpired()
+    }
+    return Promise.reject(error)
   }
   return body.data
+}, (error) => {
+  if (isAuthExpiredError(error)) {
+    handleAuthExpired()
+  }
+  if (error?.response?.data?.message) {
+    error.message = error.response.data.message
+  }
+  return Promise.reject(error)
 })
 
 export const api = {
@@ -38,6 +78,25 @@ export const api = {
   exportStatistics: () => http.get('/statistics/export', { responseType: 'blob' }),
   users: () => http.get('/auth/users'),
   userOptions: () => http.get('/auth/user-options'),
+  deptOptions: () => http.get('/auth/dept-options').catch((error) => {
+    if (error?.response?.status !== 404) {
+      return Promise.reject(error)
+    }
+    return http.get('/admin/depts').catch((adminError) => {
+      if (![403, 404].includes(adminError?.response?.status)) {
+        return Promise.reject(adminError)
+      }
+      return http.get('/auth/user-options').then((users) => {
+        const deptMap = new Map()
+        users.forEach((user) => {
+          if (user.deptId && user.deptName) {
+            deptMap.set(user.deptId, { id: user.deptId, deptName: user.deptName })
+          }
+        })
+        return Array.from(deptMap.values())
+      })
+    })
+  }),
   dictionaries: () => http.get('/dictionaries'),
   dictionaryVersion: () => http.get('/dictionaries/version'),
 

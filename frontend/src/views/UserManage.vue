@@ -53,7 +53,7 @@
     </el-tabs>
 
     <!-- 用户编辑/新增对话框 -->
-    <el-dialog :title="userDialogTitle" v-model="userDialogVisible" width="520px">
+    <el-dialog :title="userDialogTitle" v-model="userDialogVisible" width="520px" :close-on-click-modal="false">
       <el-form :model="userForm" label-width="80px">
         <el-form-item label="用户名" v-if="!editingUser">
           <el-input v-model="userForm.username" placeholder="登录用户名" />
@@ -87,7 +87,7 @@
     </el-dialog>
 
     <!-- 部门编辑/新增对话框 -->
-    <el-dialog :title="deptDialogTitle" v-model="deptDialogVisible" width="420px">
+    <el-dialog :title="deptDialogTitle" v-model="deptDialogVisible" width="420px" :close-on-click-modal="false">
       <el-form :model="deptForm" label-width="80px">
         <el-form-item label="部门名称">
           <el-input v-model="deptForm.deptName" placeholder="请输入部门名称" />

@@ -4,6 +4,7 @@ import com.university.oms.common.ApiResponse;
 import com.university.oms.dto.LoginRequest;
 import com.university.oms.dto.LoginResult;
 import com.university.oms.dto.UserOption;
+import com.university.oms.model.Department;
 import com.university.oms.model.User;
 import com.university.oms.service.AuthService;
 import org.springframework.web.bind.annotation.*;
@@ -39,5 +40,10 @@ public class AuthController {
     @GetMapping("/user-options")
     public ApiResponse<List<UserOption>> userOptions() {
         return ApiResponse.ok(authService.userOptions());
+    }
+
+    @GetMapping("/dept-options")
+    public ApiResponse<List<Department>> deptOptions() {
+        return ApiResponse.ok(authService.deptOptions());
     }
 }

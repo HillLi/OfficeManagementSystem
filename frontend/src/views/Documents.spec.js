@@ -6,11 +6,12 @@ import { describe, expect, it } from 'vitest'
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const source = readFileSync(resolve(currentDir, 'Documents.vue'), 'utf-8')
 
-describe('Documents page tabs', () => {
-  it('uses tabs to separate document drafting from document records', () => {
-    expect(source).toContain('<el-tabs v-model="activeTab">')
-    expect(source).toContain('<el-tab-pane label="公文起草" name="draft">')
-    expect(source).toContain('<el-tab-pane label="公文列表" name="records">')
-    expect(source).toContain("const activeTab = ref('draft')")
+describe('Documents page layout', () => {
+  it('keeps document records visible and opens drafting from a dialog button', () => {
+    expect(source).not.toContain('<el-tabs')
+    expect(source).toContain('@click="draftDialog = true"')
+    expect(source).toContain('<el-table :data="rows" border>')
+    expect(source).toContain('<el-dialog v-model="draftDialog" title="公文起草"')
+    expect(source).toContain('const draftDialog = ref(false)')
   })
 })

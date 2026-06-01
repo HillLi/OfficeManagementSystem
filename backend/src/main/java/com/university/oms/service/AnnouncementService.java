@@ -4,6 +4,7 @@ import com.university.oms.common.BusinessException;
 import com.university.oms.common.ForbiddenException;
 import com.university.oms.dto.AnnouncementRequest;
 import com.university.oms.model.Announcement;
+import com.university.oms.model.Department;
 import com.university.oms.model.User;
 import com.university.oms.repository.DataPersistence;
 import com.university.oms.repository.InMemoryDatabase;
@@ -33,6 +34,7 @@ public class AnnouncementService {
         return db.announcements().values().stream()
                 .filter(a -> includeDrafts && maintainer || canRead(user, a))
                 .sorted(announcementOrder())
+                .map(this::withTargetDeptName)
                 .collect(Collectors.toList());
     }
 
@@ -47,7 +49,7 @@ public class AnnouncementService {
         if (!canMaintain(user) && !canRead(user, announcement)) {
             throw new ForbiddenException("无权查看该公告");
         }
-        return announcement;
+        return withTargetDeptName(announcement);
     }
 
     public Announcement create(AnnouncementRequest request) {
@@ -61,7 +63,7 @@ public class AnnouncementService {
         db.announcements().put(announcement.getId(), announcement);
         persistence.saveAnnouncement(announcement);
         workflowService.audit("announcement", "create", "announcement", announcement.getId(), announcement.getTitle());
-        return announcement;
+        return withTargetDeptName(announcement);
     }
 
     public Announcement update(Long id, AnnouncementRequest request) {
@@ -71,7 +73,7 @@ public class AnnouncementService {
         announcement.setUpdatedAt(LocalDateTime.now());
         persistence.saveAnnouncement(announcement);
         workflowService.audit("announcement", "update", "announcement", announcement.getId(), announcement.getTitle());
-        return announcement;
+        return withTargetDeptName(announcement);
     }
 
     public Announcement publish(Long id) {
@@ -84,7 +86,7 @@ public class AnnouncementService {
         announcement.setUpdatedAt(LocalDateTime.now());
         persistence.saveAnnouncement(announcement);
         workflowService.audit("announcement", "publish", "announcement", announcement.getId(), announcement.getTitle());
-        return announcement;
+        return withTargetDeptName(announcement);
     }
 
     public Announcement withdraw(Long id) {
@@ -94,7 +96,7 @@ public class AnnouncementService {
         announcement.setUpdatedAt(LocalDateTime.now());
         persistence.saveAnnouncement(announcement);
         workflowService.audit("announcement", "withdraw", "announcement", announcement.getId(), announcement.getTitle());
-        return announcement;
+        return withTargetDeptName(announcement);
     }
 
     private void apply(Announcement announcement, AnnouncementRequest request) {
@@ -108,9 +110,25 @@ public class AnnouncementService {
         if ("dept".equals(targetType) && request.getTargetDeptId() == null) {
             throw new BusinessException("部门公告必须选择发布部门");
         }
+        if ("dept".equals(targetType) && !db.departments().containsKey(request.getTargetDeptId())) {
+            throw new BusinessException("发布部门不存在");
+        }
         announcement.setTargetType(targetType);
         announcement.setTargetDeptId("dept".equals(targetType) ? request.getTargetDeptId() : null);
+        announcement.setTargetDeptName("dept".equals(targetType) ? resolveDeptName(request.getTargetDeptId()) : null);
         announcement.setPinned(Boolean.TRUE.equals(request.getPinned()));
+    }
+
+    private Announcement withTargetDeptName(Announcement announcement) {
+        announcement.setTargetDeptName("dept".equals(announcement.getTargetType())
+                ? resolveDeptName(announcement.getTargetDeptId())
+                : null);
+        return announcement;
+    }
+
+    private String resolveDeptName(Long deptId) {
+        Department dept = deptId == null ? null : db.departments().get(deptId);
+        return dept == null ? null : dept.getDeptName();
     }
 
     private Announcement require(Long id) {
