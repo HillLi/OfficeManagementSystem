@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Approvals from '../views/Approvals.vue'
+import AnnouncementDetail from '../views/AnnouncementDetail.vue'
 import Announcements from '../views/Announcements.vue'
 import Dashboard from '../views/Dashboard.vue'
 import Documents from '../views/Documents.vue'
@@ -24,6 +25,7 @@ const routes = [
   { path: '/reports', component: Reports },
   { path: '/approvals', component: Approvals },
   { path: '/announcements', component: Announcements },
+  { path: '/announcements/:id', name: 'announcement-detail', component: AnnouncementDetail },
   { path: '/statistics', component: Statistics },
   { path: '/admin/users', component: UserManage },
   { path: '/admin/dictionaries', component: DictionaryManage }

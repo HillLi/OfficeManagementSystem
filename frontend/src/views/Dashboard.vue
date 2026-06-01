@@ -19,7 +19,12 @@
         <div v-for="item in latestAnnouncements" :key="item.id" class="announcement-row">
           <div>
             <el-tag v-if="item.pinned" type="danger" size="small">置顶</el-tag>
-            <button type="button" class="announcement-title-btn" @click="openAnnouncement(item)">{{ item.title }}</button>
+            <a
+              class="announcement-title-link"
+              :href="announcementHref(item.id)"
+              target="_blank"
+              rel="noopener noreferrer"
+            >{{ item.title }}</a>
             <p>{{ item.content }}</p>
           </div>
           <span>{{ formatDate(item.publishedAt || item.updatedAt || item.createdAt) }}</span>
@@ -127,8 +132,8 @@ function formatDate(value) {
   return value ? String(value).replace('T', ' ').slice(0, 16) : '-'
 }
 
-function openAnnouncement(item) {
-  router.push({ path: '/announcements', query: { focus: item.id } })
+function announcementHref(id) {
+  return router.resolve({ name: 'announcement-detail', params: { id } }).href
 }
 </script>
 
@@ -159,19 +164,14 @@ function openAnnouncement(item) {
   padding-top: 10px;
 }
 
-.announcement-title-btn {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  padding: 0;
+.announcement-title-link {
   margin-left: 6px;
   color: #1f5f8b;
-  cursor: pointer;
-  font: inherit;
   font-weight: 700;
+  text-decoration: none;
 }
 
-.announcement-title-btn:hover {
+.announcement-title-link:hover {
   text-decoration: underline;
 }
 
