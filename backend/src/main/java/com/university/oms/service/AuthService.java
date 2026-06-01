@@ -4,6 +4,7 @@ import com.university.oms.common.BusinessException;
 import com.university.oms.dto.LoginRequest;
 import com.university.oms.dto.LoginResult;
 import com.university.oms.dto.UserOption;
+import com.university.oms.model.Department;
 import com.university.oms.model.User;
 import com.university.oms.repository.DataPersistence;
 import com.university.oms.repository.InMemoryDatabase;
@@ -52,6 +53,10 @@ public class AuthService {
             options.add(new UserOption(user.getId(), user.getRealName(), user.getDeptId(), user.getDeptName()));
         }
         return options;
+    }
+
+    public List<Department> deptOptions() {
+        return new ArrayList<Department>(db.departments().values());
     }
 
     public void logout(String authorization) {

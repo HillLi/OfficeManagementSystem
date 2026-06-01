@@ -33,7 +33,7 @@
       </el-tab-pane>
     </el-tabs>
 
-    <el-dialog v-model="typeDialog" :title="editingType ? '编辑字典类型' : '新增字典类型'" width="460px">
+    <el-dialog v-model="typeDialog" :title="editingType ? '编辑字典类型' : '新增字典类型'" width="460px" :close-on-click-modal="false">
       <el-form label-position="top">
         <el-form-item label="类型代码"><el-input v-model="typeForm.dictType" :disabled="Boolean(editingType)" /></el-form-item>
         <el-form-item label="类型名称"><el-input v-model="typeForm.dictName" /></el-form-item>
@@ -46,7 +46,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="itemDialog" :title="editingItem ? '编辑字典项目' : '新增字典项目'" width="460px">
+    <el-dialog v-model="itemDialog" :title="editingItem ? '编辑字典项目' : '新增字典项目'" width="460px" :close-on-click-modal="false">
       <el-form label-position="top">
         <el-form-item label="项目代码"><el-input v-model="itemForm.dictCode" :disabled="Boolean(editingItem)" /></el-form-item>
         <el-form-item label="显示值"><el-input v-model="itemForm.dictLabel" /></el-form-item>

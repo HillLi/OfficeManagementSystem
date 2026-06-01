@@ -38,12 +38,14 @@ class AnnouncementIntegrationTest {
                 officeToken).get("data");
         long id = created.get("id").asLong();
         assertEquals("draft", created.get("status").asText());
+        assertEquals("信息科学技术学院", created.get("targetDeptName").asText());
 
         JsonNode published = postJson("/api/announcements/" + id + "/publish", "{}", officeToken).get("data");
         assertEquals("published", published.get("status").asText());
 
         JsonNode visibleRows = getJson("/api/announcements", userToken).get("data");
         assertTrue(contains(visibleRows, id));
+        assertEquals("信息科学技术学院", find(visibleRows, id).get("targetDeptName").asText());
 
         JsonNode hiddenRows = getJson("/api/announcements", financeToken).get("data");
         assertFalse(contains(hiddenRows, id));
@@ -85,12 +87,16 @@ class AnnouncementIntegrationTest {
     }
 
     private boolean contains(JsonNode rows, long id) {
+        return find(rows, id) != null;
+    }
+
+    private JsonNode find(JsonNode rows, long id) {
         for (JsonNode row : rows) {
             if (row.get("id").asLong() == id) {
-                return true;
+                return row;
             }
         }
-        return false;
+        return null;
     }
 
     private JsonNode getJson(String url, String token) throws Exception {

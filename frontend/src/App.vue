@@ -14,7 +14,7 @@
           <el-menu-item v-for="item in visibleItems" :key="item.index" :index="item.index">
             <span class="menu-label">
               {{ item.label }}
-              <el-badge v-if="menuBadge(item) > 0" :value="menuBadge(item)" class="menu-badge" />
+              <span v-if="menuBadge(item) > 0" class="menu-badge-count">{{ menuBadge(item) }}</span>
             </span>
           </el-menu-item>
         </el-menu>
@@ -88,7 +88,19 @@ const handleLogout = async () => {
   gap: 8px;
 }
 
-.menu-badge {
-  margin-right: 2px;
+.menu-badge-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #f56c6c;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
 }
 </style>

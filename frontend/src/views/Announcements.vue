@@ -14,9 +14,10 @@
         <div v-else class="announcement-list">
           <article
             v-for="row in publishedRows"
+            :id="`announcement-${row.id}`"
             :key="row.id"
             class="announcement-card"
-            :class="{ pinned: row.pinned }"
+            :class="{ pinned: row.pinned, focused: focusedAnnouncementId === String(row.id) }"
           >
             <div class="card-title">
               <div>
@@ -60,7 +61,7 @@
       </el-tab-pane>
     </el-tabs>
 
-    <el-dialog v-model="dialogVisible" :title="editing ? '编辑公告' : '新增公告'" width="620px">
+    <el-dialog v-model="dialogVisible" :title="editing ? '编辑公告' : '新增公告'" width="620px" :close-on-click-modal="false">
       <el-form label-position="top">
         <el-form-item label="标题"><el-input v-model="form.title" /></el-form-item>
         <el-form-item label="分类">
@@ -76,9 +77,10 @@
             <el-radio value="dept">指定部门</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item v-if="form.targetType === 'dept'" label="部门编号">
-          <el-input-number v-model="form.targetDeptId" :min="1" />
-          <span class="form-tip">当前系统已有部门编号可在用户管理中查看。</span>
+        <el-form-item v-if="form.targetType === 'dept'" label="指定部门">
+          <el-select v-model="form.targetDeptId" filterable placeholder="请选择部门" style="width: 100%">
+            <el-option v-for="dept in deptOptions" :key="dept.id" :label="dept.deptName" :value="dept.id" />
+          </el-select>
         </el-form-item>
         <el-form-item label="置顶"><el-switch v-model="form.pinned" /></el-form-item>
         <el-form-item label="正文"><el-input v-model="form.content" type="textarea" :rows="7" /></el-form-item>
@@ -92,18 +94,23 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRoute } from 'vue-router'
 import { api } from '../api'
 import { useUserStore } from '../stores/user'
 
 const userStore = useUserStore()
+const route = useRoute()
 const activeTab = ref('published')
 const rows = ref([])
 const allRows = ref([])
+const deptOptions = ref([])
 const dialogVisible = ref(false)
 const editing = ref(null)
 const saving = ref(false)
+const focusedAnnouncementId = ref('')
+let focusTimer = null
 const form = reactive({
   title: '',
   content: '',
@@ -119,8 +126,14 @@ const publishedRows = computed(() => rows.value)
 async function load() {
   rows.value = await api.announcements()
   if (canMaintain.value) {
-    allRows.value = await api.announcements({ includeDrafts: true })
+    const [draftRows, depts] = await Promise.all([
+      api.announcements({ includeDrafts: true }),
+      api.deptOptions()
+    ])
+    allRows.value = draftRows
+    deptOptions.value = depts
   }
+  await focusAnnouncementFromRoute()
 }
 
 function openCreate() {
@@ -183,14 +196,35 @@ function categoryText(category) {
 }
 
 function scopeText(row) {
-  return row.targetType === 'dept' ? `部门 #${row.targetDeptId}` : '全校'
+  return row.targetType === 'dept' ? (row.targetDeptName || deptName(row.targetDeptId) || '指定部门') : '全校'
+}
+
+function deptName(deptId) {
+  return deptOptions.value.find((dept) => dept.id === deptId)?.deptName
 }
 
 function formatDate(value) {
   return value ? String(value).replace('T', ' ').slice(0, 16) : '-'
 }
 
+async function focusAnnouncementFromRoute() {
+  const focusId = Array.isArray(route.query.focus) ? route.query.focus[0] : route.query.focus
+  if (!focusId) {
+    return
+  }
+  activeTab.value = 'published'
+  focusedAnnouncementId.value = String(focusId)
+  await nextTick()
+  document.getElementById(`announcement-${focusId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  clearTimeout(focusTimer)
+  focusTimer = setTimeout(() => {
+    focusedAnnouncementId.value = ''
+  }, 3000)
+}
+
 onMounted(load)
+onUnmounted(() => clearTimeout(focusTimer))
+watch(() => route.query.focus, focusAnnouncementFromRoute)
 </script>
 
 <style scoped>
@@ -237,6 +271,11 @@ onMounted(load)
 .announcement-card.pinned {
   border-color: #f3b5b5;
   box-shadow: 0 8px 24px rgba(196, 86, 86, 0.08);
+}
+
+.announcement-card.focused {
+  border-color: #409eff;
+  box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.18);
 }
 
 .card-title h3 {

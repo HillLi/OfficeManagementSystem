@@ -19,7 +19,7 @@
         <div v-for="item in latestAnnouncements" :key="item.id" class="announcement-row">
           <div>
             <el-tag v-if="item.pinned" type="danger" size="small">置顶</el-tag>
-            <strong>{{ item.title }}</strong>
+            <button type="button" class="announcement-title-btn" @click="openAnnouncement(item)">{{ item.title }}</button>
             <p>{{ item.content }}</p>
           </div>
           <span>{{ formatDate(item.publishedAt || item.updatedAt || item.createdAt) }}</span>
@@ -50,12 +50,14 @@ import { BarChart, GaugeChart, PieChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import { init, use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
+import { useRouter } from 'vue-router'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
 
 use([BarChart, GaugeChart, PieChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
 
 const dictionaryStore = useDictionaryStore()
+const router = useRouter()
 const labelOf = dictionaryStore.labelOf
 const latestAnnouncements = ref([])
 const stats = reactive({
@@ -124,6 +126,10 @@ function initCharts() {
 function formatDate(value) {
   return value ? String(value).replace('T', ' ').slice(0, 16) : '-'
 }
+
+function openAnnouncement(item) {
+  router.push({ path: '/announcements', query: { focus: item.id } })
+}
 </script>
 
 <style scoped>
@@ -153,8 +159,20 @@ function formatDate(value) {
   padding-top: 10px;
 }
 
-.announcement-row strong {
+.announcement-title-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
   margin-left: 6px;
+  color: #1f5f8b;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.announcement-title-btn:hover {
+  text-decoration: underline;
 }
 
 .announcement-row p {

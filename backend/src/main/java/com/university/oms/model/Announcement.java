@@ -8,6 +8,7 @@ public class Announcement extends BaseEntity {
     private String category;
     private String targetType;
     private Long targetDeptId;
+    private String targetDeptName;
     private boolean pinned;
     private String status;
     private Long publisherId;
@@ -23,6 +24,8 @@ public class Announcement extends BaseEntity {
     public void setTargetType(String targetType) { this.targetType = targetType; }
     public Long getTargetDeptId() { return targetDeptId; }
     public void setTargetDeptId(Long targetDeptId) { this.targetDeptId = targetDeptId; }
+    public String getTargetDeptName() { return targetDeptName; }
+    public void setTargetDeptName(String targetDeptName) { this.targetDeptName = targetDeptName; }
     public boolean isPinned() { return pinned; }
     public void setPinned(boolean pinned) { this.pinned = pinned; }
     public String getStatus() { return status; }
