@@ -41,6 +41,7 @@ public class MysqlDataLoader {
         db.attachments().clear();
         db.auditLogs().clear();
         db.notifications().clear();
+        db.announcements().clear();
         db.flowInstances().clear();
         db.flowTasks().clear();
 
@@ -61,6 +62,7 @@ public class MysqlDataLoader {
         loadAttachments();
         loadAuditLogs();
         loadNotifications();
+        loadAnnouncements();
         loadFlowInstances();
         loadFlowTasks();
         db.ensureNextIdAtLeast(maxId());
@@ -364,6 +366,26 @@ public class MysqlDataLoader {
         });
     }
 
+    private void loadAnnouncements() {
+        jdbcTemplate.query("SELECT * FROM sys_announcement", rs -> {
+            Announcement a = new Announcement();
+            db.fill(a, rs.getLong("id"));
+            a.setTitle(rs.getString("title"));
+            a.setContent(rs.getString("content"));
+            a.setCategory(rs.getString("category"));
+            a.setTargetType(rs.getString("target_type"));
+            Number targetDeptId = (Number) rs.getObject("target_dept_id");
+            a.setTargetDeptId(targetDeptId == null ? null : targetDeptId.longValue());
+            a.setPinned(rs.getInt("pinned") == 1);
+            a.setStatus(rs.getString("status"));
+            Number publisherId = (Number) rs.getObject("publisher_id");
+            a.setPublisherId(publisherId == null ? null : publisherId.longValue());
+            a.setPublishedAt(toLocalDateTime(rs, "published_at"));
+            a.setUpdatedAt(toLocalDateTime(rs, "updated_at"));
+            db.announcements().put(a.getId(), a);
+        });
+    }
+
     private void loadFlowInstances() {
         jdbcTemplate.query("SELECT * FROM oa_flow_instance", rs -> {
             FlowInstance i = new FlowInstance();
@@ -407,6 +429,7 @@ public class MysqlDataLoader {
                         "COALESCE((SELECT MAX(id) FROM sys_attachment),0)," +
                         "COALESCE((SELECT MAX(id) FROM sys_operation_log),0)," +
                         "COALESCE((SELECT MAX(id) FROM sys_notification),0)," +
+                        "COALESCE((SELECT MAX(id) FROM sys_announcement),0)," +
                         "COALESCE((SELECT MAX(id) FROM sys_dict_type),0)," +
                         "COALESCE((SELECT MAX(id) FROM sys_dict_item),0)," +
                         "COALESCE((SELECT MAX(id) FROM oa_flow_instance),0)," +

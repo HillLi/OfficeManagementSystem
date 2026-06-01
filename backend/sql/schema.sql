@@ -264,6 +264,23 @@ CREATE TABLE IF NOT EXISTS sys_notification (
   INDEX idx_notification_receiver (receiver_id, read_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS sys_announcement (
+  id BIGINT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  content LONGTEXT NOT NULL,
+  category VARCHAR(30) DEFAULT 'notice',
+  target_type VARCHAR(20) DEFAULT 'all',
+  target_dept_id BIGINT,
+  pinned TINYINT DEFAULT 0,
+  status VARCHAR(20) NOT NULL,
+  publisher_id BIGINT,
+  published_at DATETIME,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_announcement_status (status, pinned, published_at),
+  INDEX idx_announcement_scope (target_type, target_dept_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS oa_flow_instance (
   id BIGINT PRIMARY KEY,
   biz_type VARCHAR(20) NOT NULL,

@@ -9,6 +9,7 @@ export const menuItems = [
   { index: '/travels', label: '差旅审批', roles: ['office_user', 'dept_head', 'school_leader', 'finance_staff'] },
   { index: '/reports', label: '请示报告', roles: INITIATOR_ROLES },
   { index: '/approvals', label: '审批任务', roles: APPROVAL_ROLES },
+  { index: '/announcements', label: '通知公告' },
   { index: '/statistics', label: '统计报表' },
   { index: '/admin/users', label: '用户管理', roles: ['admin'] },
   { index: '/admin/dictionaries', label: '字典管理', roles: ['admin'] }
