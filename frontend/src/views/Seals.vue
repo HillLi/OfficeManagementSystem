@@ -1,7 +1,9 @@
 <template>
   <div class="seal-page">
-    <div class="page-header">
-      <h2 class="page-title">用印管理</h2>
+    <div class="panel report-header">
+      <h3>用印管理</h3>
+    </div>
+    <div class="page-actions">
       <div class="header-actions">
         <el-button type="primary" @click="applicationDialog = true">用印申请</el-button>
         <el-button v-if="canManage" @click="transferDialog = true">印章移交</el-button>
@@ -338,9 +340,6 @@ onMounted(load)
 </script>
 
 <style scoped>
-.page-title {
-  margin: 0;
-}
 .header-actions {
   display: flex;
   flex-wrap: wrap;

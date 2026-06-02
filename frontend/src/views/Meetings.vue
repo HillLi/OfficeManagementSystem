@@ -1,7 +1,9 @@
 <template>
   <div class="meeting-page">
-    <div class="page-header">
-      <h2 class="page-title">会议管理</h2>
+    <div class="panel report-header">
+      <h3>会议管理</h3>
+    </div>
+    <div class="page-actions">
       <el-button type="primary" @click="applicationDialog = true">会议申请</el-button>
     </div>
 
@@ -128,9 +130,3 @@ const openFlowGuide = (meeting) => {
 
 onMounted(load)
 </script>
-
-<style scoped>
-.page-title {
-  margin: 0;
-}
-</style>

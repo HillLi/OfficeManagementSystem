@@ -1,7 +1,9 @@
 <template>
   <div class="report-page">
-    <div class="page-header">
-      <h2 class="page-title">请示报告</h2>
+    <div class="panel report-header">
+      <h3>请示报告</h3>
+    </div>
+    <div class="page-actions">
       <el-button type="primary" @click="applicationDialog = true">提交请示报告</el-button>
     </div>
 
@@ -81,9 +83,3 @@ const openFlowGuide = (row) => {
 }
 onMounted(load)
 </script>
-
-<style scoped>
-.page-title {
-  margin: 0;
-}
-</style>

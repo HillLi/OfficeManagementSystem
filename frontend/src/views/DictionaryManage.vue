@@ -1,37 +1,68 @@
 <template>
   <div class="dictionary-page">
-    <div class="dictionary-header">
-      <div>
-        <h2>字典管理</h2>
-        <p>维护可选业务值。停用项目不会出现在新建表单中，历史记录仍可显示。</p>
-      </div>
+    <div class="panel report-header">
+      <h3>字典管理</h3>
+    </div>
+    <div class="page-actions">
       <el-button type="primary" @click="openType()">新增类型</el-button>
     </div>
-    <el-tabs v-model="selectedType" @tab-change="selectType">
-      <el-tab-pane v-for="type in types" :key="type.dictType" :label="type.dictName" :name="type.dictType" lazy>
-        <div class="items-title">
-          <div class="type-summary">
-            <el-tag :type="type.enabled ? 'success' : 'info'">{{ type.enabled ? '启用' : '停用' }}</el-tag>
-            <span>{{ type.remark || '维护该类型下的字典项目' }}</span>
-          </div>
-          <div class="item-actions">
-            <el-button @click="openType(type)">编辑类型</el-button>
-            <el-button type="primary" @click="openItem()">新增项目</el-button>
-          </div>
+    <div class="dictionary-stack">
+      <section class="panel dictionary-section">
+        <div class="section-title">
+          <h3>字典类型</h3>
         </div>
-        <el-table :data="items" border stripe>
+        <el-table
+          :data="paginatedTypes"
+          border
+          stripe
+          row-key="dictType"
+          class="type-table"
+          :row-class-name="typeRowClassName"
+          @row-click="selectTypeRow"
+        >
+          <el-table-column prop="dictName" label="类型名称" min-width="150" />
+          <el-table-column prop="dictType" label="类型代码" min-width="150" />
+          <el-table-column label="状态" width="82">
+            <template #default="{ row }">
+              <el-tag :type="row.enabled ? 'success' : 'info'">{{ row.enabled ? '启用' : '停用' }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="remark" label="备注" min-width="180" />
+          <el-table-column label="操作" width="106">
+            <template #default="{ row }"><el-button size="small" @click.stop="openType(row)">编辑类型</el-button></template>
+          </el-table-column>
+        </el-table>
+        <el-pagination
+          v-if="types.length > typePageSize"
+          class="type-pagination"
+          background
+          layout="prev, pager, next"
+          :page-size="typePageSize"
+          :current-page="typePage"
+          :total="types.length"
+          @current-change="changeTypePage"
+        />
+      </section>
+
+      <section class="panel dictionary-section">
+        <div class="section-title">
+          <h3>字典项目<span v-if="selectedTypeTitle">：{{ selectedTypeTitle }}</span></h3>
+          <el-button type="primary" :disabled="!selectedType" @click="openItem()">新增项目</el-button>
+        </div>
+        <el-empty v-if="!selectedType" description="请选择上方字典类型" />
+        <el-table v-else :data="items" border stripe>
           <el-table-column prop="dictCode" label="代码" min-width="140" />
           <el-table-column prop="dictLabel" label="显示值" min-width="120" />
           <el-table-column prop="sortOrder" label="排序" width="70" />
           <el-table-column label="状态" width="68">
             <template #default="{ row }">{{ row.enabled ? '启用' : '停用' }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="78">
-            <template #default="{ row }"><el-button link @click="openItem(row)">编辑</el-button></template>
+          <el-table-column label="操作" width="82">
+            <template #default="{ row }"><el-button size="small" @click="openItem(row)">编辑</el-button></template>
           </el-table-column>
         </el-table>
-      </el-tab-pane>
-    </el-tabs>
+      </section>
+    </div>
 
     <el-dialog v-model="typeDialog" :title="editingType ? '编辑字典类型' : '新增字典类型'" width="460px" :close-on-click-modal="false">
       <el-form label-position="top">
@@ -63,7 +94,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
@@ -72,6 +103,8 @@ const dictionaryStore = useDictionaryStore()
 const types = ref([])
 const items = ref([])
 const selectedType = ref('')
+const typePage = ref(1)
+const typePageSize = 10
 const typeDialog = ref(false)
 const itemDialog = ref(false)
 const editingType = ref(null)
@@ -79,23 +112,58 @@ const editingItem = ref(null)
 const saving = ref(false)
 const typeForm = reactive({ dictType: '', dictName: '', enabled: true, remark: '' })
 const itemForm = reactive({ dictCode: '', dictLabel: '', sortOrder: 0, enabled: true, remark: '' })
+const selectedDictionaryType = computed(() => types.value.find((type) => type.dictType === selectedType.value))
+const selectedTypeTitle = computed(() => {
+  if (!selectedDictionaryType.value) return ''
+  return `${selectedDictionaryType.value.dictName}（${selectedDictionaryType.value?.dictType}）`
+})
+const paginatedTypes = computed(() => {
+  const start = (typePage.value - 1) * typePageSize
+  return types.value.slice(start, start + typePageSize)
+})
 
 async function loadTypes() {
   types.value = await api.adminDictionaryTypes()
   if (!types.value.some((type) => type.dictType === selectedType.value)) {
     selectedType.value = types.value[0]?.dictType || ''
   }
-  if (selectedType.value) await loadItems()
+  syncTypePageWithSelection()
+  if (selectedType.value) {
+    await loadItems()
+  } else {
+    items.value = []
+  }
+}
+
+function syncTypePageWithSelection() {
+  const selectedIndex = types.value.findIndex((type) => type.dictType === selectedType.value)
+  typePage.value = selectedIndex >= 0 ? Math.floor(selectedIndex / typePageSize) + 1 : 1
+}
+
+async function changeTypePage(page) {
+  typePage.value = page
+  const firstVisibleType = paginatedTypes.value[0]?.dictType
+  if (firstVisibleType && !paginatedTypes.value.some((type) => type.dictType === selectedType.value)) {
+    await selectType(firstVisibleType)
+  }
 }
 
 async function loadItems() {
   items.value = selectedType.value ? await api.adminDictionaryItems(selectedType.value) : []
 }
 
-function selectType(dictType) {
+async function selectType(dictType) {
   if (!dictType) return
   selectedType.value = dictType
-  loadItems()
+  await loadItems()
+}
+
+function selectTypeRow(row) {
+  selectType(row.dictType)
+}
+
+function typeRowClassName({ row }) {
+  return row.dictType === selectedType.value ? 'selected-type-row' : ''
 }
 
 function openType(type = null) {
@@ -149,38 +217,43 @@ onMounted(loadTypes)
 </script>
 
 <style scoped>
-.dictionary-header,
-.items-title {
+.dictionary-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.dictionary-section {
+  padding: 14px;
+}
+
+.section-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-}
-.dictionary-header {
-  margin-bottom: 14px;
-}
-.dictionary-header h2 {
-  margin: 0;
-}
-.dictionary-header p {
-  margin: 8px 0 0;
-  color: #657487;
-}
-.items-title {
   margin-bottom: 12px;
 }
-.type-summary,
-.item-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+
+.section-title h3 {
+  margin: 0;
+  font-size: 16px;
 }
-.type-summary {
-  color: #657487;
+
+.type-table :deep(.el-table__row) {
+  cursor: pointer;
 }
+
+.type-table :deep(.selected-type-row > td) {
+  background: #eef7ff !important;
+}
+
+.type-pagination {
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
 @media (max-width: 600px) {
-  .dictionary-header,
-  .items-title {
+  .section-title {
     align-items: flex-start;
     flex-direction: column;
   }

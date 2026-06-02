@@ -52,6 +52,27 @@ body {
   padding: 16px;
 }
 
+.report-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.report-header h3 {
+  margin: 0;
+}
+
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: -6px 0 14px;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));

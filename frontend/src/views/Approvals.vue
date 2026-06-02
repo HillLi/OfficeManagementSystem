@@ -1,6 +1,8 @@
 <template>
   <div class="approval-page">
-    <h2 class="page-title">审批任务</h2>
+    <div class="panel report-header">
+      <h3>审批任务</h3>
+    </div>
     <el-tabs v-model="activeTab">
       <el-tab-pane v-for="tab in approvalTabs" :key="tab.name" :name="tab.name">
         <template #label>
@@ -133,10 +135,6 @@ onMounted(load)
 </script>
 
 <style scoped>
-.page-title {
-  margin-top: 0;
-}
-
 .approval-tab-label {
   display: inline-flex;
   align-items: center;

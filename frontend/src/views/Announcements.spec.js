@@ -8,6 +8,13 @@ const source = readFileSync(resolve(currentDir, 'Announcements.vue'), 'utf-8')
 const apiSource = readFileSync(resolve(currentDir, '../api.js'), 'utf-8')
 
 describe('Announcements page department scope', () => {
+  it('matches the statistics report header style without helper copy', () => {
+    expect(source).toContain('class="panel report-header"')
+    expect(source).not.toContain('class="announcement-header"')
+    expect(source).not.toContain('<p>')
+    expect(source).not.toContain('</p>')
+  })
+
   it('selects departments by name while keeping id values for persistence', () => {
     expect(source).not.toContain('部门编号')
     expect(source).not.toContain('el-input-number v-model="form.targetDeptId"')

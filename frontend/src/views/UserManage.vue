@@ -1,13 +1,16 @@
 <template>
   <div class="user-manage">
-    <h2 style="margin-top:0">用户与部门管理</h2>
+    <div class="panel report-header">
+      <h3>用户与部门管理</h3>
+    </div>
+    <div class="page-actions">
+      <el-button v-if="activeTab === 'users'" type="primary" @click="openUserDialog(null)">新增用户</el-button>
+      <el-button v-if="activeTab === 'depts'" type="primary" @click="openDeptDialog(null)">新增部门</el-button>
+    </div>
 
     <el-tabs v-model="activeTab">
       <!-- 用户管理 Tab -->
       <el-tab-pane label="用户管理" name="users">
-        <div style="margin-bottom:12px">
-          <el-button type="primary" @click="openUserDialog(null)">新增用户</el-button>
-        </div>
         <el-table :data="users" border stripe style="width:100%">
           <el-table-column prop="id" label="ID" width="60" />
           <el-table-column prop="username" label="用户名" width="120" />
@@ -31,9 +34,6 @@
 
       <!-- 部门管理 Tab -->
       <el-tab-pane label="部门管理" name="depts">
-        <div style="margin-bottom:12px">
-          <el-button type="primary" @click="openDeptDialog(null)">新增部门</el-button>
-        </div>
         <el-table :data="depts" border stripe style="width:100%">
           <el-table-column prop="id" label="ID" width="60" />
           <el-table-column prop="deptName" label="部门名称" width="200" />
