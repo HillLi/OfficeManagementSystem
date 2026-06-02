@@ -1,10 +1,9 @@
 <template>
   <div class="announcement-page">
-    <div class="announcement-header">
-      <div>
-        <h2>通知公告</h2>
-        <p>查看面向当前用户范围发布的公告；管理员和党办校办人员可维护发布内容。</p>
-      </div>
+    <div class="panel report-header">
+      <h3>通知公告</h3>
+    </div>
+    <div class="page-actions">
       <el-button v-if="canMaintain" type="primary" @click="openCreate">发布公告</el-button>
     </div>
 
@@ -246,7 +245,6 @@ onMounted(load)
 </script>
 
 <style scoped>
-.announcement-header,
 .card-title {
   display: flex;
   align-items: flex-start;
@@ -254,24 +252,14 @@ onMounted(load)
   gap: 16px;
 }
 
-.announcement-header {
-  margin-bottom: 14px;
-}
-
-.announcement-header h2,
 .announcement-card h3 {
   margin: 0;
 }
 
-.announcement-header p,
 .scope-text,
 .time,
 .form-tip {
   color: #657487;
-}
-
-.announcement-header p {
-  margin: 8px 0 0;
 }
 
 .announcement-list {
@@ -341,7 +329,6 @@ onMounted(load)
 }
 
 @media (max-width: 700px) {
-  .announcement-header,
   .card-title {
     flex-direction: column;
   }

@@ -2,9 +2,11 @@
   <div>
     <div class="panel report-header">
       <h3>统计报表</h3>
+    </div>
+    <div class="page-actions">
       <el-button type="primary" @click="download">导出 CSV</el-button>
     </div>
-    <div class="grid" style="margin-top: 14px">
+    <div class="grid">
       <div class="panel"><h3>公文办理</h3><div class="metric">{{ stats.documentCount }}</div></div>
       <div class="panel"><h3>待办公文</h3><div class="metric">{{ stats.pendingDocumentCount }}</div></div>
       <div class="panel"><h3>用印申请</h3><div class="metric">{{ stats.sealApplyCount }}</div></div>
@@ -77,14 +79,3 @@ const download = async () => {
 }
 </script>
 
-<style scoped>
-.report-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.report-header h3 {
-  margin: 0;
-}
-</style>

@@ -1,7 +1,9 @@
 <template>
   <div class="travel-page">
-    <div class="page-header">
-      <h2 class="page-title">差旅审批</h2>
+    <div class="panel report-header">
+      <h3>差旅审批</h3>
+    </div>
+    <div class="page-actions">
       <el-button type="primary" @click="applicationDialog = true">差旅申请</el-button>
     </div>
 
@@ -126,9 +128,3 @@ const openFlowGuide = (travel) => {
 
 onMounted(load)
 </script>
-
-<style scoped>
-.page-title {
-  margin: 0;
-}
-</style>

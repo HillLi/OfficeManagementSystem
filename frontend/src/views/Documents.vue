@@ -1,7 +1,9 @@
 <template>
   <div class="document-page">
-    <div class="page-header">
-      <h2 class="page-title">公文管理</h2>
+    <div class="panel report-header">
+      <h3>公文管理</h3>
+    </div>
+    <div class="page-actions">
       <el-button type="primary" @click="draftDialog = true">公文起草</el-button>
     </div>
 
@@ -211,9 +213,3 @@ onMounted(async () => {
   await load()
 })
 </script>
-
-<style scoped>
-.page-title {
-  margin: 0;
-}
-</style>
