@@ -7,12 +7,22 @@ import com.university.oms.repository.InMemoryDatabase;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class OrgTreeService {
+    private static final Comparator<Department> DEPARTMENT_ORDER = Comparator
+            .comparing(Department::getDeptName, Comparator.nullsFirst(Comparator.naturalOrder()))
+            .thenComparing(Department::getId, Comparator.nullsFirst(Comparator.naturalOrder()));
+    private static final Comparator<User> USER_ORDER = Comparator
+            .comparing(User::getRealName, Comparator.nullsFirst(Comparator.naturalOrder()))
+            .thenComparing(User::getId, Comparator.nullsFirst(Comparator.naturalOrder()));
+
     private final InMemoryDatabase db;
 
     public OrgTreeService(InMemoryDatabase db) {
@@ -20,24 +30,32 @@ public class OrgTreeService {
     }
 
     public List<OrgTreeNode> buildTree() {
+        List<Department> sortedDepartments = new ArrayList<Department>(db.departments().values());
+        sortedDepartments.sort(DEPARTMENT_ORDER);
+
+        Map<Long, Department> departmentModels = new LinkedHashMap<Long, Department>();
         Map<Long, OrgTreeNode> departments = new LinkedHashMap<Long, OrgTreeNode>();
-        for (Department department : db.departments().values()) {
+        for (Department department : sortedDepartments) {
+            departmentModels.put(department.getId(), department);
             departments.put(department.getId(), departmentNode(department));
         }
 
         List<OrgTreeNode> roots = new ArrayList<OrgTreeNode>();
-        for (Department department : db.departments().values()) {
+        for (Department department : sortedDepartments) {
             OrgTreeNode node = departments.get(department.getId());
             Long parentId = department.getParentId();
             OrgTreeNode parent = parentId == null ? null : departments.get(parentId);
-            if (parentId == null || parentId == 0L || parent == null) {
+            if (parentId == null || parentId == 0L || parent == null
+                    || hasCyclicParentChain(department, departmentModels)) {
                 roots.add(node);
             } else {
                 parent.getChildren().add(node);
             }
         }
 
-        for (User user : db.users().values()) {
+        List<User> sortedUsers = new ArrayList<User>(db.users().values());
+        sortedUsers.sort(USER_ORDER);
+        for (User user : sortedUsers) {
             OrgTreeNode node = userNode(user);
             OrgTreeNode department = departments.get(user.getDeptId());
             if (department == null) {
@@ -47,6 +65,22 @@ public class OrgTreeService {
             }
         }
         return roots;
+    }
+
+    private boolean hasCyclicParentChain(Department department, Map<Long, Department> departments) {
+        Set<Long> visited = new HashSet<Long>();
+        Department current = department;
+        while (current != null) {
+            if (!visited.add(current.getId())) {
+                return true;
+            }
+            Long parentId = current.getParentId();
+            if (parentId == null || parentId == 0L) {
+                return false;
+            }
+            current = departments.get(parentId);
+        }
+        return false;
     }
 
     private OrgTreeNode departmentNode(Department department) {
