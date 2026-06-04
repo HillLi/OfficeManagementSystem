@@ -264,6 +264,33 @@ CREATE TABLE IF NOT EXISTS sys_notification (
   INDEX idx_notification_receiver (receiver_id, read_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS oa_mail_message (
+  id BIGINT PRIMARY KEY,
+  sender_id BIGINT NOT NULL,
+  subject VARCHAR(255) NOT NULL,
+  content LONGTEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_mail_sender (sender_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS oa_mail_recipient (
+  id BIGINT PRIMARY KEY,
+  mail_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  recipient_type VARCHAR(10) NOT NULL,
+  read_status TINYINT DEFAULT 0,
+  read_at DATETIME,
+  email_status VARCHAR(20) DEFAULT 'pending',
+  email_error VARCHAR(1000),
+  email_sent_at DATETIME,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_mail_user_type (mail_id, user_id, recipient_type),
+  INDEX idx_mail_recipient_user (user_id, read_status, created_at),
+  INDEX idx_mail_recipient_mail (mail_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS sys_announcement (
   id BIGINT PRIMARY KEY,
   title VARCHAR(255) NOT NULL,
@@ -354,6 +381,7 @@ BEGIN
 END//
 DELIMITER ;
 
+CALL add_column_if_missing('sys_user', 'email', 'VARCHAR(100)');
 CALL add_column_if_missing('oa_document', 'version', 'INT DEFAULT 1');
 CALL add_column_if_missing('oa_document', 'distribution_status', 'VARCHAR(30) DEFAULT ''not_distributed''');
 CALL add_column_if_missing('oa_seal_log', 'take_out_reason', 'VARCHAR(500)');

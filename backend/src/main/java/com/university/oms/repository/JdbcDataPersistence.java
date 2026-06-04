@@ -176,6 +176,23 @@ public class JdbcDataPersistence implements DataPersistence {
     }
 
     @Override
+    public void saveMailMessage(MailMessage m) {
+        jdbcTemplate.update("REPLACE INTO oa_mail_message " +
+                        "(id, sender_id, subject, content, created_at, updated_at) VALUES (?,?,?,?,?,?)",
+                m.getId(), m.getSenderId(), m.getSubject(), m.getContent(), m.getCreatedAt(), m.getUpdatedAt());
+    }
+
+    @Override
+    public void saveMailRecipient(MailRecipient r) {
+        jdbcTemplate.update("REPLACE INTO oa_mail_recipient " +
+                        "(id, mail_id, user_id, recipient_type, read_status, read_at, email_status, email_error, email_sent_at, created_at, updated_at) " +
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                r.getId(), r.getMailId(), r.getUserId(), r.getRecipientType(), r.isReadStatus() ? 1 : 0,
+                r.getReadAt(), r.getEmailStatus(), r.getEmailError(), r.getEmailSentAt(),
+                r.getCreatedAt(), r.getUpdatedAt());
+    }
+
+    @Override
     public void saveAnnouncement(Announcement a) {
         jdbcTemplate.update("REPLACE INTO sys_announcement " +
                         "(id, title, content, category, target_type, target_dept_id, pinned, status, publisher_id, published_at, created_at, updated_at) " +

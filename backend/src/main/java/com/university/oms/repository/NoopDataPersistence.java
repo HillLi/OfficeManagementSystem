@@ -23,6 +23,8 @@ public class NoopDataPersistence implements DataPersistence {
     public void saveAttachment(Attachment attachment) { }
     public void saveAuditLog(AuditLog auditLog) { }
     public void saveNotification(Notification notification) { }
+    public void saveMailMessage(MailMessage mailMessage) { }
+    public void saveMailRecipient(MailRecipient mailRecipient) { }
     public void saveFlowInstance(FlowInstance flowInstance) { }
     public void saveFlowTask(FlowTask flowTask) { }
 }
