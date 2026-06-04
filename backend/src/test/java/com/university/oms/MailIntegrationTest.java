@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -64,6 +65,30 @@ class MailIntegrationTest {
         mockMvc.perform(get("/api/admin/users/" + id).header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.email").value("mailuser@example.com"));
+    }
+
+    @Test
+    void adminUpdateUserRejectsInvalidEmail() throws Exception {
+        String token = loginAdmin();
+
+        mockMvc.perform(put("/api/admin/users/2")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"realName\":\"普通办公人员\",\"deptId\":4,\"roleKeys\":\"office_user\",\"email\":\"bad-email\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void adminUpdateUserStoresEmail() throws Exception {
+        String token = loginAdmin();
+
+        mockMvc.perform(put("/api/admin/users/2")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"realName\":\"普通办公人员\",\"deptId\":4,\"roleKeys\":\"office_user\",\"email\":\"new-user@example.com\"}"))
+                .andExpect(status().isOk());
+
+        assertEquals("new-user@example.com", db.users().get(2L).getEmail());
     }
 
     private String loginAdmin() throws Exception {
