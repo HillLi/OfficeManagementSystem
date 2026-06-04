@@ -2,6 +2,8 @@ package com.university.oms;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.university.oms.model.Department;
+import com.university.oms.model.User;
 import com.university.oms.repository.InMemoryDatabase;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -100,6 +103,45 @@ class MailIntegrationTest {
                 .andExpect(status().isOk());
 
         assertEquals("new-user@example.com", db.users().get(2L).getEmail());
+    }
+
+    @Test
+    void organizationTreeContainsDepartmentsAndUsers() throws Exception {
+        String token = loginAdmin();
+        Department department = db.departments().values().iterator().next();
+        User user = db.users().values().iterator().next();
+
+        String body = mockMvc.perform(get("/api/org/tree")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode tree = objectMapper.readTree(body).get("data");
+
+        JsonNode departmentNode = findNode(tree, "dept-" + department.getId());
+        JsonNode userNode = findNode(tree, "user-" + user.getId());
+
+        assertNotNull(departmentNode);
+        assertEquals("dept", departmentNode.get("type").asText());
+        assertNotNull(userNode);
+        assertEquals("user", userNode.get("type").asText());
+        assertEquals(user.getId().longValue(), userNode.get("userId").asLong());
+        assertEquals(user.getEmail(), userNode.get("email").asText());
+    }
+
+    private JsonNode findNode(JsonNode nodes, String id) {
+        if (nodes == null || !nodes.isArray()) {
+            return null;
+        }
+        for (JsonNode node : nodes) {
+            if (id.equals(node.path("id").asText())) {
+                return node;
+            }
+            JsonNode found = findNode(node.get("children"), id);
+            if (found != null) {
+                return found;
+            }
+        }
+        return null;
     }
 
     private String loginAdmin() throws Exception {
