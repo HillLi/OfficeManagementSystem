@@ -1,11 +1,13 @@
 package com.university.oms.dto;
 
 import javax.validation.constraints.Email;
+import javax.validation.constraints.Pattern;
 
 public class UpdateUserRequest {
     private String realName;
     private String password;
     @Email
+    @Pattern(regexp = ".*\\S.*", message = "邮箱不能为空")
     private String email;
     private Long deptId;
     private String roleKeys;

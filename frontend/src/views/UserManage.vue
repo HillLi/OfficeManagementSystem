@@ -173,9 +173,13 @@ function openUserDialog(user) {
 
 async function handleSaveUser() {
   const f = userForm.value
+  if (!f.email || !f.email.trim()) {
+    ElMessage.warning('邮箱为必填项')
+    return
+  }
   if (!editingUser.value) {
-    if (!f.username || !f.password || !f.realName || !f.email) {
-      ElMessage.warning('用户名、密码、姓名和邮箱为必填项')
+    if (!f.username || !f.password || !f.realName) {
+      ElMessage.warning('用户名、密码和姓名为必填项')
       return
     }
   }

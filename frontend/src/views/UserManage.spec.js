@@ -25,5 +25,6 @@ describe('user management page actions', () => {
     expect(source).toContain("email: user.email")
     expect(source).toContain("email: f.email")
     expect(source).toContain('!f.email')
+    expect(source).toContain("if (!f.email || !f.email.trim())")
   })
 })

@@ -79,6 +79,17 @@ class MailIntegrationTest {
     }
 
     @Test
+    void adminUpdateUserRejectsBlankEmail() throws Exception {
+        String token = loginAdmin();
+
+        mockMvc.perform(put("/api/admin/users/2")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"realName\":\"Office User\",\"deptId\":4,\"roleKeys\":\"office_user\",\"email\":\"\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void adminUpdateUserStoresEmail() throws Exception {
         String token = loginAdmin();
 
