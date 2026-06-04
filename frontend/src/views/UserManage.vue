@@ -15,6 +15,7 @@
           <el-table-column prop="id" label="ID" width="60" />
           <el-table-column prop="username" label="用户名" width="120" />
           <el-table-column prop="realName" label="姓名" width="100" />
+          <el-table-column prop="email" label="邮箱" min-width="170" />
           <el-table-column prop="deptName" label="部门" width="140" />
           <el-table-column label="角色" min-width="200">
             <template #default="{ row }">
@@ -66,6 +67,9 @@
         </el-form-item>
         <el-form-item label="姓名">
           <el-input v-model="userForm.realName" placeholder="真实姓名" />
+        </el-form-item>
+        <el-form-item label="邮箱">
+          <el-input v-model="userForm.email" placeholder="用户邮箱" />
         </el-form-item>
         <el-form-item label="部门">
           <el-select v-model="userForm.deptId" clearable placeholder="选择部门" style="width:100%">
@@ -138,6 +142,7 @@ const userForm = ref({
   username: '',
   password: '',
   realName: '',
+  email: '',
   deptId: null,
   selectedRoles: []
 })
@@ -149,6 +154,7 @@ function openUserDialog(user) {
       username: user.username,
       password: '',
       realName: user.realName,
+      email: user.email,
       deptId: user.deptId,
       selectedRoles: [...(user.roleKeys || [])]
     }
@@ -157,6 +163,7 @@ function openUserDialog(user) {
       username: '',
       password: '',
       realName: '',
+      email: '',
       deptId: null,
       selectedRoles: []
     }
@@ -167,8 +174,8 @@ function openUserDialog(user) {
 async function handleSaveUser() {
   const f = userForm.value
   if (!editingUser.value) {
-    if (!f.username || !f.password || !f.realName) {
-      ElMessage.warning('用户名、密码和姓名为必填项')
+    if (!f.username || !f.password || !f.realName || !f.email) {
+      ElMessage.warning('用户名、密码、姓名和邮箱为必填项')
       return
     }
   }
@@ -177,6 +184,7 @@ async function handleSaveUser() {
     if (editingUser.value) {
       const payload = {
         realName: f.realName,
+        email: f.email,
         deptId: f.deptId,
         roleKeys: f.selectedRoles.join(',')
       }
@@ -188,6 +196,7 @@ async function handleSaveUser() {
         username: f.username,
         password: f.password,
         realName: f.realName,
+        email: f.email,
         deptId: f.deptId,
         roleKeys: f.selectedRoles.join(',')
       })
