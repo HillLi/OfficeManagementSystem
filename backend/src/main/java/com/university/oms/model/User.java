@@ -8,6 +8,7 @@ public class User extends BaseEntity {
     private String username;
     private String password;
     private String realName;
+    private String email;
     private Long deptId;
     private String deptName;
     private Set<String> roleKeys = new LinkedHashSet<String>();
@@ -35,6 +36,14 @@ public class User extends BaseEntity {
 
     public void setRealName(String realName) {
         this.realName = realName;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public Long getDeptId() {

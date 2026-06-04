@@ -22,7 +22,7 @@ public class JdbcDataPersistence implements DataPersistence {
     public void saveUser(User u) {
         jdbcTemplate.update("REPLACE INTO sys_user (id, username, password, real_name, dept_id, email, phone, status, created_at, updated_at) " +
                         "VALUES (?,?,?,?,?,?,?,1,?,?)",
-                u.getId(), u.getUsername(), u.getPassword(), u.getRealName(), u.getDeptId(), null, null, u.getCreatedAt(), u.getUpdatedAt());
+                u.getId(), u.getUsername(), u.getPassword(), u.getRealName(), u.getDeptId(), u.getEmail(), null, u.getCreatedAt(), u.getUpdatedAt());
         jdbcTemplate.update("DELETE FROM sys_user_role WHERE user_id=?", u.getId());
         for (String roleKey : u.getRoleKeys()) {
             jdbcTemplate.update("INSERT INTO sys_user_role (user_id, role_id) SELECT ?, id FROM sys_role WHERE role_key=?",

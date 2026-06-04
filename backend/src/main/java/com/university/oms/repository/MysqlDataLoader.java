@@ -111,13 +111,14 @@ public class MysqlDataLoader {
     }
 
     private void loadUsers() {
-        List<User> users = jdbcTemplate.query("SELECT u.id, u.username, u.password, u.real_name, u.dept_id, d.dept_name " +
+        List<User> users = jdbcTemplate.query("SELECT u.id, u.username, u.password, u.real_name, u.email, u.dept_id, d.dept_name " +
                 "FROM sys_user u LEFT JOIN sys_dept d ON u.dept_id=d.id", (rs, rowNum) -> {
             User user = new User();
             db.fill(user, rs.getLong("id"));
             user.setUsername(rs.getString("username"));
             user.setPassword(rs.getString("password"));
             user.setRealName(rs.getString("real_name"));
+            user.setEmail(rs.getString("email"));
             user.setDeptId(rs.getLong("dept_id"));
             user.setDeptName(rs.getString("dept_name"));
             user.setRoleKeys(new LinkedHashSet<String>());

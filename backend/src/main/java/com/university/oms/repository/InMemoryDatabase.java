@@ -224,6 +224,7 @@ public class InMemoryDatabase {
         user.setUsername(username);
         user.setPassword("123456");
         user.setRealName(realName);
+        user.setEmail(username + "@example.com");
         user.setDeptId(deptId);
         user.setDeptName(departments.get(deptId).getDeptName());
         user.getRoleKeys().add(role);
