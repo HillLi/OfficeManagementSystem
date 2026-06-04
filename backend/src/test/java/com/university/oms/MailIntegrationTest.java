@@ -7,17 +7,27 @@ import com.university.oms.model.MailRecipient;
 import com.university.oms.model.Notification;
 import com.university.oms.model.User;
 import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.service.WorkflowService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -35,6 +45,9 @@ class MailIntegrationTest {
 
     @Autowired
     private InMemoryDatabase db;
+
+    @SpyBean
+    private WorkflowService workflowService;
 
     @Test
     void adminCreateUserRequiresEmail() throws Exception {
@@ -287,10 +300,78 @@ class MailIntegrationTest {
         String adminToken = login("admin");
         long mailId = sendMail(adminToken, "Dedupe " + System.nanoTime(), "[2,2,3]", "[2,3,4,4]");
 
-        assertEquals(3, db.mailRecipients().stream().filter(r -> mailId == r.getMailId()).count());
+        assertEquals(3, mailRecipientsSnapshot().stream().filter(r -> mailId == r.getMailId()).count());
         assertEquals("to", findRecipient(mailId, 2L).getRecipientType());
         assertEquals("to", findRecipient(mailId, 3L).getRecipientType());
         assertEquals("cc", findRecipient(mailId, 4L).getRecipientType());
+    }
+
+    @Test
+    void mailNotificationUsesBoundedSummaryForLongMail() throws Exception {
+        String adminToken = login("admin");
+        String subject = repeat("S", 255);
+        String content = repeat("Long body ", 300);
+
+        long mailId = sendMailWithContent(adminToken, subject, content, "[2]", "[]");
+        Notification notification = findMailNotification(2L, mailId);
+
+        assertNotNull(notification);
+        assertTrue(notification.getTitle().length() <= 255);
+        assertTrue(notification.getContent().length() <= 1000);
+        assertFalse(notification.getContent().contains(content));
+    }
+
+    @Test
+    void notificationFailureDoesNotAbortInternalMailRecipients() throws Exception {
+        String adminToken = login("admin");
+        doThrow(new RuntimeException("notification unavailable"))
+                .when(workflowService)
+                .notifyUser(anyLong(), anyString(), anyString(), eq("mail"), anyLong());
+
+        long mailId = sendMail(adminToken, "Notification failure " + System.nanoTime(), "[2,3]", "[4]");
+
+        assertEquals(3, mailRecipientsSnapshot().stream().filter(r -> r.getMailId().equals(mailId)).count());
+        assertNotNull(db.mailMessages().get(mailId));
+    }
+
+    @Test
+    void recipientCannotSeeOtherRecipientsDeliveryOrReadStatus() throws Exception {
+        String adminToken = login("admin");
+        String userToken = login("user");
+        long mailId = sendMail(adminToken, "Private statuses " + System.nanoTime(), "[2,3]", "[]");
+        MailRecipient otherRecipient = findRecipient(mailId, 3L);
+        otherRecipient.setReadStatus(true);
+        otherRecipient.setEmailStatus("failed");
+        otherRecipient.setEmailError("private delivery error");
+        otherRecipient.setEmailSentAt(LocalDateTime.now());
+
+        JsonNode recipientDetail = getJson("/api/mails/" + mailId, userToken).get("data");
+        JsonNode senderDetail = getJson("/api/mails/" + mailId, adminToken).get("data");
+
+        assertFalse(hasRecipientUser(recipientDetail.get("recipients"), 3L));
+        JsonNode senderOtherRecipient = findRecipientNode(senderDetail.get("recipients"), 3L);
+        assertNotNull(senderOtherRecipient);
+        assertTrue(senderOtherRecipient.get("readStatus").asBoolean());
+        assertEquals("failed", senderOtherRecipient.get("emailStatus").asText());
+        assertEquals("private delivery error", senderOtherRecipient.get("emailError").asText());
+        assertNotNull(senderOtherRecipient.get("emailSentAt"));
+    }
+
+    @Test
+    void selfSentMailKeepsSenderSemanticsOutsideInbox() throws Exception {
+        String adminToken = login("admin");
+        long mailId = sendMail(adminToken, "Self sent " + System.nanoTime(), "[1]", "[]");
+
+        JsonNode sent = findMail(getJson("/api/mails/sent", adminToken).get("data"), mailId);
+        JsonNode detail = getJson("/api/mails/" + mailId, adminToken).get("data");
+        JsonNode inbox = findMail(getJson("/api/mails/inbox", adminToken).get("data"), mailId);
+
+        assertEquals("sender", sent.get("currentUserRecipientType").asText());
+        assertTrue(sent.get("currentUserRead").asBoolean());
+        assertEquals("sender", detail.get("currentUserRecipientType").asText());
+        assertTrue(detail.get("currentUserRead").asBoolean());
+        assertEquals("to", inbox.get("currentUserRecipientType").asText());
+        assertFalse(inbox.get("currentUserRead").asBoolean());
     }
 
     private JsonNode getOrganizationTree(String token) throws Exception {
@@ -373,8 +454,13 @@ class MailIntegrationTest {
     }
 
     private long sendMail(String token, String subject, String toUserIds, String ccUserIds) throws Exception {
+        return sendMailWithContent(token, subject, "Body", toUserIds, ccUserIds);
+    }
+
+    private long sendMailWithContent(String token, String subject, String content, String toUserIds, String ccUserIds)
+            throws Exception {
         JsonNode response = postJson("/api/mails",
-                "{\"subject\":\"" + subject + "\",\"content\":\"Body\",\"toUserIds\":" + toUserIds
+                "{\"subject\":\"" + subject + "\",\"content\":\"" + content + "\",\"toUserIds\":" + toUserIds
                         + ",\"ccUserIds\":" + ccUserIds + "}",
                 token);
         return response.get("data").get("id").asLong();
@@ -414,10 +500,47 @@ class MailIntegrationTest {
     }
 
     private MailRecipient findRecipient(long mailId, long userId) {
-        return db.mailRecipients().stream()
+        return mailRecipientsSnapshot().stream()
                 .filter(r -> r.getMailId().equals(mailId) && r.getUserId().equals(userId))
                 .findFirst()
                 .orElse(null);
+    }
+
+    private List<MailRecipient> mailRecipientsSnapshot() {
+        synchronized (db.mailRecipients()) {
+            return new ArrayList<MailRecipient>(db.mailRecipients());
+        }
+    }
+
+    private boolean hasRecipientUser(JsonNode recipients, long userId) {
+        return findRecipientNode(recipients, userId) != null;
+    }
+
+    private JsonNode findRecipientNode(JsonNode recipients, long userId) {
+        if (recipients == null || !recipients.isArray()) {
+            return null;
+        }
+        for (JsonNode recipient : recipients) {
+            if (recipient.path("userId").asLong() == userId) {
+                return recipient;
+            }
+        }
+        return null;
+    }
+
+    private Notification findMailNotification(long receiverId, long mailId) {
+        return db.notifications().stream()
+                .filter(notification -> isMailNotification(notification, receiverId, mailId))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private String repeat(String value, int count) {
+        StringBuilder result = new StringBuilder(value.length() * count);
+        for (int i = 0; i < count; i++) {
+            result.append(value);
+        }
+        return result.toString();
     }
 
     private boolean isMailNotification(Notification notification, long receiverId, long mailId) {

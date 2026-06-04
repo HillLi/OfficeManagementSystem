@@ -11,6 +11,8 @@ import com.university.oms.model.User;
 import com.university.oms.repository.DataPersistence;
 import com.university.oms.repository.InMemoryDatabase;
 import com.university.oms.security.AuthContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -23,6 +25,10 @@ import java.util.stream.Collectors;
 
 @Service
 public class MailService {
+    private static final Logger log = LoggerFactory.getLogger(MailService.class);
+    private static final int NOTIFICATION_TITLE_LIMIT = 255;
+    private static final int NOTIFICATION_CONTENT_LIMIT = 1000;
+
     private final InMemoryDatabase db;
     private final DataPersistence persistence;
     private final WorkflowService workflowService;
@@ -56,17 +62,17 @@ public class MailService {
 
         saveRecipients(message, toUserIds, "to");
         saveRecipients(message, ccUserIds, "cc");
-        return response(message, sender.getId());
+        return response(message, sender.getId(), false);
     }
 
     public List<MailDetailResponse> inbox() {
         Long userId = AuthContext.requireUser().getId();
-        return db.mailRecipients().stream()
+        return mailRecipientsSnapshot().stream()
                 .filter(recipient -> userId.equals(recipient.getUserId()))
                 .map(recipient -> db.mailMessages().get(recipient.getMailId()))
                 .filter(message -> message != null)
                 .sorted(messageOrder())
-                .map(message -> response(message, userId))
+                .map(message -> response(message, userId, true))
                 .collect(Collectors.toList());
     }
 
@@ -75,7 +81,7 @@ public class MailService {
         return db.mailMessages().values().stream()
                 .filter(message -> userId.equals(message.getSenderId()))
                 .sorted(messageOrder())
-                .map(message -> response(message, userId))
+                .map(message -> response(message, userId, false))
                 .collect(Collectors.toList());
     }
 
@@ -85,7 +91,7 @@ public class MailService {
         if (!user.getId().equals(message.getSenderId()) && findRecipient(id, user.getId()) == null) {
             throw new ForbiddenException("无权查看该邮件");
         }
-        return response(message, user.getId());
+        return response(message, user.getId(), false);
     }
 
     public MailDetailResponse markRead(Long id) {
@@ -102,7 +108,7 @@ public class MailService {
             recipient.setUpdatedAt(now);
             persistence.saveMailRecipient(recipient);
         }
-        return response(message, user.getId());
+        return response(message, user.getId(), true);
     }
 
     private void saveRecipients(MailMessage message, Set<Long> userIds, String recipientType) {
@@ -114,12 +120,16 @@ public class MailService {
             recipient.setRecipientType(recipientType);
             db.mailRecipients().add(recipient);
             persistence.saveMailRecipient(recipient);
-            workflowService.notifyUser(userId, "新邮件：" + message.getSubject(), message.getContent(), "mail",
-                    message.getId());
+            try {
+                workflowService.notifyUser(userId, notificationTitle(message), notificationContent(), "mail",
+                        message.getId());
+            } catch (RuntimeException ex) {
+                log.warn("Failed to create mail notification for mailId={}, userId={}", message.getId(), userId, ex);
+            }
         }
     }
 
-    private MailDetailResponse response(MailMessage message, Long currentUserId) {
+    private MailDetailResponse response(MailMessage message, Long currentUserId, boolean recipientContext) {
         MailDetailResponse response = new MailDetailResponse();
         response.setId(message.getId());
         response.setSenderId(message.getSenderId());
@@ -132,11 +142,15 @@ public class MailService {
         response.setCurrentUserRead(true);
 
         List<MailRecipient> recipients = recipients(message.getId());
+        MailRecipient currentRecipient = findRecipient(recipients, currentUserId);
+        boolean currentUserIsSender = message.getSenderId().equals(currentUserId);
+        if (currentRecipient != null && (recipientContext || !currentUserIsSender)) {
+            response.setCurrentUserRecipientType(currentRecipient.getRecipientType());
+            response.setCurrentUserRead(currentRecipient.isReadStatus());
+        }
         for (MailRecipient recipient : recipients) {
-            response.getRecipients().add(recipientResponse(recipient));
-            if (recipient.getUserId().equals(currentUserId)) {
-                response.setCurrentUserRecipientType(recipient.getRecipientType());
-                response.setCurrentUserRead(recipient.isReadStatus());
+            if (currentUserIsSender || recipient.getUserId().equals(currentUserId)) {
+                response.getRecipients().add(recipientResponse(recipient));
             }
         }
         return response;
@@ -157,19 +171,38 @@ public class MailService {
     }
 
     private List<MailRecipient> recipients(Long mailId) {
-        return db.mailRecipients().stream()
+        return mailRecipientsSnapshot().stream()
                 .filter(recipient -> mailId.equals(recipient.getMailId()))
                 .sorted(Comparator.comparing(MailRecipient::getId))
                 .collect(Collectors.toList());
     }
 
     private MailRecipient findRecipient(Long mailId, Long userId) {
-        for (MailRecipient recipient : db.mailRecipients()) {
+        return findRecipient(mailRecipientsSnapshot(), mailId, userId);
+    }
+
+    private MailRecipient findRecipient(List<MailRecipient> recipients, Long userId) {
+        for (MailRecipient recipient : recipients) {
+            if (userId.equals(recipient.getUserId())) {
+                return recipient;
+            }
+        }
+        return null;
+    }
+
+    private MailRecipient findRecipient(List<MailRecipient> recipients, Long mailId, Long userId) {
+        for (MailRecipient recipient : recipients) {
             if (mailId.equals(recipient.getMailId()) && userId.equals(recipient.getUserId())) {
                 return recipient;
             }
         }
         return null;
+    }
+
+    private List<MailRecipient> mailRecipientsSnapshot() {
+        synchronized (db.mailRecipients()) {
+            return new ArrayList<MailRecipient>(db.mailRecipients());
+        }
     }
 
     private MailMessage requireMessage(Long id) {
@@ -206,5 +239,17 @@ public class MailService {
             throw new BusinessException(message);
         }
         return value.trim();
+    }
+
+    private String notificationTitle(MailMessage message) {
+        return truncate("新邮件：" + message.getSubject(), NOTIFICATION_TITLE_LIMIT);
+    }
+
+    private String notificationContent() {
+        return truncate("您收到一封新的站内邮件，请在邮件中心查看。", NOTIFICATION_CONTENT_LIMIT);
+    }
+
+    private String truncate(String value, int maxLength) {
+        return value.length() <= maxLength ? value : value.substring(0, maxLength);
     }
 }
