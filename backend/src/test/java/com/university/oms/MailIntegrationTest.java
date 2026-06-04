@@ -3,6 +3,8 @@ package com.university.oms;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.university.oms.model.Department;
+import com.university.oms.model.MailRecipient;
+import com.university.oms.model.Notification;
 import com.university.oms.model.User;
 import com.university.oms.repository.InMemoryDatabase;
 import org.junit.jupiter.api.Test;
@@ -13,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -188,6 +191,108 @@ class MailIntegrationTest {
         }
     }
 
+    @Test
+    void sendMailAppearsInInboxAndSentAndNotifiesRecipients() throws Exception {
+        String adminToken = login("admin");
+        String userToken = login("user");
+        String subject = "Mail happy path " + System.nanoTime();
+
+        JsonNode sent = postJson("/api/mails",
+                "{\"subject\":\"  " + subject + "  \",\"content\":\"  Please review  \",\"toUserIds\":[2],\"ccUserIds\":[3]}",
+                adminToken).get("data");
+        long mailId = sent.get("id").asLong();
+
+        assertEquals(subject, sent.get("subject").asText());
+        assertEquals("Please review", sent.get("content").asText());
+        assertEquals(1L, sent.get("senderId").asLong());
+        assertEquals(2, sent.get("recipients").size());
+        assertFalse(sent.get("recipients").get(0).has("email"));
+        assertTrue(hasRecipient(sent.get("recipients"), 2L, "to", "pending"));
+        assertTrue(hasRecipient(sent.get("recipients"), 3L, "cc", "pending"));
+
+        JsonNode inbox = getJson("/api/mails/inbox", userToken).get("data");
+        JsonNode received = findMail(inbox, mailId);
+        assertNotNull(received);
+        assertEquals(mailId, inbox.get(0).get("id").asLong());
+        assertEquals("to", received.get("currentUserRecipientType").asText());
+        assertFalse(received.get("currentUserRead").asBoolean());
+
+        JsonNode sentList = getJson("/api/mails/sent", adminToken).get("data");
+        JsonNode senderCopy = findMail(sentList, mailId);
+        assertNotNull(senderCopy);
+        assertEquals(mailId, sentList.get(0).get("id").asLong());
+        assertEquals("sender", senderCopy.get("currentUserRecipientType").asText());
+        assertTrue(senderCopy.get("currentUserRead").asBoolean());
+        assertTrue(db.notifications().stream().anyMatch(n -> isMailNotification(n, 2L, mailId)));
+        assertTrue(db.notifications().stream().anyMatch(n -> isMailNotification(n, 3L, mailId)));
+    }
+
+    @Test
+    void mailDetailIsVisibleOnlyToSenderOrRecipient() throws Exception {
+        String adminToken = login("admin");
+        String userToken = login("user");
+        String financeToken = login("finance");
+        long mailId = sendMail(adminToken, "Detail access " + System.nanoTime(), "[2]", "[]");
+
+        mockMvc.perform(get("/api/mails/" + mailId).header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(mailId));
+        mockMvc.perform(get("/api/mails/" + mailId).header("Authorization", "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.currentUserRecipientType").value("to"));
+        mockMvc.perform(get("/api/mails/" + mailId).header("Authorization", "Bearer " + financeToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void recipientCanMarkMailReadButOtherUsersCannot() throws Exception {
+        String adminToken = login("admin");
+        String userToken = login("user");
+        String financeToken = login("finance");
+        long mailId = sendMail(adminToken, "Mark read " + System.nanoTime(), "[2]", "[]");
+
+        mockMvc.perform(post("/api/mails/" + mailId + "/read")
+                        .header("Authorization", "Bearer " + financeToken))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/mails/" + mailId + "/read")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isForbidden());
+
+        JsonNode marked = postJson("/api/mails/" + mailId + "/read", "{}", userToken).get("data");
+        assertTrue(marked.get("currentUserRead").asBoolean());
+        MailRecipient recipient = findRecipient(mailId, 2L);
+        assertNotNull(recipient);
+        assertTrue(recipient.isReadStatus());
+        assertNotNull(recipient.getReadAt());
+    }
+
+    @Test
+    void sendMailRequiresToRecipientsAndKnownUsers() throws Exception {
+        String adminToken = login("admin");
+
+        mockMvc.perform(post("/api/mails")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"subject\":\"No recipient\",\"content\":\"Body\",\"toUserIds\":[],\"ccUserIds\":[2]}"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/mails")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"subject\":\"Unknown recipient\",\"content\":\"Body\",\"toUserIds\":[999999],\"ccUserIds\":[]}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void sendMailDeduplicatesRecipientsWithToWinningOverCc() throws Exception {
+        String adminToken = login("admin");
+        long mailId = sendMail(adminToken, "Dedupe " + System.nanoTime(), "[2,2,3]", "[2,3,4,4]");
+
+        assertEquals(3, db.mailRecipients().stream().filter(r -> mailId == r.getMailId()).count());
+        assertEquals("to", findRecipient(mailId, 2L).getRecipientType());
+        assertEquals("to", findRecipient(mailId, 3L).getRecipientType());
+        assertEquals("cc", findRecipient(mailId, 4L).getRecipientType());
+    }
+
     private JsonNode getOrganizationTree(String token) throws Exception {
         String body = mockMvc.perform(get("/api/org/tree")
                         .header("Authorization", "Bearer " + token))
@@ -267,9 +372,68 @@ class MailIntegrationTest {
         assertTrue(firstIndex < secondIndex);
     }
 
+    private long sendMail(String token, String subject, String toUserIds, String ccUserIds) throws Exception {
+        JsonNode response = postJson("/api/mails",
+                "{\"subject\":\"" + subject + "\",\"content\":\"Body\",\"toUserIds\":" + toUserIds
+                        + ",\"ccUserIds\":" + ccUserIds + "}",
+                token);
+        return response.get("data").get("id").asLong();
+    }
+
+    private JsonNode getJson(String url, String token) throws Exception {
+        String body = mockMvc.perform(get(url).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(body);
+    }
+
+    private JsonNode findMail(JsonNode mails, long mailId) {
+        if (mails == null || !mails.isArray()) {
+            return null;
+        }
+        for (JsonNode mail : mails) {
+            if (mail.path("id").asLong() == mailId) {
+                return mail;
+            }
+        }
+        return null;
+    }
+
+    private boolean hasRecipient(JsonNode recipients, long userId, String recipientType, String emailStatus) {
+        if (recipients == null || !recipients.isArray()) {
+            return false;
+        }
+        for (JsonNode recipient : recipients) {
+            if (recipient.path("userId").asLong() == userId
+                    && recipientType.equals(recipient.path("recipientType").asText())
+                    && emailStatus.equals(recipient.path("emailStatus").asText())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private MailRecipient findRecipient(long mailId, long userId) {
+        return db.mailRecipients().stream()
+                .filter(r -> r.getMailId().equals(mailId) && r.getUserId().equals(userId))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private boolean isMailNotification(Notification notification, long receiverId, long mailId) {
+        return notification.getReceiverId().equals(receiverId)
+                && "mail".equals(notification.getBizType())
+                && notification.getBizId().equals(mailId)
+                && notification.getTitle().contains("新邮件");
+    }
+
     private String loginAdmin() throws Exception {
+        return login("admin");
+    }
+
+    private String login(String username) throws Exception {
         JsonNode response = postJson("/api/auth/login",
-                "{\"username\":\"admin\",\"password\":\"123456\"}", null);
+                "{\"username\":\"" + username + "\",\"password\":\"123456\"}", null);
         return response.get("data").get("token").asText();
     }
 
