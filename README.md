@@ -93,6 +93,22 @@ MySQL 连接配置：
 backend/src/main/resources/application-mysql.properties
 ```
 
+## External Email
+
+Internal mail works without SMTP. To also send real email to users' registered email addresses, set:
+
+```properties
+oms.mail.external-enabled=true
+spring.mail.host=smtp.qq.com
+spring.mail.port=587
+spring.mail.username=your-account@qq.com
+spring.mail.password=your-authorization-code
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+```
+
+Use an email authorization code or app password from the provider instead of the normal login password.
+
 ## 测试
 
 后端测试：
