@@ -46,6 +46,8 @@ describe('Mails page contract', () => {
     expect(source).toContain('currentUserRead')
     expect(source).toContain('readStateText')
     expect(source).toContain('readStateType')
+    expect(source).toContain('showCurrentReadState')
+    expect(source).toContain("if (type === 'sender') return '发件人'")
     expect(source).toContain('deliverySummary')
     expect(source).toContain('emailStatusText')
     expect(source).toContain('emailStatusType')

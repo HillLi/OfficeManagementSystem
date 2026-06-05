@@ -115,7 +115,7 @@
           <el-tag v-if="detail.currentUserRecipientType" size="small">
             {{ recipientTypeText(detail.currentUserRecipientType) }}
           </el-tag>
-          <el-tag v-if="detail.currentUserRecipientType" size="small" :type="readStateType(detail.currentUserRead)">
+          <el-tag v-if="showCurrentReadState" size="small" :type="readStateType(detail.currentUserRead)">
             {{ readStateText(detail.currentUserRead) }}
           </el-tag>
         </div>
@@ -190,6 +190,9 @@ const form = reactive({
 
 const currentUser = JSON.parse(sessionStorage.getItem('oms_user') || '{"id":0}')
 const showRecipientStates = computed(() => detail.value && detail.value.senderId === currentUser.id)
+const showCurrentReadState = computed(() =>
+  ['to', 'cc'].includes(detail.value?.currentUserRecipientType)
+)
 
 async function loadInitial() {
   loading.value = true
@@ -288,6 +291,8 @@ async function retryEmail(row) {
 function recipientTypeText(type) {
   if (type === 'to') return '收件'
   if (type === 'cc') return '抄送'
+  if (type === 'sender') return '发件人'
+  if (type === 'admin') return '管理员'
   return '-'
 }
 
