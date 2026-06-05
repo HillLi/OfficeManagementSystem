@@ -12,6 +12,7 @@ describe('role based navigation', () => {
       '/documents',
       '/seals',
       '/meetings',
+      '/mails',
       '/travels',
       '/reports',
       '/announcements',
@@ -25,6 +26,7 @@ describe('role based navigation', () => {
       '/documents',
       '/seals',
       '/meetings',
+      '/mails',
       '/travels',
       '/reports',
       '/approvals',
@@ -36,6 +38,7 @@ describe('role based navigation', () => {
       '/documents',
       '/seals',
       '/meetings',
+      '/mails',
       '/travels',
       '/reports',
       '/approvals',
@@ -47,6 +50,7 @@ describe('role based navigation', () => {
       '/documents',
       '/seals',
       '/meetings',
+      '/mails',
       '/reports',
       '/approvals',
       '/announcements',
@@ -55,14 +59,15 @@ describe('role based navigation', () => {
   })
 
   it('shows responsibility menus for specialist roles', () => {
-    expect(pathsFor('finance_staff')).toEqual(['/dashboard', '/travels', '/approvals', '/announcements', '/statistics'])
-    expect(pathsFor('security_staff')).toEqual(['/dashboard', '/meetings', '/approvals', '/announcements', '/statistics'])
-    expect(pathsFor('seal_keeper')).toEqual(['/dashboard', '/seals', '/announcements', '/statistics'])
+    expect(pathsFor('finance_staff')).toEqual(['/dashboard', '/mails', '/travels', '/approvals', '/announcements', '/statistics'])
+    expect(pathsFor('security_staff')).toEqual(['/dashboard', '/meetings', '/mails', '/approvals', '/announcements', '/statistics'])
+    expect(pathsFor('seal_keeper')).toEqual(['/dashboard', '/seals', '/mails', '/announcements', '/statistics'])
   })
 
   it('limits an administrator to dashboard statistics and system administration', () => {
     expect(pathsFor('admin')).toEqual([
       '/dashboard',
+      '/mails',
       '/announcements',
       '/statistics',
       '/admin/users',
@@ -75,6 +80,8 @@ describe('role based navigation', () => {
     expect(canAccessPath('/reports', ['finance_staff'])).toBe(false)
     expect(canAccessPath('/approvals', ['finance_staff'])).toBe(true)
     expect(canAccessPath('/announcements', ['office_user'])).toBe(true)
+    expect(canAccessPath('/mails', ['office_user'])).toBe(true)
+    expect(canAccessPath('/mails', ['admin'])).toBe(true)
     expect(canAccessPath('/admin/dictionaries', ['office_user'])).toBe(false)
     expect(canAccessPath('/admin/dictionaries', ['admin'])).toBe(true)
   })

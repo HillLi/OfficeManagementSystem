@@ -23,6 +23,10 @@ class MysqlSchemaContractTest {
         assertTrue(schema.contains("CREATE TABLE IF NOT EXISTS oa_seal_transfer"));
         assertTrue(schema.contains("CREATE TABLE IF NOT EXISTS sys_dict_type"));
         assertTrue(schema.contains("CREATE TABLE IF NOT EXISTS sys_dict_item"));
+        assertTrue(schema.contains("CREATE TABLE IF NOT EXISTS oa_mail_message"));
+        assertTrue(schema.contains("CREATE TABLE IF NOT EXISTS oa_mail_recipient"));
+        assertTrue(schema.contains("email_status VARCHAR(20) DEFAULT 'pending'"));
+        assertTrue(schema.contains("INDEX idx_mail_recipient_user"));
         assertTrue(schema.contains("dict_type VARCHAR(60) NOT NULL UNIQUE"));
         assertTrue(schema.contains("UNIQUE KEY uk_dict_item_code (dict_type, dict_code)"));
         assertTrue(schema.contains("updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"));

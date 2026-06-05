@@ -28,6 +28,8 @@ public class InMemoryDatabase {
     private final List<Attachment> attachments = Collections.synchronizedList(new ArrayList<Attachment>());
     private final List<AuditLog> auditLogs = Collections.synchronizedList(new ArrayList<AuditLog>());
     private final List<Notification> notifications = Collections.synchronizedList(new ArrayList<Notification>());
+    private final Map<Long, MailMessage> mailMessages = new ConcurrentHashMap<Long, MailMessage>();
+    private final List<MailRecipient> mailRecipients = Collections.synchronizedList(new ArrayList<MailRecipient>());
     private final Map<Long, Announcement> announcements = new ConcurrentHashMap<Long, Announcement>();
     private final Map<String, FlowInstance> flowInstances = new ConcurrentHashMap<String, FlowInstance>();
     private final List<FlowTask> flowTasks = Collections.synchronizedList(new ArrayList<FlowTask>());
@@ -224,6 +226,7 @@ public class InMemoryDatabase {
         user.setUsername(username);
         user.setPassword("123456");
         user.setRealName(realName);
+        user.setEmail(username + "@example.com");
         user.setDeptId(deptId);
         user.setDeptName(departments.get(deptId).getDeptName());
         user.getRoleKeys().add(role);
@@ -273,6 +276,8 @@ public class InMemoryDatabase {
     public List<Attachment> attachments() { return attachments; }
     public List<AuditLog> auditLogs() { return auditLogs; }
     public List<Notification> notifications() { return notifications; }
+    public Map<Long, MailMessage> mailMessages() { return mailMessages; }
+    public List<MailRecipient> mailRecipients() { return mailRecipients; }
     public Map<Long, Announcement> announcements() { return announcements; }
     public Map<String, FlowInstance> flowInstances() { return flowInstances; }
     public List<FlowTask> flowTasks() { return flowTasks; }

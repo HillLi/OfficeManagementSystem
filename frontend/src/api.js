@@ -78,6 +78,7 @@ export const api = {
   exportStatistics: () => http.get('/statistics/export', { responseType: 'blob' }),
   users: () => http.get('/auth/users'),
   userOptions: () => http.get('/auth/user-options'),
+  orgTree: () => http.get('/org/tree'),
   deptOptions: () => http.get('/auth/dept-options').catch((error) => {
     if (error?.response?.status !== 404) {
       return Promise.reject(error)
@@ -124,6 +125,13 @@ export const api = {
   meetings: () => http.get('/meetings'),
   createMeeting: (data) => http.post('/meetings', data),
   archiveMeetingMinutes: (id, data) => http.post(`/meetings/${id}/minutes`, data),
+
+  sendMail: (data) => http.post('/mails', data),
+  mailInbox: (params) => http.get('/mails/inbox', { params }),
+  mailSent: (params) => http.get('/mails/sent', { params }),
+  mailDetail: (id) => http.get(`/mails/${id}`),
+  markMailRead: (id) => http.post(`/mails/${id}/read`),
+  retryMailEmail: (id) => http.post(`/mails/${id}/retry-email`),
 
   travels: () => http.get('/travels'),
   createTravel: (data) => http.post('/travels', data),

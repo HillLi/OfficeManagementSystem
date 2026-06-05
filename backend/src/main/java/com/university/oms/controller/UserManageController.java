@@ -40,7 +40,7 @@ public class UserManageController {
     }
 
     @PutMapping("/users/{id}")
-    public ApiResponse<User> updateUser(@PathVariable Long id, @RequestBody UpdateUserRequest request) {
+    public ApiResponse<User> updateUser(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
         return ApiResponse.ok(service.updateUser(id, request));
     }
 

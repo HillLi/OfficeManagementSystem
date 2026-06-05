@@ -127,16 +127,16 @@ INSERT INTO sys_role (id, role_name, role_key, level, description) VALUES
 (8, '印章保管人', 'seal_keeper', 40, '用印登记和归还确认')
 ON DUPLICATE KEY UPDATE role_name = VALUES(role_name), description = VALUES(description);
 
-INSERT INTO sys_user (id, username, password, real_name, dept_id) VALUES
-(1, 'admin', 'pbkdf2$120000$T2ZmaWNlTWdtdFNhbHQwMQ==$Z3heUPjh43uuIEz+H3am6K517zg+3H0tEMInRgwsg1M=', '系统管理员', 1),
-(2, 'user', 'pbkdf2$120000$T2ZmaWNlTWdtdFNhbHQwMQ==$Z3heUPjh43uuIEz+H3am6K517zg+3H0tEMInRgwsg1M=', '普通办公人员', 4),
-(3, 'head', 'pbkdf2$120000$T2ZmaWNlTWdtdFNhbHQwMQ==$Z3heUPjh43uuIEz+H3am6K517zg+3H0tEMInRgwsg1M=', '部门负责人', 4),
-(4, 'leader', 'pbkdf2$120000$T2ZmaWNlTWdtdFNhbHQwMQ==$Z3heUPjh43uuIEz+H3am6K517zg+3H0tEMInRgwsg1M=', '校级领导', 1),
-(5, 'office', 'pbkdf2$120000$T2ZmaWNlTWdtdFNhbHQwMQ==$Z3heUPjh43uuIEz+H3am6K517zg+3H0tEMInRgwsg1M=', '党办校办人员', 1),
-(6, 'finance', 'pbkdf2$120000$T2ZmaWNlTWdtdFNhbHQwMQ==$Z3heUPjh43uuIEz+H3am6K517zg+3H0tEMInRgwsg1M=', '财务人员', 2),
-(7, 'security', 'pbkdf2$120000$T2ZmaWNlTWdtdFNhbHQwMQ==$Z3heUPjh43uuIEz+H3am6K517zg+3H0tEMInRgwsg1M=', '保卫人员', 3),
-(8, 'keeper', 'pbkdf2$120000$T2ZmaWNlTWdtdFNhbHQwMQ==$Z3heUPjh43uuIEz+H3am6K517zg+3H0tEMInRgwsg1M=', '印章保管人', 1)
-ON DUPLICATE KEY UPDATE password = VALUES(password), real_name = VALUES(real_name), dept_id = VALUES(dept_id);
+INSERT INTO sys_user (id, username, password, real_name, dept_id, email) VALUES
+(1, 'admin', 'pbkdf2$120000$T2ZmaWNlTWdtdFNhbHQwMQ==$Z3heUPjh43uuIEz+H3am6K517zg+3H0tEMInRgwsg1M=', '系统管理员', 1, 'admin@example.com'),
+(2, 'user', 'pbkdf2$120000$T2ZmaWNlTWdtdFNhbHQwMQ==$Z3heUPjh43uuIEz+H3am6K517zg+3H0tEMInRgwsg1M=', '普通办公人员', 4, 'user@example.com'),
+(3, 'head', 'pbkdf2$120000$T2ZmaWNlTWdtdFNhbHQwMQ==$Z3heUPjh43uuIEz+H3am6K517zg+3H0tEMInRgwsg1M=', '部门负责人', 4, 'head@example.com'),
+(4, 'leader', 'pbkdf2$120000$T2ZmaWNlTWdtdFNhbHQwMQ==$Z3heUPjh43uuIEz+H3am6K517zg+3H0tEMInRgwsg1M=', '校级领导', 1, 'leader@example.com'),
+(5, 'office', 'pbkdf2$120000$T2ZmaWNlTWdtdFNhbHQwMQ==$Z3heUPjh43uuIEz+H3am6K517zg+3H0tEMInRgwsg1M=', '党办校办人员', 1, 'office@example.com'),
+(6, 'finance', 'pbkdf2$120000$T2ZmaWNlTWdtdFNhbHQwMQ==$Z3heUPjh43uuIEz+H3am6K517zg+3H0tEMInRgwsg1M=', '财务人员', 2, 'finance@example.com'),
+(7, 'security', 'pbkdf2$120000$T2ZmaWNlTWdtdFNhbHQwMQ==$Z3heUPjh43uuIEz+H3am6K517zg+3H0tEMInRgwsg1M=', '保卫人员', 3, 'security@example.com'),
+(8, 'keeper', 'pbkdf2$120000$T2ZmaWNlTWdtdFNhbHQwMQ==$Z3heUPjh43uuIEz+H3am6K517zg+3H0tEMInRgwsg1M=', '印章保管人', 1, 'keeper@example.com')
+ON DUPLICATE KEY UPDATE password = VALUES(password), real_name = VALUES(real_name), dept_id = VALUES(dept_id), email = VALUES(email);
 
 INSERT IGNORE INTO sys_user_role (user_id, role_id) VALUES
 (1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6), (7, 7), (8, 8);

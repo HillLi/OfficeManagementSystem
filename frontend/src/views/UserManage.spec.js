@@ -18,4 +18,13 @@ describe('user management page actions', () => {
     expect(actionsBlock).toContain('v-if="activeTab === \'depts\'"')
     expect(source).not.toContain('<div style="margin-bottom:12px">')
   })
+
+  it('captures and submits required user email', () => {
+    expect(source).toContain('prop="email"')
+    expect(source).toContain('v-model="userForm.email"')
+    expect(source).toContain("email: user.email")
+    expect(source).toContain("email: f.email")
+    expect(source).toContain('!f.email')
+    expect(source).toContain("if (!f.email || !f.email.trim())")
+  })
 })

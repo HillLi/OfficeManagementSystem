@@ -22,7 +22,7 @@ public class JdbcDataPersistence implements DataPersistence {
     public void saveUser(User u) {
         jdbcTemplate.update("REPLACE INTO sys_user (id, username, password, real_name, dept_id, email, phone, status, created_at, updated_at) " +
                         "VALUES (?,?,?,?,?,?,?,1,?,?)",
-                u.getId(), u.getUsername(), u.getPassword(), u.getRealName(), u.getDeptId(), null, null, u.getCreatedAt(), u.getUpdatedAt());
+                u.getId(), u.getUsername(), u.getPassword(), u.getRealName(), u.getDeptId(), u.getEmail(), null, u.getCreatedAt(), u.getUpdatedAt());
         jdbcTemplate.update("DELETE FROM sys_user_role WHERE user_id=?", u.getId());
         for (String roleKey : u.getRoleKeys()) {
             jdbcTemplate.update("INSERT INTO sys_user_role (user_id, role_id) SELECT ?, id FROM sys_role WHERE role_key=?",
@@ -173,6 +173,23 @@ public class JdbcDataPersistence implements DataPersistence {
                         "(id, receiver_id, title, content, read_status, biz_type, biz_id, created_at) VALUES (?,?,?,?,?,?,?,?)",
                 n.getId(), n.getReceiverId(), n.getTitle(), n.getContent(), n.isReadStatus() ? 1 : 0,
                 n.getBizType(), n.getBizId(), n.getCreatedAt());
+    }
+
+    @Override
+    public void saveMailMessage(MailMessage m) {
+        jdbcTemplate.update("REPLACE INTO oa_mail_message " +
+                        "(id, sender_id, subject, content, created_at, updated_at) VALUES (?,?,?,?,?,?)",
+                m.getId(), m.getSenderId(), m.getSubject(), m.getContent(), m.getCreatedAt(), m.getUpdatedAt());
+    }
+
+    @Override
+    public void saveMailRecipient(MailRecipient r) {
+        jdbcTemplate.update("REPLACE INTO oa_mail_recipient " +
+                        "(id, mail_id, user_id, recipient_type, read_status, read_at, email_status, email_error, email_sent_at, created_at, updated_at) " +
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                r.getId(), r.getMailId(), r.getUserId(), r.getRecipientType(), r.isReadStatus() ? 1 : 0,
+                r.getReadAt(), r.getEmailStatus(), r.getEmailError(), r.getEmailSentAt(),
+                r.getCreatedAt(), r.getUpdatedAt());
     }
 
     @Override

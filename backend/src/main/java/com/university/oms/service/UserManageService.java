@@ -54,6 +54,7 @@ public class UserManageService {
         user.setUsername(request.getUsername());
         user.setPassword(passwordService.hash(request.getPassword()));
         user.setRealName(request.getRealName());
+        user.setEmail(request.getEmail());
         user.setDeptId(request.getDeptId());
         if (request.getDeptId() != null) {
             Department dept = db.departments().get(request.getDeptId());
@@ -73,6 +74,7 @@ public class UserManageService {
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             user.setPassword(passwordService.hash(request.getPassword()));
         }
+        if (request.getEmail() != null) user.setEmail(request.getEmail());
         if (request.getDeptId() != null) {
             user.setDeptId(request.getDeptId());
             Department dept = db.departments().get(request.getDeptId());

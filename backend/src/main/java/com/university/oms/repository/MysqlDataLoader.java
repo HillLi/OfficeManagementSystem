@@ -41,6 +41,8 @@ public class MysqlDataLoader {
         db.attachments().clear();
         db.auditLogs().clear();
         db.notifications().clear();
+        db.mailMessages().clear();
+        db.mailRecipients().clear();
         db.announcements().clear();
         db.flowInstances().clear();
         db.flowTasks().clear();
@@ -62,6 +64,8 @@ public class MysqlDataLoader {
         loadAttachments();
         loadAuditLogs();
         loadNotifications();
+        loadMailMessages();
+        loadMailRecipients();
         loadAnnouncements();
         loadFlowInstances();
         loadFlowTasks();
@@ -111,13 +115,14 @@ public class MysqlDataLoader {
     }
 
     private void loadUsers() {
-        List<User> users = jdbcTemplate.query("SELECT u.id, u.username, u.password, u.real_name, u.dept_id, d.dept_name " +
+        List<User> users = jdbcTemplate.query("SELECT u.id, u.username, u.password, u.real_name, u.email, u.dept_id, d.dept_name " +
                 "FROM sys_user u LEFT JOIN sys_dept d ON u.dept_id=d.id", (rs, rowNum) -> {
             User user = new User();
             db.fill(user, rs.getLong("id"));
             user.setUsername(rs.getString("username"));
             user.setPassword(rs.getString("password"));
             user.setRealName(rs.getString("real_name"));
+            user.setEmail(rs.getString("email"));
             user.setDeptId(rs.getLong("dept_id"));
             user.setDeptName(rs.getString("dept_name"));
             user.setRoleKeys(new LinkedHashSet<String>());
@@ -366,6 +371,37 @@ public class MysqlDataLoader {
         });
     }
 
+    private void loadMailMessages() {
+        jdbcTemplate.query("SELECT * FROM oa_mail_message", rs -> {
+            MailMessage m = new MailMessage();
+            m.setId(rs.getLong("id"));
+            m.setSenderId(rs.getLong("sender_id"));
+            m.setSubject(rs.getString("subject"));
+            m.setContent(rs.getString("content"));
+            m.setCreatedAt(toLocalDateTime(rs, "created_at"));
+            m.setUpdatedAt(toLocalDateTime(rs, "updated_at"));
+            db.mailMessages().put(m.getId(), m);
+        });
+    }
+
+    private void loadMailRecipients() {
+        jdbcTemplate.query("SELECT * FROM oa_mail_recipient", rs -> {
+            MailRecipient r = new MailRecipient();
+            r.setId(rs.getLong("id"));
+            r.setMailId(rs.getLong("mail_id"));
+            r.setUserId(rs.getLong("user_id"));
+            r.setRecipientType(rs.getString("recipient_type"));
+            r.setReadStatus(rs.getInt("read_status") == 1);
+            r.setReadAt(toLocalDateTime(rs, "read_at"));
+            r.setEmailStatus(rs.getString("email_status"));
+            r.setEmailError(rs.getString("email_error"));
+            r.setEmailSentAt(toLocalDateTime(rs, "email_sent_at"));
+            r.setCreatedAt(toLocalDateTime(rs, "created_at"));
+            r.setUpdatedAt(toLocalDateTime(rs, "updated_at"));
+            db.mailRecipients().add(r);
+        });
+    }
+
     private void loadAnnouncements() {
         jdbcTemplate.query("SELECT * FROM sys_announcement", rs -> {
             Announcement a = new Announcement();
@@ -429,6 +465,8 @@ public class MysqlDataLoader {
                         "COALESCE((SELECT MAX(id) FROM sys_attachment),0)," +
                         "COALESCE((SELECT MAX(id) FROM sys_operation_log),0)," +
                         "COALESCE((SELECT MAX(id) FROM sys_notification),0)," +
+                        "COALESCE((SELECT MAX(id) FROM oa_mail_message),0)," +
+                        "COALESCE((SELECT MAX(id) FROM oa_mail_recipient),0)," +
                         "COALESCE((SELECT MAX(id) FROM sys_announcement),0)," +
                         "COALESCE((SELECT MAX(id) FROM sys_dict_type),0)," +
                         "COALESCE((SELECT MAX(id) FROM sys_dict_item),0)," +
