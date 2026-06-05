@@ -6,6 +6,7 @@ export const menuItems = [
   { index: '/documents', label: '公文管理', roles: INITIATOR_ROLES },
   { index: '/seals', label: '印章管理', roles: [...INITIATOR_ROLES, 'seal_keeper'] },
   { index: '/meetings', label: '会议管理', roles: [...INITIATOR_ROLES, 'security_staff'] },
+  { index: '/mails', label: '邮件中心' },
   { index: '/travels', label: '差旅审批', roles: ['office_user', 'dept_head', 'school_leader', 'finance_staff'] },
   { index: '/reports', label: '请示报告', roles: INITIATOR_ROLES },
   { index: '/approvals', label: '审批任务', roles: APPROVAL_ROLES },

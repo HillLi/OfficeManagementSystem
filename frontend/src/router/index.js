@@ -5,6 +5,7 @@ import Dashboard from '../views/Dashboard.vue'
 import Documents from '../views/Documents.vue'
 import Login from '../views/Login.vue'
 import Meetings from '../views/Meetings.vue'
+import Mails from '../views/Mails.vue'
 import Reports from '../views/Reports.vue'
 import Seals from '../views/Seals.vue'
 import Statistics from '../views/Statistics.vue'
@@ -20,6 +21,7 @@ const routes = [
   { path: '/documents', component: Documents },
   { path: '/seals', component: Seals },
   { path: '/meetings', component: Meetings },
+  { path: '/mails', component: Mails },
   { path: '/travels', component: Travels },
   { path: '/reports', component: Reports },
   { path: '/approvals', component: Approvals },
