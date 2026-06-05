@@ -220,8 +220,8 @@ class MailIntegrationTest {
         assertEquals(1L, sent.get("senderId").asLong());
         assertEquals(2, sent.get("recipients").size());
         assertFalse(sent.get("recipients").get(0).has("email"));
-        assertTrue(hasRecipient(sent.get("recipients"), 2L, "to", "pending"));
-        assertTrue(hasRecipient(sent.get("recipients"), 3L, "cc", "pending"));
+        assertTrue(hasRecipient(sent.get("recipients"), 2L, "to", "skipped"));
+        assertTrue(hasRecipient(sent.get("recipients"), 3L, "cc", "skipped"));
 
         JsonNode inbox = getJson("/api/mails/inbox", userToken).get("data");
         JsonNode received = findMail(inbox, mailId);
@@ -372,6 +372,65 @@ class MailIntegrationTest {
         assertTrue(detail.get("currentUserRead").asBoolean());
         assertEquals("to", inbox.get("currentUserRecipientType").asText());
         assertFalse(inbox.get("currentUserRead").asBoolean());
+    }
+
+    @Test
+    void externalEmailDisabledMarksRecipientsSkipped() throws Exception {
+        String adminToken = login("admin");
+
+        JsonNode sent = postJson("/api/mails",
+                "{\"subject\":\"External disabled " + System.nanoTime()
+                        + "\",\"content\":\"Body\",\"toUserIds\":[2],\"ccUserIds\":[]}",
+                adminToken).get("data");
+        long mailId = sent.get("id").asLong();
+        JsonNode recipient = sent.get("recipients").get(0);
+
+        assertEquals("skipped", recipient.get("emailStatus").asText());
+        assertTrue(recipient.get("emailError").asText().contains("disabled"));
+        MailRecipient stored = findRecipient(mailId, 2L);
+        assertNotNull(stored);
+        assertEquals("skipped", stored.getEmailStatus());
+        assertTrue(stored.getEmailError().contains("disabled"));
+    }
+
+    @Test
+    void senderCanRetryFailedOrSkippedEmail() throws Exception {
+        String adminToken = login("admin");
+        long mailId = sendMail(adminToken, "Retry sender " + System.nanoTime(), "[2]", "[]");
+        MailRecipient recipient = findRecipient(mailId, 2L);
+        recipient.setEmailStatus("failed");
+        recipient.setEmailError("smtp unavailable");
+
+        JsonNode retried = postJson("/api/mails/" + mailId + "/retry-email", "{}", adminToken).get("data");
+
+        assertTrue(hasRecipient(retried.get("recipients"), 2L, "to", "skipped"));
+        assertEquals("skipped", findRecipient(mailId, 2L).getEmailStatus());
+    }
+
+    @Test
+    void nonSenderNonAdminCannotRetryEmail() throws Exception {
+        String adminToken = login("admin");
+        String financeToken = login("finance");
+        long mailId = sendMail(adminToken, "Retry forbidden " + System.nanoTime(), "[2]", "[]");
+
+        mockMvc.perform(post("/api/mails/" + mailId + "/retry-email")
+                        .header("Authorization", "Bearer " + financeToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adminCanRetryEmail() throws Exception {
+        String userToken = login("user");
+        String adminToken = login("admin");
+        long mailId = sendMail(userToken, "Retry admin " + System.nanoTime(), "[3]", "[]");
+        MailRecipient recipient = findRecipient(mailId, 3L);
+        recipient.setEmailStatus("failed");
+        recipient.setEmailError("smtp unavailable");
+
+        JsonNode retried = postJson("/api/mails/" + mailId + "/retry-email", "{}", adminToken).get("data");
+
+        assertTrue(hasRecipient(retried.get("recipients"), 3L, "to", "skipped"));
+        assertEquals("skipped", findRecipient(mailId, 3L).getEmailStatus());
     }
 
     private JsonNode getOrganizationTree(String token) throws Exception {

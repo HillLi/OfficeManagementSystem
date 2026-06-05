@@ -28,15 +28,19 @@ public class MailService {
     private static final Logger log = LoggerFactory.getLogger(MailService.class);
     private static final int NOTIFICATION_TITLE_LIMIT = 255;
     private static final int NOTIFICATION_CONTENT_LIMIT = 1000;
+    private static final int EMAIL_ERROR_LIMIT = 1000;
 
     private final InMemoryDatabase db;
     private final DataPersistence persistence;
     private final WorkflowService workflowService;
+    private final EmailSenderService emailSenderService;
 
-    public MailService(InMemoryDatabase db, DataPersistence persistence, WorkflowService workflowService) {
+    public MailService(InMemoryDatabase db, DataPersistence persistence, WorkflowService workflowService,
+                       EmailSenderService emailSenderService) {
         this.db = db;
         this.persistence = persistence;
         this.workflowService = workflowService;
+        this.emailSenderService = emailSenderService;
     }
 
     public MailDetailResponse send(MailSendRequest request) {
@@ -111,6 +115,23 @@ public class MailService {
         return response(message, user.getId(), true);
     }
 
+    public MailDetailResponse retryEmail(Long id) {
+        User user = AuthContext.requireUser();
+        MailMessage message = requireMessage(id);
+        boolean sender = user.getId().equals(message.getSenderId());
+        boolean admin = user.getRoleKeys().contains("admin");
+        if (!sender && !admin) {
+            throw new ForbiddenException("只有发件人或管理员可以重试邮件发送");
+        }
+        User mailSender = db.users().get(message.getSenderId());
+        for (MailRecipient recipient : recipients(message.getId())) {
+            if ("failed".equals(recipient.getEmailStatus()) || "skipped".equals(recipient.getEmailStatus())) {
+                deliverExternalEmail(message, recipient, mailSender, db.users().get(recipient.getUserId()));
+            }
+        }
+        return response(message, user.getId(), false, true, sender || !admin);
+    }
+
     private void saveRecipients(MailMessage message, Set<Long> userIds, String recipientType) {
         for (Long userId : userIds) {
             MailRecipient recipient = new MailRecipient();
@@ -126,19 +147,25 @@ public class MailService {
             } catch (RuntimeException ex) {
                 log.warn("Failed to create mail notification for mailId={}, userId={}", message.getId(), userId, ex);
             }
+            deliverExternalEmail(message, recipient, db.users().get(message.getSenderId()), db.users().get(userId));
         }
     }
 
     private MailDetailResponse response(MailMessage message, Long currentUserId, boolean recipientContext) {
+        return response(message, currentUserId, recipientContext, false, true);
+    }
+
+    private MailDetailResponse response(MailMessage message, Long currentUserId, boolean recipientContext,
+                                        boolean includeAllRecipients, boolean includeContent) {
         MailDetailResponse response = new MailDetailResponse();
         response.setId(message.getId());
         response.setSenderId(message.getSenderId());
         User sender = db.users().get(message.getSenderId());
         response.setSenderName(sender == null ? null : sender.getRealName());
         response.setSubject(message.getSubject());
-        response.setContent(message.getContent());
+        response.setContent(includeContent ? message.getContent() : null);
         response.setCreatedAt(message.getCreatedAt());
-        response.setCurrentUserRecipientType("sender");
+        response.setCurrentUserRecipientType(message.getSenderId().equals(currentUserId) ? "sender" : "admin");
         response.setCurrentUserRead(true);
 
         List<MailRecipient> recipients = recipients(message.getId());
@@ -149,11 +176,54 @@ public class MailService {
             response.setCurrentUserRead(currentRecipient.isReadStatus());
         }
         for (MailRecipient recipient : recipients) {
-            if (currentUserIsSender || recipient.getUserId().equals(currentUserId)) {
+            if (includeAllRecipients || currentUserIsSender || recipient.getUserId().equals(currentUserId)) {
                 response.getRecipients().add(recipientResponse(recipient));
             }
         }
         return response;
+    }
+
+    private void deliverExternalEmail(MailMessage message, MailRecipient recipient, User sender, User receiver) {
+        try {
+            if (!emailSenderService.isEnabled()) {
+                markEmailSkipped(recipient, "external mail disabled");
+                return;
+            }
+            if (receiver == null || receiver.getEmail() == null || receiver.getEmail().trim().isEmpty()) {
+                markEmailSkipped(recipient, "recipient email missing");
+                return;
+            }
+            emailSenderService.sendMail(receiver.getEmail(), message.getSubject(), externalMailContent(message, sender));
+            LocalDateTime now = LocalDateTime.now();
+            recipient.setEmailStatus("sent");
+            recipient.setEmailError(null);
+            recipient.setEmailSentAt(now);
+            recipient.setUpdatedAt(now);
+            persistence.saveMailRecipient(recipient);
+        } catch (RuntimeException ex) {
+            LocalDateTime now = LocalDateTime.now();
+            recipient.setEmailStatus("failed");
+            recipient.setEmailError(truncate(ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage(),
+                    EMAIL_ERROR_LIMIT));
+            recipient.setEmailSentAt(null);
+            recipient.setUpdatedAt(now);
+            persistence.saveMailRecipient(recipient);
+            log.warn("Failed to send external mail for mailId={}, userId={}", message.getId(), recipient.getUserId(), ex);
+        }
+    }
+
+    private void markEmailSkipped(MailRecipient recipient, String reason) {
+        LocalDateTime now = LocalDateTime.now();
+        recipient.setEmailStatus("skipped");
+        recipient.setEmailError(truncate(reason, EMAIL_ERROR_LIMIT));
+        recipient.setEmailSentAt(null);
+        recipient.setUpdatedAt(now);
+        persistence.saveMailRecipient(recipient);
+    }
+
+    private String externalMailContent(MailMessage message, User sender) {
+        String senderName = sender == null ? "系统用户" : sender.getRealName();
+        return "发件人：" + senderName + "\n\n" + message.getContent();
     }
 
     private MailRecipientResponse recipientResponse(MailRecipient recipient) {

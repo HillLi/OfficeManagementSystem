@@ -47,4 +47,9 @@ public class MailController {
     public ApiResponse<MailDetailResponse> markRead(@PathVariable Long id) {
         return ApiResponse.ok(service.markRead(id));
     }
+
+    @PostMapping("/{id}/retry-email")
+    public ApiResponse<MailDetailResponse> retryEmail(@PathVariable Long id) {
+        return ApiResponse.ok(service.retryEmail(id));
+    }
 }
