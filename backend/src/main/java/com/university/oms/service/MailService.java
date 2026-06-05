@@ -129,7 +129,7 @@ public class MailService {
                 deliverExternalEmail(message, recipient, mailSender, db.users().get(recipient.getUserId()));
             }
         }
-        return response(message, user.getId(), false, true, sender || !admin);
+        return response(message, user.getId(), false, sender, sender);
     }
 
     private void saveRecipients(MailMessage message, Set<Long> userIds, String recipientType) {
@@ -186,7 +186,7 @@ public class MailService {
     private void deliverExternalEmail(MailMessage message, MailRecipient recipient, User sender, User receiver) {
         try {
             if (!emailSenderService.isEnabled()) {
-                markEmailSkipped(recipient, "external mail disabled");
+                markEmailSkipped(recipient, emailSenderService.disabledReason());
                 return;
             }
             if (receiver == null || receiver.getEmail() == null || receiver.getEmail().trim().isEmpty()) {

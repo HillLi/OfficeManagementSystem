@@ -7,6 +7,7 @@ import com.university.oms.model.MailRecipient;
 import com.university.oms.model.Notification;
 import com.university.oms.model.User;
 import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.service.EmailSenderService;
 import com.university.oms.service.WorkflowService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -34,7 +36,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = "oms.mail.external-enabled=true")
 @AutoConfigureMockMvc
 class MailIntegrationTest {
     @Autowired
@@ -48,6 +50,9 @@ class MailIntegrationTest {
 
     @SpyBean
     private WorkflowService workflowService;
+
+    @SpyBean
+    private EmailSenderService emailSenderService;
 
     @Test
     void adminCreateUserRequiresEmail() throws Exception {
@@ -386,11 +391,28 @@ class MailIntegrationTest {
         JsonNode recipient = sent.get("recipients").get(0);
 
         assertEquals("skipped", recipient.get("emailStatus").asText());
-        assertTrue(recipient.get("emailError").asText().contains("disabled"));
+        assertTrue(recipient.get("emailError").asText().contains("configuration"));
         MailRecipient stored = findRecipient(mailId, 2L);
         assertNotNull(stored);
         assertEquals("skipped", stored.getEmailStatus());
-        assertTrue(stored.getEmailError().contains("disabled"));
+        assertTrue(stored.getEmailError().contains("configuration"));
+    }
+
+    @Test
+    void externalFailureMarksFailedWithoutLosingInternalMail() throws Exception {
+        String adminToken = login("admin");
+        doReturn(true).when(emailSenderService).isEnabled();
+        doThrow(new RuntimeException("smtp down"))
+                .when(emailSenderService)
+                .sendMail(anyString(), anyString(), anyString());
+
+        long mailId = sendMail(adminToken, "External failure " + System.nanoTime(), "[2]", "[]");
+
+        MailRecipient recipient = findRecipient(mailId, 2L);
+        assertNotNull(db.mailMessages().get(mailId));
+        assertNotNull(recipient);
+        assertEquals("failed", recipient.getEmailStatus());
+        assertTrue(recipient.getEmailError().contains("smtp down"));
     }
 
     @Test
@@ -429,8 +451,30 @@ class MailIntegrationTest {
 
         JsonNode retried = postJson("/api/mails/" + mailId + "/retry-email", "{}", adminToken).get("data");
 
-        assertTrue(hasRecipient(retried.get("recipients"), 3L, "to", "skipped"));
+        assertEquals(0, retried.get("recipients").size());
+        assertTrue(retried.get("content").isNull());
         assertEquals("skipped", findRecipient(mailId, 3L).getEmailStatus());
+    }
+
+    @Test
+    void adminRetryDoesNotExposeRecipientPrivateStatuses() throws Exception {
+        String userToken = login("user");
+        String adminToken = login("admin");
+        long mailId = sendMail(userToken, "Retry admin privacy " + System.nanoTime(), "[3,4]", "[]");
+        MailRecipient first = findRecipient(mailId, 3L);
+        MailRecipient second = findRecipient(mailId, 4L);
+        first.setReadStatus(true);
+        first.setEmailStatus("failed");
+        first.setEmailError("private smtp error one");
+        second.setEmailStatus("failed");
+        second.setEmailError("private smtp error two");
+
+        JsonNode retried = postJson("/api/mails/" + mailId + "/retry-email", "{}", adminToken).get("data");
+
+        assertTrue(retried.get("content").isNull());
+        assertEquals(0, retried.get("recipients").size());
+        assertEquals("skipped", findRecipient(mailId, 3L).getEmailStatus());
+        assertEquals("skipped", findRecipient(mailId, 4L).getEmailStatus());
     }
 
     private JsonNode getOrganizationTree(String token) throws Exception {

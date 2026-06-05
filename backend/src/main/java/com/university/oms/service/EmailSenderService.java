@@ -15,21 +15,34 @@ import javax.mail.internet.MimeMessage;
 public class EmailSenderService {
     private final JavaMailSender javaMailSender;
     private final boolean enabled;
+    private final String host;
     private final String username;
+    private final String password;
     private final String fromName;
 
     public EmailSenderService(JavaMailSender javaMailSender,
                               @Value("${oms.mail.external-enabled:false}") boolean enabled,
+                              @Value("${spring.mail.host:}") String host,
                               @Value("${spring.mail.username:}") String username,
-                              @Value("${oms.mail.from-name:高校办公管理系统}") String fromName) {
+                              @Value("${spring.mail.password:}") String password,
+                              @Value("${oms.mail.from-name:Office Management System}") String fromName) {
         this.javaMailSender = javaMailSender;
         this.enabled = enabled;
+        this.host = host;
         this.username = username;
+        this.password = password;
         this.fromName = fromName;
     }
 
     public boolean isEnabled() {
-        return enabled;
+        return enabled && hasText(host) && hasText(username) && hasText(password);
+    }
+
+    public String disabledReason() {
+        if (!enabled) {
+            return "external mail disabled";
+        }
+        return "external mail disabled or SMTP configuration missing";
     }
 
     public String getFromName() {
@@ -43,9 +56,7 @@ public class EmailSenderService {
             helper.setTo(toEmail);
             helper.setSubject(subject);
             helper.setText(content, false);
-            if (hasText(username)) {
-                helper.setFrom(new InternetAddress(username, fromName));
-            }
+            helper.setFrom(new InternetAddress(username, fromName));
             javaMailSender.send(message);
         } catch (MessagingException ex) {
             throw new IllegalStateException(ex.getMessage(), ex);
