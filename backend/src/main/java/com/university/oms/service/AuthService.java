@@ -12,15 +12,21 @@ import com.university.oms.security.AuthTokenService;
 import com.university.oms.security.PasswordService;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class AuthService {
+    private static final int MAX_FAILURES = 5;
+    private static final long LOCK_MINUTES = 10;
     private final InMemoryDatabase db;
     private final AuthTokenService tokenService;
     private final PasswordService passwordService;
     private final DataPersistence persistence;
+    private final Map<String, LoginFailure> loginFailures = new ConcurrentHashMap<String, LoginFailure>();
 
     public AuthService(InMemoryDatabase db, AuthTokenService tokenService, PasswordService passwordService,
                        DataPersistence persistence) {
@@ -31,8 +37,11 @@ public class AuthService {
     }
 
     public LoginResult login(LoginRequest request) {
+        String username = request.getUsername() == null ? "" : request.getUsername().trim().toLowerCase();
+        assertLoginAllowed(username);
         for (User user : db.users().values()) {
             if (user.getUsername().equals(request.getUsername()) && passwordService.matches(request.getPassword(), user.getPassword())) {
+                loginFailures.remove(username);
                 if (passwordService.needsUpgrade(user.getPassword())) {
                     user.setPassword(passwordService.hash(request.getPassword()));
                     persistence.saveUser(user);
@@ -40,6 +49,7 @@ public class AuthService {
                 return new LoginResult(tokenService.issue(user), user);
             }
         }
+        recordLoginFailure(username);
         throw new BusinessException("用户名或密码错误");
     }
 
@@ -65,5 +75,31 @@ public class AuthService {
         } else {
             tokenService.revoke(authorization);
         }
+    }
+
+    private void assertLoginAllowed(String username) {
+        LoginFailure failure = loginFailures.get(username);
+        if (failure == null) {
+            return;
+        }
+        if (failure.lockedUntil != null && failure.lockedUntil.isAfter(LocalDateTime.now())) {
+            throw new BusinessException("登录失败次数过多，请稍后再试");
+        }
+        if (failure.lockedUntil != null) {
+            loginFailures.remove(username);
+        }
+    }
+
+    private void recordLoginFailure(String username) {
+        LoginFailure failure = loginFailures.computeIfAbsent(username, key -> new LoginFailure());
+        failure.count++;
+        if (failure.count >= MAX_FAILURES) {
+            failure.lockedUntil = LocalDateTime.now().plusMinutes(LOCK_MINUTES);
+        }
+    }
+
+    private static class LoginFailure {
+        private int count;
+        private LocalDateTime lockedUntil;
     }
 }

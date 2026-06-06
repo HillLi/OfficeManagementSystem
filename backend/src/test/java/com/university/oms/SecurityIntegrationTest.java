@@ -2,6 +2,8 @@ package com.university.oms;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.security.PasswordService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -23,6 +25,12 @@ class SecurityIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private InMemoryDatabase db;
+
+    @Autowired
+    private PasswordService passwordService;
+
     @Test
     void apiRequiresAuthentication() throws Exception {
         mockMvc.perform(get("/api/dashboard"))
@@ -36,6 +44,28 @@ class SecurityIntegrationTest {
         assertTrue(response.get("success").asBoolean());
         assertTrue(response.get("data").get("token").asText().length() > 20);
         assertFalse(response.get("data").get("user").has("password"));
+    }
+
+    @Test
+    void seededUsersStoreHashedPasswords() {
+        for (long id = 1L; id <= 8L; id++) {
+            String password = db.users().get(id).getPassword();
+            assertFalse("123456".equals(password));
+            assertFalse(passwordService.needsUpgrade(password));
+        }
+    }
+
+    @Test
+    void repeatedLoginFailuresAreRateLimited() throws Exception {
+        for (int i = 0; i < 5; i++) {
+            postJsonExpectingBadRequest("/api/auth/login",
+                    "{\"username\":\"missing-account\",\"password\":\"wrong\"}");
+        }
+
+        JsonNode response = postJsonExpectingBadRequest("/api/auth/login",
+                "{\"username\":\"missing-account\",\"password\":\"wrong\"}");
+
+        assertEquals("登录失败次数过多，请稍后再试", response.get("message").asText());
     }
 
     @Test
@@ -103,6 +133,15 @@ class SecurityIntegrationTest {
         }
         String body = mockMvc.perform(builder)
                 .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(body);
+    }
+
+    private JsonNode postJsonExpectingBadRequest(String url, String json) throws Exception {
+        String body = mockMvc.perform(post(url)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isBadRequest())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(body);
     }

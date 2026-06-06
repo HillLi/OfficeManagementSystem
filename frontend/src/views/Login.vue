@@ -7,7 +7,7 @@
           <el-input v-model="form.username" placeholder="请输入用户名" />
         </el-form-item>
         <el-form-item label="密码">
-          <el-input v-model="form.password" type="password" placeholder="请输入密码" />
+          <el-input v-model="form.password" type="password" placeholder="请输入密码" show-password />
         </el-form-item>
         <el-button type="primary" style="width:100%" @click="doLogin" :loading="loading">登录</el-button>
       </el-form>
@@ -29,7 +29,7 @@ const userStore = useUserStore()
 const dictionaryStore = useDictionaryStore()
 const loading = ref(false)
 const error = ref('')
-const form = reactive({ username: 'user', password: '123456' })
+const form = reactive({ username: '', password: '' })
 
 const doLogin = async () => {
   loading.value = true

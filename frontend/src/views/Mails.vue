@@ -168,6 +168,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../api'
+import { readSessionUser } from '../utils/sessionUser'
 import OrgUserTreeSelect from '../components/OrgUserTreeSelect.vue'
 
 const activeTab = ref('inbox')
@@ -188,7 +189,7 @@ const form = reactive({
   ccUserIds: []
 })
 
-const currentUser = JSON.parse(sessionStorage.getItem('oms_user') || '{"id":0}')
+const currentUser = readSessionUser(undefined, { id: 0 })
 const showRecipientStates = computed(() => detail.value && detail.value.senderId === currentUser.id)
 const showCurrentReadState = computed(() =>
   ['to', 'cc'].includes(detail.value?.currentUserRecipientType)

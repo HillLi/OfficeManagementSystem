@@ -70,12 +70,13 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
+import { readSessionUser } from '../utils/sessionUser'
 import WorkflowGuideDialog from '../components/WorkflowGuideDialog.vue'
 
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
 const optionsOf = dictionaryStore.optionsOf
-const currentUser = JSON.parse(sessionStorage.getItem('oms_user') || '{"id":2}')
+const currentUser = readSessionUser(undefined, { id: 2 })
 const rows = ref([])
 const applicationDialog = ref(false)
 const reimburseDialog = ref(false)

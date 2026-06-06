@@ -163,12 +163,13 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
+import { readSessionUser } from '../utils/sessionUser'
 import WorkflowGuideDialog from '../components/WorkflowGuideDialog.vue'
 
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
 const optionsOf = dictionaryStore.optionsOf
-const currentUser = JSON.parse(sessionStorage.getItem('oms_user') || '{"id":0,"roleKeys":[]}')
+const currentUser = readSessionUser(undefined, { id: 0, roleKeys: [] })
 const canManage = computed(() => currentUser.roleKeys?.some((role) => ['seal_keeper', 'office_admin', 'admin'].includes(role)))
 const canViewDeleted = computed(() => currentUser.roleKeys?.some((role) => ['office_admin', 'admin'].includes(role)))
 const seals = ref([])

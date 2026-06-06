@@ -2,6 +2,7 @@ package com.university.oms.security;
 
 import com.university.oms.model.User;
 import com.university.oms.repository.InMemoryDatabase;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
@@ -47,6 +48,21 @@ public class AuthTokenService {
         if (token != null) {
             tokens.remove(token);
         }
+    }
+
+    @Scheduled(fixedDelay = 3600000)
+    public void cleanupExpiredTokens() {
+        cleanupExpiredTokens(LocalDateTime.now());
+    }
+
+    int cleanupExpiredTokens(LocalDateTime now) {
+        int before = tokens.size();
+        tokens.entrySet().removeIf(entry -> entry.getValue().expiresAt.isBefore(now));
+        return before - tokens.size();
+    }
+
+    int activeTokenCount() {
+        return tokens.size();
     }
 
     private static class TokenRecord {

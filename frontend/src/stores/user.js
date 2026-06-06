@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { readSessionUser, writeSessionUser } from '../utils/sessionUser'
 
 export const useUserStore = defineStore('user', () => {
-  const user = ref(JSON.parse(sessionStorage.getItem('oms_user') || 'null'))
+  const user = ref(readSessionUser())
   const token = ref(sessionStorage.getItem('oms_token') || '')
 
   const isLoggedIn = computed(() => user.value != null)
@@ -12,7 +13,7 @@ export const useUserStore = defineStore('user', () => {
   function setUser(u, t) {
     user.value = u
     token.value = t
-    sessionStorage.setItem('oms_user', JSON.stringify(u))
+    writeSessionUser(u)
     sessionStorage.setItem('oms_token', t)
   }
 

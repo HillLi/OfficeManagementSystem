@@ -12,7 +12,9 @@ import Statistics from '../views/Statistics.vue'
 import Travels from '../views/Travels.vue'
 import UserManage from '../views/UserManage.vue'
 import DictionaryManage from '../views/DictionaryManage.vue'
+import NotFound from '../views/NotFound.vue'
 import { canAccessPath } from '../utils/navigation'
+import { readSessionUser } from '../utils/sessionUser'
 
 const routes = [
   { path: '/login', component: Login, meta: { public: true } },
@@ -28,7 +30,8 @@ const routes = [
   { path: '/announcements', component: Announcements },
   { path: '/statistics', component: Statistics },
   { path: '/admin/users', component: UserManage },
-  { path: '/admin/dictionaries', component: DictionaryManage }
+  { path: '/admin/dictionaries', component: DictionaryManage },
+  { path: '/:pathMatch(.*)*', component: NotFound, meta: { public: true } }
 ]
 
 const router = createRouter({
@@ -41,7 +44,7 @@ router.beforeEach((to, from, next) => {
   if (!to.meta.public && !token) {
     next('/login')
   } else if (!to.meta.public) {
-    const user = JSON.parse(sessionStorage.getItem('oms_user') || 'null')
+    const user = readSessionUser()
     if (canAccessPath(to.path, user?.roleKeys || [])) {
       next()
     } else {

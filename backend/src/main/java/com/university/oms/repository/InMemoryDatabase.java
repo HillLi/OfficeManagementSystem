@@ -1,6 +1,8 @@
 package com.university.oms.repository;
 
 import com.university.oms.model.*;
+import com.university.oms.security.PasswordService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import javax.annotation.PostConstruct;
@@ -12,6 +14,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @Repository
 public class InMemoryDatabase {
+    private final PasswordService passwordService;
     private final AtomicLong ids = new AtomicLong(1000);
     private final Map<Long, User> users = new ConcurrentHashMap<Long, User>();
     private final Map<Long, Department> departments = new ConcurrentHashMap<Long, Department>();
@@ -36,6 +39,15 @@ public class InMemoryDatabase {
     private final Map<String, BigDecimal> meetingFeeStandards = new ConcurrentHashMap<String, BigDecimal>();
     private final Map<String, DictionaryType> dictionaryTypes = new ConcurrentHashMap<String, DictionaryType>();
     private final Map<String, DictionaryItem> dictionaryItems = new ConcurrentHashMap<String, DictionaryItem>();
+
+    public InMemoryDatabase() {
+        this(new PasswordService());
+    }
+
+    @Autowired
+    public InMemoryDatabase(PasswordService passwordService) {
+        this.passwordService = passwordService;
+    }
 
     public long nextId() {
         return ids.incrementAndGet();
@@ -224,7 +236,7 @@ public class InMemoryDatabase {
         User user = new User();
         fill(user, id);
         user.setUsername(username);
-        user.setPassword("123456");
+        user.setPassword(passwordService.hash("123456"));
         user.setRealName(realName);
         user.setEmail(username + "@example.com");
         user.setDeptId(deptId);
