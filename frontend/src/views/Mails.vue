@@ -59,13 +59,11 @@
             <template #default="{ row }">
               <div class="delivery-summary">
                 <el-tag
-                  v-for="item in deliverySummary(row.recipients)"
-                  :key="item.status"
                   size="small"
-                  :type="emailStatusType(item.status)"
+                  :type="deliverySummaryType(row.recipients)"
                   class="state-tag"
                 >
-                  {{ emailStatusText(item.status) }} {{ item.count }}
+                  {{ deliverySummaryText(row.recipients) }}
                 </el-tag>
               </div>
             </template>
@@ -148,7 +146,9 @@
           <el-table-column v-if="showRecipientStates" prop="emailSentAt" label="投递时间" width="176">
             <template #default="{ row }">{{ formatDate(row.emailSentAt) }}</template>
           </el-table-column>
-          <el-table-column v-if="showRecipientStates" prop="emailError" label="错误" min-width="150" show-overflow-tooltip />
+          <el-table-column v-if="showRecipientStates" label="错误" min-width="150" show-overflow-tooltip>
+            <template #default="{ row }">{{ externalErrorText(row.emailError) }}</template>
+          </el-table-column>
         </el-table>
       </article>
       <template #footer>
@@ -324,6 +324,14 @@ function emailStatusType(status) {
   return map[status] || 'info'
 }
 
+function externalErrorText(error) {
+  if (!error) return '-'
+  const map = {
+    'external mail disabled': '外部邮件未启用'
+  }
+  return map[error] || error
+}
+
 function recipientSummary(recipients = []) {
   if (!recipients.length) return '-'
   const names = recipients.map((recipient) => recipient.realName || userLabel(recipient.userId))
@@ -338,6 +346,22 @@ function deliverySummary(recipients = []) {
     return result
   }, {})
   return Object.entries(counts).map(([status, count]) => ({ status, count }))
+}
+
+function deliverySummaryText(recipients = []) {
+  const summary = deliverySummary(recipients)
+  if (!summary.length) return '-'
+  if (summary.length === 1) return emailStatusText(summary[0].status)
+  return summary.map((item) => `${emailStatusText(item.status)} ${item.count}人`).join('、')
+}
+
+function deliverySummaryType(recipients = []) {
+  const summary = deliverySummary(recipients)
+  if (!summary.length) return 'info'
+  if (summary.some((item) => item.status === 'failed')) return 'danger'
+  if (summary.some((item) => item.status === 'pending')) return 'warning'
+  if (summary.every((item) => item.status === 'sent')) return 'success'
+  return emailStatusType(summary[0].status)
 }
 
 function userLabel(userId) {

@@ -41,8 +41,12 @@
         <el-table-column label="意见/说明" min-width="180">
           <template #default="{ row }">{{ row.opinion || '-' }}</template>
         </el-table-column>
-        <el-table-column prop="time" label="处理时间" width="170" />
-        <el-table-column prop="dueTime" label="截止时间" width="170" />
+        <el-table-column label="处理时间" width="170">
+          <template #default="{ row }">{{ formatDate(row.time) }}</template>
+        </el-table-column>
+        <el-table-column label="截止时间" width="170">
+          <template #default="{ row }">{{ formatDate(row.dueTime) }}</template>
+        </el-table-column>
       </el-table>
     </template>
     <el-empty v-else description="暂无流程导览数据" />
@@ -84,6 +88,10 @@ const open = async (bizType, bizId) => {
   } finally {
     loading.value = false
   }
+}
+
+function formatDate(value) {
+  return value ? String(value).replace('T', ' ').slice(0, 16) : '-'
 }
 
 defineExpose({ open })

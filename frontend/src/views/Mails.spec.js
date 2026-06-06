@@ -61,4 +61,15 @@ describe('Mails page contract', () => {
     expect(source).toContain('detail.value = await api.mailDetail(detail.value.id)')
     expect(source).toContain('if (detailVisible.value && detail.value?.id === row.id)')
   })
+
+  it('localizes external mail delivery errors in the detail table', () => {
+    expect(source).toContain('externalErrorText(row.emailError)')
+    expect(source).toContain("'external mail disabled': '外部邮件未启用'")
+    expect(source).not.toContain('prop="emailError" label="错误"')
+  })
+
+  it('summarizes sent-list external delivery without ambiguous bare counts', () => {
+    expect(source).toContain('deliverySummaryText(row.recipients)')
+    expect(source).not.toContain('emailStatusText(item.status) }} {{ item.count }}')
+  })
 })
