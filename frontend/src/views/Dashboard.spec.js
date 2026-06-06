@@ -22,4 +22,11 @@ describe('Dashboard announcement links', () => {
     expect(routerSource).not.toContain("path: '/announcements/:id'")
     expect(routerSource).not.toContain('AnnouncementDetail')
   })
+
+  it('shows readable empty states when dashboard chart datasets are empty', () => {
+    expect(dashboardSource).toContain('hasDocumentStatusData')
+    expect(dashboardSource).toContain('hasMonthlyBusinessData')
+    expect(dashboardSource).toContain('hasTravelBudgetData')
+    expect(dashboardSource).toContain('暂无数据')
+  })
 })

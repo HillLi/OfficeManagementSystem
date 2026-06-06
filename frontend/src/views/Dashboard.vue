@@ -30,15 +30,18 @@
     <div class="chart-grid">
       <div class="panel">
         <h3>公文状态分布</h3>
-        <div ref="pieRef" style="height:300px"></div>
+        <div v-if="hasDocumentStatusData" ref="pieRef" style="height:300px"></div>
+        <el-empty v-else class="chart-empty" description="暂无数据" />
       </div>
       <div class="panel">
         <h3>月度业务量</h3>
-        <div ref="barRef" style="height:300px"></div>
+        <div v-if="hasMonthlyBusinessData" ref="barRef" style="height:300px"></div>
+        <el-empty v-else class="chart-empty" description="暂无数据" />
       </div>
       <div class="panel">
         <h3>差旅预算概览</h3>
-        <div ref="gaugeRef" style="height:300px"></div>
+        <div v-if="hasTravelBudgetData" ref="gaugeRef" style="height:300px"></div>
+        <el-empty v-else class="chart-empty" description="暂无数据" />
       </div>
     </div>
 
@@ -66,7 +69,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { BarChart, GaugeChart, PieChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import { init, use } from 'echarts/core'
@@ -92,6 +95,16 @@ const barRef = ref(null)
 const gaugeRef = ref(null)
 let charts = []
 
+const hasDocumentStatusData = computed(() =>
+  Object.keys(stats.documentStatusDistribution || {}).length > 0
+)
+const hasMonthlyBusinessData = computed(() =>
+  Object.keys(stats.monthlyBusinessCounts || {}).length > 0
+)
+const hasTravelBudgetData = computed(() =>
+  Number(stats.travelBudgetTotal) > 0
+)
+
 onMounted(async () => {
   const [dashboardData, announcements] = await Promise.all([
     api.dashboard(),
@@ -108,7 +121,7 @@ onUnmounted(() => {
 
 function initCharts() {
   const statusDist = stats.documentStatusDistribution || {}
-  if (Object.keys(statusDist).length > 0) {
+  if (hasDocumentStatusData.value && pieRef.value) {
     const pie = init(pieRef.value)
     charts.push(pie)
     pie.setOption({
@@ -122,7 +135,7 @@ function initCharts() {
   }
 
   const monthly = stats.monthlyBusinessCounts || {}
-  if (Object.keys(monthly).length > 0) {
+  if (hasMonthlyBusinessData.value && barRef.value) {
     const bar = init(barRef.value)
     charts.push(bar)
     bar.setOption({
@@ -133,15 +146,17 @@ function initCharts() {
     })
   }
 
-  const gauge = init(gaugeRef.value)
-  charts.push(gauge)
-  gauge.setOption({
-    series: [{
-      type: 'gauge',
-      detail: { formatter: '{value}元' },
-      data: [{ value: Number(stats.travelBudgetTotal) || 0, name: '差旅预算总额' }]
-    }]
-  })
+  if (hasTravelBudgetData.value && gaugeRef.value) {
+    const gauge = init(gaugeRef.value)
+    charts.push(gauge)
+    gauge.setOption({
+      series: [{
+        type: 'gauge',
+        detail: { formatter: '{value}元' },
+        data: [{ value: Number(stats.travelBudgetTotal) || 0, name: '差旅预算总额' }]
+      }]
+    })
+  }
 }
 
 function formatDate(value) {
@@ -239,6 +254,13 @@ function scopeText(row) {
   white-space: pre-wrap;
   line-height: 1.8;
   color: #303946;
+}
+
+.chart-empty {
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 @media (max-width: 700px) {
