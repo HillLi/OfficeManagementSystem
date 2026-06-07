@@ -48,7 +48,8 @@ class OfficialRulesRegressionTest {
                         + "T09:00:00\",\"endTime\":\"" + day
                         + "T11:00:00\",\"organizerId\":2,\"expectedCount\":510,\"venueType\":\"\u5ba4\u5185\","
                         + "\"riskReportUrl\":\"/risk.pdf\",\"securityPlanUrl\":\"/security.pdf\","
-                        + "\"emergencyPlanUrl\":\"/emergency.pdf\"}", userToken).get("data");
+                        + "\"emergencyPlanUrl\":\"/emergency.pdf\","
+                        + "\"participants\":[2,3],\"recorderId\":2}", userToken).get("data");
         long id = meeting.get("id").asLong();
         assertEquals("pending_security", meeting.get("status").asText());
 
@@ -73,7 +74,8 @@ class OfficialRulesRegressionTest {
                         + "T13:00:00\",\"endTime\":\"" + day
                         + "T15:00:00\",\"organizerId\":2,\"expectedCount\":510,\"venueType\":\"\u5ba4\u5185\","
                         + "\"riskReportUrl\":\"/risk.pdf\",\"securityPlanUrl\":\"/security.pdf\","
-                        + "\"emergencyPlanUrl\":\"/emergency.pdf\"}", userToken).get("data");
+                        + "\"emergencyPlanUrl\":\"/emergency.pdf\","
+                        + "\"participants\":[2,3],\"recorderId\":2}", userToken).get("data");
 
         JsonNode guide = getJson("/api/workflow/guide?bizType=meeting&bizId=" + meeting.get("id").asLong(), userToken)
                 .get("data");
@@ -120,9 +122,10 @@ class OfficialRulesRegressionTest {
 
         JsonNode meeting = postJson("/api/meetings",
                 "{\"title\":\"special management meeting\",\"roomId\":1,\"startTime\":\"2026-12-10T09:00:00\","
-                        + "\"endTime\":\"2026-12-10T10:00:00\",\"organizerId\":2,\"expectedCount\":20,"
+                        + "\"endTime\":\"2026-12-10T10:00:00\",\"organizerId\":2,"
                         + "\"venueType\":\"\u5ba4\u5185\",\"meetingType\":\"\u56fd\u5185\u7ba1\u7406\u4f1a\u8bae\uff08\u8bb2\u5e2d\u6559\u63883\u4eba\u53ca\u4ee5\u4e0a\uff09\","
-                        + "\"budget\":600,\"accommodationFee\":390,\"mealFee\":130,\"otherFee\":80}", userToken)
+                        + "\"budget\":600,\"accommodationFee\":390,\"mealFee\":130,\"otherFee\":80,"
+                        + "\"participants\":[2,3],\"recorderId\":2}", userToken)
                 .get("data");
 
         assertEquals("pending_dept", meeting.get("status").asText());

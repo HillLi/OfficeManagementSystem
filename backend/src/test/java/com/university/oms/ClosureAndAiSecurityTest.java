@@ -32,8 +32,8 @@ class ClosureAndAiSecurityTest {
 
         JsonNode meeting = postJson("/api/meetings",
                 "{\"title\":\"闭环权限会议\",\"roomId\":1,\"startTime\":\"2026-08-01T09:00:00\","
-                        + "\"endTime\":\"2026-08-01T10:00:00\",\"organizerId\":2,\"expectedCount\":10,"
-                        + "\"venueType\":\"室内\"}", userToken);
+                        + "\"endTime\":\"2026-08-01T10:00:00\",\"organizerId\":2,"
+                        + "\"venueType\":\"室内\",\"participants\":[2,3],\"recorderId\":2}", userToken);
         long id = meeting.get("data").get("id").asLong();
         postJson("/api/approvals/meeting/" + id, "{\"action\":\"approve\",\"opinion\":\"同意\"}", headToken);
 
@@ -41,7 +41,7 @@ class ClosureAndAiSecurityTest {
                         .header("Authorization", bearer(financeToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"minutes\":\"无权归档内容\",\"signInCount\":8}"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
