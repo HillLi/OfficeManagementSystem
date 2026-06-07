@@ -77,39 +77,77 @@
     </el-tabs>
 
     <!-- Application Dialog -->
-    <el-dialog v-model="applicationDialog" title="会议申请" width="640px" :close-on-click-modal="false">
+    <el-dialog v-model="applicationDialog" title="会议申请" width="780px" :close-on-click-modal="false">
       <el-form label-position="top">
-        <el-form-item label="主题"><el-input v-model="form.title" /></el-form-item>
-        <el-form-item label="会议室">
-          <el-select v-model="form.roomId">
-            <el-option v-for="room in rooms" :key="room.id" :label="`${room.roomName}（${room.capacity} 人）`" :value="room.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="开始时间"><el-date-picker v-model="form.startTime" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" /></el-form-item>
-        <el-form-item label="结束时间"><el-date-picker v-model="form.endTime" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" /></el-form-item>
+        <!-- 基本信息 -->
+        <el-form-item label="主题"><el-input v-model="form.title" placeholder="请输入会议主题" /></el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="会议室">
+              <el-select v-model="form.roomId" placeholder="请选择会议室" style="width:100%">
+                <el-option v-for="room in rooms" :key="room.id" :label="`${room.roomName}（${room.capacity} 人）`" :value="room.id" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="记录员">
+              <el-select v-model="form.recorderId" :disabled="form.participants.length === 0" clearable placeholder="请先选择参会人员" style="width:100%">
+                <el-option v-for="uid in form.participants" :key="uid" :label="userName(uid)" :value="uid" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="开始时间"><el-date-picker v-model="form.startTime" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" style="width:100%" /></el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="结束时间"><el-date-picker v-model="form.endTime" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" style="width:100%" /></el-form-item>
+          </el-col>
+        </el-row>
+
+        <!-- 参会人员 -->
         <el-form-item :label="`参会人员（已选：${form.participants.length} 人）`">
           <OrgUserTreeSelect v-model="form.participants" :treeData="orgTree" />
         </el-form-item>
-        <el-form-item label="记录员">
-          <el-select v-model="form.recorderId" :disabled="form.participants.length === 0" clearable placeholder="请先选择参会人员">
-            <el-option v-for="uid in form.participants" :key="uid" :label="userName(uid)" :value="uid" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="场地类型">
-          <el-select v-model="form.venueType"><el-option v-for="item in optionsOf('venue_type')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
-        </el-form-item>
-        <el-form-item label="会议类别">
-          <el-select v-model="form.meetingType"><el-option v-for="item in optionsOf('meeting_type')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
-        </el-form-item>
-        <el-form-item label="住宿费"><el-input-number v-model="form.accommodationFee" :min="0" /></el-form-item>
-        <el-form-item label="伙食费"><el-input-number v-model="form.mealFee" :min="0" /></el-form-item>
-        <el-form-item label="场地费"><el-input-number v-model="form.venueFee" :min="0" /></el-form-item>
-        <el-form-item label="其他费用"><el-input-number v-model="form.otherFee" :min="0" /></el-form-item>
-        <el-form-item label="申报预算"><el-input-number v-model="form.budget" :min="0" /></el-form-item>
+
+        <!-- 会议类型 -->
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="场地类型">
+              <el-select v-model="form.venueType" placeholder="请选择" style="width:100%"><el-option v-for="item in optionsOf('venue_type')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="会议类别">
+              <el-select v-model="form.meetingType" placeholder="请选择" style="width:100%"><el-option v-for="item in optionsOf('meeting_type')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <!-- 费用明细 -->
+        <el-row :gutter="16">
+          <el-col :span="6">
+            <el-form-item label="住宿费"><el-input-number v-model="form.accommodationFee" :min="0" :controls="false" style="width:100%" /></el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="伙食费"><el-input-number v-model="form.mealFee" :min="0" :controls="false" style="width:100%" /></el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="场地费"><el-input-number v-model="form.venueFee" :min="0" :controls="false" style="width:100%" /></el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="其他费用"><el-input-number v-model="form.otherFee" :min="0" :controls="false" style="width:100%" /></el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="申报预算"><el-input-number v-model="form.budget" :min="0" style="width:200px" /></el-form-item>
+
+        <!-- 大型活动 -->
         <template v-if="isLarge">
-          <el-form-item label="风险报告地址"><el-input v-model="form.riskReportUrl" /></el-form-item>
-          <el-form-item label="安全方案地址"><el-input v-model="form.securityPlanUrl" /></el-form-item>
-          <el-form-item label="应急预案地址"><el-input v-model="form.emergencyPlanUrl" /></el-form-item>
+          <el-divider content-position="left">大型活动材料</el-divider>
+          <el-form-item label="风险报告地址"><el-input v-model="form.riskReportUrl" placeholder="请输入风险报告地址" /></el-form-item>
+          <el-form-item label="安全方案地址"><el-input v-model="form.securityPlanUrl" placeholder="请输入安全方案地址" /></el-form-item>
+          <el-form-item label="应急预案地址"><el-input v-model="form.emergencyPlanUrl" placeholder="请输入应急预案地址" /></el-form-item>
         </template>
       </el-form>
       <p v-if="isLarge" class="rule-note">大型活动须至少提前 15 个工作日申请并提交安全材料。</p>
