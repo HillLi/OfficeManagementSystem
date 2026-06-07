@@ -125,6 +125,12 @@ export const api = {
   meetings: () => http.get('/meetings'),
   createMeeting: (data) => http.post('/meetings', data),
   archiveMeetingMinutes: (id, data) => http.post(`/meetings/${id}/minutes`, data),
+  meetingsParticipated: () => http.get('/meetings/participated'),
+  meetingParticipants: (id) => http.get(`/meetings/${id}/participants`),
+  confirmMeetingMinutes: (id) => http.post(`/meetings/${id}/confirm-minutes`),
+  publishMeeting: (id) => http.post(`/meetings/${id}/publish`),
+  archiveMeeting: (id) => http.post(`/meetings/${id}/archive`),
+  remindParticipant: (meetingId, userId) => http.post(`/meetings/${meetingId}/remind-participant/${userId}`),
 
   sendMail: (data) => http.post('/mails', data),
   mailInbox: (params) => http.get('/mails/inbox', { params }),
