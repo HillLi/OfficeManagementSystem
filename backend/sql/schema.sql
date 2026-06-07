@@ -144,6 +144,7 @@ CREATE TABLE IF NOT EXISTS oa_meeting (
   sign_in_count INT DEFAULT 0,
   minutes LONGTEXT,
   status VARCHAR(30) NOT NULL,
+  recorder_id BIGINT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -407,5 +408,17 @@ CALL add_column_if_missing('sys_attachment', 'deleted_by', 'BIGINT');
 CALL add_column_if_missing('sys_attachment', 'deleted_at', 'DATETIME');
 CALL add_column_if_missing('sys_attachment', 'delete_reason', 'VARCHAR(500)');
 CALL add_column_if_missing('sys_attachment', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+
+CREATE TABLE IF NOT EXISTS oa_meeting_participant (
+    id BIGINT PRIMARY KEY,
+    meeting_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    is_recorder TINYINT(1) DEFAULT 0,
+    minutes_confirmed TINYINT(1) DEFAULT 0,
+    confirmed_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_meeting_user (meeting_id, user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 DROP PROCEDURE IF EXISTS add_column_if_missing;

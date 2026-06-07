@@ -39,6 +39,7 @@ public class InMemoryDatabase {
     private final Map<String, BigDecimal> meetingFeeStandards = new ConcurrentHashMap<String, BigDecimal>();
     private final Map<String, DictionaryType> dictionaryTypes = new ConcurrentHashMap<String, DictionaryType>();
     private final Map<String, DictionaryItem> dictionaryItems = new ConcurrentHashMap<String, DictionaryItem>();
+    private final Map<Long, MeetingParticipant> participants = new ConcurrentHashMap<Long, MeetingParticipant>();
 
     public InMemoryDatabase() {
         this(new PasswordService());
@@ -296,4 +297,5 @@ public class InMemoryDatabase {
     public Map<String, BigDecimal> meetingFeeStandards() { return meetingFeeStandards; }
     public Map<String, DictionaryType> dictionaryTypes() { return dictionaryTypes; }
     public Map<String, DictionaryItem> dictionaryItems() { return dictionaryItems; }
+    public Map<Long, MeetingParticipant> participants() { return participants; }
 }

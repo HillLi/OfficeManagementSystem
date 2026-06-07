@@ -46,6 +46,7 @@ public class MysqlDataLoader {
         db.announcements().clear();
         db.flowInstances().clear();
         db.flowTasks().clear();
+        db.participants().clear();
 
         loadDictionaryTypes();
         loadDictionaryItems();
@@ -69,6 +70,7 @@ public class MysqlDataLoader {
         loadAnnouncements();
         loadFlowInstances();
         loadFlowTasks();
+        loadParticipants();
         db.ensureNextIdAtLeast(maxId());
     }
 
@@ -264,6 +266,7 @@ public class MysqlDataLoader {
             m.setSignInCount(rs.getInt("sign_in_count"));
             m.setMinutes(rs.getString("minutes"));
             m.setStatus(rs.getString("status"));
+            m.setRecorderId(rs.getObject("recorder_id") != null ? rs.getLong("recorder_id") : null);
             db.meetings().put(m.getId(), m);
         });
     }
@@ -451,6 +454,19 @@ public class MysqlDataLoader {
         });
     }
 
+    private void loadParticipants() {
+        jdbcTemplate.query("SELECT * FROM oa_meeting_participant", rs -> {
+            MeetingParticipant p = new MeetingParticipant();
+            db.fill(p, rs.getLong("id"));
+            p.setMeetingId(rs.getLong("meeting_id"));
+            p.setUserId(rs.getLong("user_id"));
+            p.setRecorder(rs.getInt("is_recorder") == 1);
+            p.setMinutesConfirmed(rs.getInt("minutes_confirmed") == 1);
+            p.setConfirmedAt(rs.getTimestamp("confirmed_at") != null ? rs.getTimestamp("confirmed_at").toLocalDateTime() : null);
+            db.participants().put(p.getId(), p);
+        });
+    }
+
     private long maxId() {
         Long value = jdbcTemplate.queryForObject(
                 "SELECT GREATEST(" +
@@ -472,6 +488,7 @@ public class MysqlDataLoader {
                         "COALESCE((SELECT MAX(id) FROM sys_dict_item),0)," +
                         "COALESCE((SELECT MAX(id) FROM oa_flow_instance),0)," +
                         "COALESCE((SELECT MAX(id) FROM oa_flow_task),0)," +
+                        "COALESCE((SELECT MAX(id) FROM oa_meeting_participant),0)," +
                         "1000)",
                 Long.class);
         return value == null ? 1000L : value;

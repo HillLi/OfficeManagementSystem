@@ -24,6 +24,10 @@ public class Meeting extends BaseEntity {
     private Integer signInCount = 0;
     private String minutes;
     private String status;
+    private Long recorderId;
+
+    public Long getRecorderId() { return recorderId; }
+    public void setRecorderId(Long recorderId) { this.recorderId = recorderId; }
 
     public String getTitle() {
         return title;

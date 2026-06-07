@@ -113,13 +113,13 @@ public class JdbcDataPersistence implements DataPersistence {
     @Override
     public void saveMeeting(Meeting m) {
         jdbcTemplate.update("REPLACE INTO oa_meeting " +
-                        "(id, title, room_id, start_time, end_time, organizer_id, expected_count, venue_type, meeting_type, budget, accommodation_fee, meal_fee, venue_fee, other_fee, risk_report_url, security_plan_url, emergency_plan_url, large_activity, sign_in_count, minutes, status, created_at) " +
-                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        "(id, title, room_id, start_time, end_time, organizer_id, expected_count, venue_type, meeting_type, budget, accommodation_fee, meal_fee, venue_fee, other_fee, risk_report_url, security_plan_url, emergency_plan_url, large_activity, sign_in_count, minutes, status, recorder_id, created_at) " +
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 m.getId(), m.getTitle(), m.getRoomId(), m.getStartTime(), m.getEndTime(), m.getOrganizerId(),
                 m.getExpectedCount(), m.getVenueType(), m.getMeetingType(), m.getBudget(), m.getAccommodationFee(),
                 m.getMealFee(), m.getVenueFee(), m.getOtherFee(), m.getRiskReportUrl(), m.getSecurityPlanUrl(),
                 m.getEmergencyPlanUrl(), m.isLargeActivity() ? 1 : 0, m.getSignInCount(),
-                m.getMinutes(), m.getStatus(), m.getCreatedAt());
+                m.getMinutes(), m.getStatus(), m.getRecorderId(), m.getCreatedAt());
     }
 
     @Override
@@ -217,6 +217,14 @@ public class JdbcDataPersistence implements DataPersistence {
                         "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                 t.getId(), t.getInstanceId(), t.getBizType(), t.getBizId(), t.getNodeKey(), t.getApproverRole(),
                 t.getApproverId(), t.getStatus(), t.getDueTime(), t.getCreatedAt(), t.getUpdatedAt());
+    }
+
+    @Override
+    public void saveMeetingParticipant(MeetingParticipant p) {
+        jdbcTemplate.update(
+            "REPLACE INTO oa_meeting_participant (id, meeting_id, user_id, is_recorder, minutes_confirmed, confirmed_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)",
+            p.getId(), p.getMeetingId(), p.getUserId(), p.isRecorder() ? 1 : 0,
+            p.isMinutesConfirmed() ? 1 : 0, p.getConfirmedAt(), p.getCreatedAt(), p.getUpdatedAt());
     }
 
     private String toJson(Object value) {

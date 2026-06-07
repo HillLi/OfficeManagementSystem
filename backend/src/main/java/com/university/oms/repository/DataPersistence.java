@@ -26,4 +26,5 @@ public interface DataPersistence {
     default void saveAnnouncement(Announcement announcement) { }
     void saveFlowInstance(FlowInstance flowInstance);
     void saveFlowTask(FlowTask flowTask);
+    default void saveMeetingParticipant(MeetingParticipant participant) { }
 }

@@ -35,6 +35,8 @@ INSERT IGNORE INTO sys_dict_item
 (213, 'business_status', 'running', '办理中', 130, 1, 1),
 (214, 'business_status', 'completed', '已完成', 140, 1, 1),
 (215, 'business_status', 'pending', '待办理', 150, 1, 1),
+(289, 'business_status', 'minutes_pending', '纪要待确认', 156, 1, 1),
+(290, 'business_status', 'minutes_confirmed', '纪要已确认', 157, 1, 1),
 (216, 'distribution_status', 'not_distributed', '未分发', 10, 1, 1),
 (217, 'distribution_status', 'distributed', '待签收', 20, 1, 1),
 (218, 'distribution_status', 'partially_received', '部分签收', 30, 1, 1),
