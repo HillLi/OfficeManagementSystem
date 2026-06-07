@@ -27,6 +27,64 @@
       </div>
     </div>
 
+    <div class="panel schedule-panel">
+      <div class="panel-title">
+        <h3>日程管理</h3>
+        <span class="schedule-month">{{ scheduleMonthTitle }}</span>
+      </div>
+      <div class="schedule-layout">
+        <div class="calendar-box">
+          <div class="calendar-weekdays">
+            <span v-for="day in weekdayNames" :key="day">{{ day }}</span>
+          </div>
+          <div class="calendar-days">
+            <button
+              v-for="day in calendarDays"
+              :key="day.key"
+              type="button"
+              class="calendar-day"
+              :class="{
+                'is-empty': day.empty,
+                'is-today': day.isToday,
+                'is-selected': day.key === selectedDateKey
+              }"
+              :disabled="day.empty"
+              @click="selectDate(day.key)"
+            >
+              <span>{{ day.label }}</span>
+              <span v-if="!day.empty && scheduleTypeForDay(day.key)" class="schedule-dots">
+                <i v-if="scheduleTypeForDay(day.key).meeting" class="dot meeting-dot"></i>
+                <i v-if="scheduleTypeForDay(day.key).activity" class="dot activity-dot"></i>
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div class="schedule-list">
+          <div class="schedule-list-title">
+            <h4>{{ selectedDateLabel }}</h4>
+            <span>本月 {{ monthlyScheduleItems.length }} 项</span>
+          </div>
+          <el-empty
+            v-if="selectedDayItems.length === 0"
+            :description="monthlyScheduleItems.length === 0 ? '本月暂无会议或活动' : '当日暂无会议或活动'"
+          />
+          <div v-else class="schedule-items">
+            <div v-for="item in selectedDayItems" :key="item.bizType + '-' + item.id" class="schedule-item">
+              <div>
+                <el-tag :type="item.largeActivity ? 'warning' : 'primary'" size="small">
+                  {{ item.typeText || (item.largeActivity ? '大型活动' : '会议') }}
+                </el-tag>
+                <strong>{{ item.title }}</strong>
+              </div>
+              <p>{{ formatScheduleTime(item) }}</p>
+              <p>{{ item.roomName || '未指定会议室' }} · {{ labelOf('business_status', item.status) }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="chart-grid">
       <div class="panel">
         <h3>公文状态分布</h3>
@@ -84,6 +142,9 @@ const labelOf = dictionaryStore.labelOf
 const latestAnnouncements = ref([])
 const detailVisible = ref(false)
 const selectedAnnouncement = ref(null)
+const monthlyScheduleItems = ref([])
+const selectedDateKey = ref(dateKey(new Date()))
+const weekdayNames = ['一', '二', '三', '四', '五', '六', '日']
 const stats = reactive({
   documentCount: 0, pendingDocumentCount: 0, sealApplyCount: 0,
   meetingCount: 0, travelCount: 0, reportCount: 0, largeActivityCount: 0,
@@ -105,12 +166,69 @@ const hasTravelBudgetData = computed(() =>
   Number(stats.travelBudgetTotal) > 0
 )
 
+const scheduleMonthDate = computed(() => {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), 1)
+})
+
+const scheduleMonthTitle = computed(() => {
+  const month = scheduleMonthDate.value
+  return `${month.getFullYear()} 年 ${month.getMonth() + 1} 月日程`
+})
+
+const calendarDays = computed(() => {
+  const month = scheduleMonthDate.value
+  const year = month.getFullYear()
+  const monthIndex = month.getMonth()
+  const firstDay = new Date(year, monthIndex, 1)
+  const leadingDays = (firstDay.getDay() + 6) % 7
+  const totalDays = new Date(year, monthIndex + 1, 0).getDate()
+  const days = []
+  for (let i = 0; i < leadingDays; i++) {
+    days.push({ key: `empty-${i}`, label: '', empty: true })
+  }
+  const today = dateKey(new Date())
+  for (let day = 1; day <= totalDays; day++) {
+    const current = new Date(year, monthIndex, day)
+    const key = dateKey(current)
+    days.push({
+      key,
+      label: day,
+      empty: false,
+      isToday: key === today
+    })
+  }
+  return days
+})
+
+const scheduleByDate = computed(() => {
+  const grouped = {}
+  monthlyScheduleItems.value.forEach((item) => {
+    dateRangeKeys(item).forEach((key) => {
+      grouped[key] = grouped[key] || []
+      grouped[key].push(item)
+    })
+  })
+  Object.values(grouped).forEach((items) => {
+    items.sort((a, b) => String(a.startTime || '').localeCompare(String(b.startTime || '')))
+  })
+  return grouped
+})
+
+const selectedDayItems = computed(() => scheduleByDate.value[selectedDateKey.value] || [])
+
+const selectedDateLabel = computed(() => {
+  const date = parseDateKey(selectedDateKey.value)
+  return date ? `${date.getMonth() + 1} 月 ${date.getDate()} 日事项` : '当日事项'
+})
+
 onMounted(async () => {
   const [dashboardData, announcements] = await Promise.all([
     api.dashboard(),
     api.latestAnnouncements({ limit: 5 })
   ])
   Object.assign(stats, dashboardData)
+  monthlyScheduleItems.value = Array.isArray(dashboardData.monthlyScheduleItems) ? dashboardData.monthlyScheduleItems : []
   latestAnnouncements.value = announcements
   initCharts()
 })
@@ -157,6 +275,90 @@ function initCharts() {
       }]
     })
   }
+}
+
+function selectDate(key) {
+  selectedDateKey.value = key
+}
+
+function scheduleTypeForDay(key) {
+  const items = scheduleByDate.value[key] || []
+  if (items.length === 0) {
+    return null
+  }
+  return {
+    meeting: items.some((item) => !item.largeActivity),
+    activity: items.some((item) => item.largeActivity)
+  }
+}
+
+function dateRangeKeys(item) {
+  if (!item.startTime) {
+    return []
+  }
+  const start = new Date(item.startTime)
+  const end = item.endTime ? new Date(item.endTime) : start
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return []
+  }
+  if (end.getTime() <= start.getTime()) {
+    return []
+  }
+  const month = scheduleMonthDate.value
+  const monthStart = new Date(month.getFullYear(), month.getMonth(), 1)
+  const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0)
+  const finalOccupiedDate = new Date(end.getTime() - 1)
+  const current = new Date(Math.max(startOfDay(start).getTime(), monthStart.getTime()))
+  const finalDay = new Date(Math.min(startOfDay(finalOccupiedDate).getTime(), monthEnd.getTime()))
+  const keys = []
+  while (current <= finalDay) {
+    keys.push(dateKey(current))
+    current.setDate(current.getDate() + 1)
+  }
+  return keys
+}
+
+function formatScheduleTime(item) {
+  if (!item.startTime) {
+    return '-'
+  }
+  const start = new Date(item.startTime)
+  const end = item.endTime ? new Date(item.endTime) : null
+  if (Number.isNaN(start.getTime())) {
+    return '-'
+  }
+  const startText = `${pad(start.getHours())}:${pad(start.getMinutes())}`
+  if (!end || Number.isNaN(end.getTime())) {
+    return startText
+  }
+  const endText = `${pad(end.getHours())}:${pad(end.getMinutes())}`
+  if (dateKey(start) === dateKey(end)) {
+    return `${startText} - ${endText}`
+  }
+  return `${start.getMonth() + 1}/${start.getDate()} ${startText} - ${end.getMonth() + 1}/${end.getDate()} ${endText}`
+}
+
+function dateKey(date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+function parseDateKey(key) {
+  const parts = String(key || '').split('-').map(Number)
+  if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) {
+    return null
+  }
+  const date = new Date(parts[0], parts[1] - 1, parts[2])
+  return date.getFullYear() === parts[0] && date.getMonth() === parts[1] - 1 && date.getDate() === parts[2]
+    ? date
+    : null
+}
+
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function pad(value) {
+  return String(value).padStart(2, '0')
 }
 
 function formatDate(value) {
@@ -263,10 +465,151 @@ function scopeText(row) {
   justify-content: center;
 }
 
+.schedule-panel {
+  margin-top: 14px;
+}
+
+.schedule-month {
+  color: #657487;
+  font-size: 14px;
+}
+
+.schedule-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(280px, 420px);
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.calendar-weekdays,
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.calendar-weekdays {
+  margin-bottom: 8px;
+  color: #657487;
+  font-size: 13px;
+  text-align: center;
+}
+
+.calendar-day {
+  position: relative;
+  aspect-ratio: 1 / 0.72;
+  min-height: 46px;
+  border: 1px solid #e3e8ef;
+  border-radius: 8px;
+  background: #fff;
+  color: #223042;
+  cursor: pointer;
+  font: inherit;
+}
+
+.calendar-day:hover:not(.is-empty),
+.calendar-day.is-selected {
+  border-color: #1f5f8b;
+  background: #eef7fc;
+}
+
+.calendar-day.is-today {
+  box-shadow: inset 0 0 0 2px rgba(31, 95, 139, 0.18);
+}
+
+.calendar-day.is-empty {
+  cursor: default;
+  background: #f8fafc;
+}
+
+.schedule-dots {
+  position: absolute;
+  left: 50%;
+  bottom: 7px;
+  display: flex;
+  gap: 4px;
+  transform: translateX(-50%);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.meeting-dot {
+  background: #1f5f8b;
+}
+
+.activity-dot {
+  background: #e6a23c;
+}
+
+.schedule-list {
+  min-width: 0;
+}
+
+.schedule-list-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.schedule-list-title h4 {
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: 0;
+}
+
+.schedule-list-title span {
+  color: #657487;
+  white-space: nowrap;
+}
+
+.schedule-items {
+  display: grid;
+  gap: 10px;
+}
+
+.schedule-item {
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.schedule-item div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.schedule-item strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-item p {
+  margin: 6px 0 0;
+  color: #657487;
+}
+
 @media (max-width: 700px) {
   .panel-title,
   .announcement-row {
     flex-direction: column;
+  }
+
+  .schedule-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-day {
+    min-height: 42px;
   }
 }
 </style>
