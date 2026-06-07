@@ -13,7 +13,6 @@ describe('business pages dialog-first layout', () => {
   const pages = [
     { file: 'Documents.vue', button: '公文起草', dialogModel: 'draftDialog' },
     { file: 'Seals.vue', button: '用印申请', dialogModel: 'applicationDialog' },
-    { file: 'Meetings.vue', button: '会议申请', dialogModel: 'applicationDialog' },
     { file: 'Travels.vue', button: '差旅申请', dialogModel: 'applicationDialog' },
     { file: 'Reports.vue', button: '提交请示报告', dialogModel: 'applicationDialog' }
   ]
@@ -26,6 +25,16 @@ describe('business pages dialog-first layout', () => {
     expect(source).toContain(`@click="${dialogModel} = true"`)
     expect(source).toContain(`v-model="${dialogModel}"`)
     expect(source).toContain(button)
+  })
+
+  it('Meetings.vue uses tabs with button-triggered dialog', () => {
+    const source = viewSource('Meetings.vue')
+
+    expect(source).toContain('<el-tabs')
+    expect(source).toContain('我参与的会议')
+    expect(source).toContain('openApplicationDialog')
+    expect(source).toContain('v-model="applicationDialog"')
+    expect(source).toContain('会议申请')
   })
 
   it('keeps seal transfer as a manager-only dialog action', () => {

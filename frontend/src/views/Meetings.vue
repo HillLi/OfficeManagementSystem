@@ -121,7 +121,7 @@
     </el-dialog>
 
     <!-- Participant Dialog -->
-    <el-dialog v-model="participantDialog" :title="participantDialogTitle" width="640px">
+    <el-dialog v-model="participantDialog" :title="participantDialogTitle" width="640px" :close-on-click-modal="false">
       <el-table :data="participantList" border v-loading="participantLoading">
         <el-table-column prop="userId" label="用户ID" width="80" />
         <el-table-column label="姓名" width="120">
@@ -149,7 +149,7 @@
     </el-dialog>
 
     <!-- Minutes View Dialog -->
-    <el-dialog v-model="minutesViewDialog" title="会议纪要" width="560px">
+    <el-dialog v-model="minutesViewDialog" title="会议纪要" width="560px" :close-on-click-modal="false">
       <div style="white-space: pre-wrap; line-height: 1.8;">{{ minutesViewContent }}</div>
     </el-dialog>
 
