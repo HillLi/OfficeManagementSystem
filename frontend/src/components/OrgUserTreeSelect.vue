@@ -1,15 +1,17 @@
 <template>
   <div class="org-user-tree-select">
-    <el-tree
-      ref="treeRef"
-      :data="treeData"
-      :props="treeProps"
-      node-key="id"
-      show-checkbox
-      default-expand-all
-      :check-strictly="false"
-      @check="handleCheck"
-    />
+    <div class="tree-area">
+      <el-tree
+        ref="treeRef"
+        :data="treeData"
+        :props="treeProps"
+        node-key="id"
+        show-checkbox
+        default-expand-all
+        :check-strictly="false"
+        @check="handleCheck"
+      />
+    </div>
     <div v-if="selectedUsers.length" class="selected-users">
       <el-tag
         v-for="user in selectedUsers"
@@ -92,22 +94,29 @@ watch(
 
 <style scoped>
 .org-user-tree-select {
-  display: grid;
-  gap: 8px;
-  min-height: 180px;
-  max-height: 320px;
-  overflow: auto;
-  padding: 8px 10px;
   border: 1px solid #dcdfe6;
   border-radius: 6px;
   background: #fff;
+  width: 100%;
+}
+
+.org-user-tree-select :deep(.el-tree) {
+  padding: 8px 6px;
+}
+
+.tree-area {
+  height: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .selected-users {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  padding-top: 8px;
+  padding: 8px 10px;
+  max-height: 80px;
+  overflow-y: auto;
   border-top: 1px solid #ebeef5;
 }
 </style>
