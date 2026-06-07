@@ -29,4 +29,14 @@ describe('Dashboard announcement links', () => {
     expect(dashboardSource).toContain('hasTravelBudgetData')
     expect(dashboardSource).toContain('暂无数据')
   })
+
+  it('renders a dashboard schedule calendar without approval tasks', () => {
+    expect(dashboardSource).toContain('日程管理')
+    expect(dashboardSource).toContain('monthlyScheduleItems')
+    expect(dashboardSource).toContain('calendar-days')
+    expect(dashboardSource).toContain('schedule-item')
+    expect(dashboardSource).toContain('当日暂无会议或活动')
+    expect(dashboardSource).not.toContain('flowTasks')
+    expect(dashboardSource).not.toContain('待审批任务')
+  })
 })

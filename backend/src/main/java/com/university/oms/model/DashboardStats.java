@@ -17,6 +17,7 @@ public class DashboardStats {
     private BigDecimal travelBudgetTotal = BigDecimal.ZERO;
     private Map<String, Long> documentStatusDistribution = new LinkedHashMap<>();
     private Map<String, Long> monthlyBusinessCounts = new LinkedHashMap<>();
+    private List<DashboardScheduleItem> monthlyScheduleItems = new ArrayList<>();
 
     public long getDocumentCount() {
         return documentCount;
@@ -96,5 +97,13 @@ public class DashboardStats {
 
     public void setMonthlyBusinessCounts(Map<String, Long> monthlyBusinessCounts) {
         this.monthlyBusinessCounts = monthlyBusinessCounts;
+    }
+
+    public List<DashboardScheduleItem> getMonthlyScheduleItems() {
+        return monthlyScheduleItems;
+    }
+
+    public void setMonthlyScheduleItems(List<DashboardScheduleItem> monthlyScheduleItems) {
+        this.monthlyScheduleItems = monthlyScheduleItems == null ? new ArrayList<>() : monthlyScheduleItems;
     }
 }

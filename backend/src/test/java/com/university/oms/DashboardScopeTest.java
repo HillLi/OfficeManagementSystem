@@ -2,6 +2,8 @@ package com.university.oms;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.university.oms.model.Meeting;
+import com.university.oms.repository.InMemoryDatabase;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -9,7 +11,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.containsString;
@@ -26,6 +33,9 @@ class DashboardScopeTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private InMemoryDatabase db;
 
     @Test
     void dashboardAndExportRespectCurrentUserBusinessScope() throws Exception {
@@ -45,10 +55,89 @@ class DashboardScopeTest {
                 .andExpect(content().string(not(containsString("other-secret-dashboard-title"))));
     }
 
+    @Test
+    void dashboardIncludesOnlyVisibleCurrentMonthMeetingSchedules() throws Exception {
+        String userToken = login("user");
+        String adminToken = login("admin");
+        LocalDate currentMonth = LocalDate.now().withDayOfMonth(15);
+        LocalDate nextMonth = currentMonth.plusMonths(1);
+
+        Meeting ownVisible = meeting("own-visible-monthly-activity", 2L,
+                currentMonth.atTime(9, 0), currentMonth.atTime(11, 0), "approved", true);
+        Meeting hiddenOtherDept = meeting("hidden-other-dept-monthly-meeting", 6L,
+                currentMonth.atTime(14, 0), currentMonth.atTime(15, 0), "approved", false);
+        Meeting rejectedOwn = meeting("rejected-own-monthly-meeting", 2L,
+                currentMonth.atTime(16, 0), currentMonth.atTime(17, 0), "rejected", false);
+        Meeting nextMonthOwn = meeting("next-month-own-meeting", 2L,
+                nextMonth.atTime(9, 0), nextMonth.atTime(10, 0), "approved", false);
+        db.meetings().put(ownVisible.getId(), ownVisible);
+        db.meetings().put(hiddenOtherDept.getId(), hiddenOtherDept);
+        db.meetings().put(rejectedOwn.getId(), rejectedOwn);
+        db.meetings().put(nextMonthOwn.getId(), nextMonthOwn);
+
+        try {
+            JsonNode userSchedules = dashboard(userToken).get("monthlyScheduleItems");
+            assertNotNull(userSchedules, "dashboard monthlyScheduleItems field should exist for user");
+            JsonNode userItem = findScheduleByTitle(userSchedules, "own-visible-monthly-activity");
+            assertNotNull(userItem, "user schedules should include own visible current-month meeting");
+            assertEquals("meeting", userItem.get("bizType").asText());
+            assertEquals("大型活动", userItem.get("typeText").asText());
+            assertTrue(userItem.get("largeActivity").asBoolean());
+            assertEquals("理科一号楼 101", userItem.get("roomName").asText());
+            assertFalse(containsScheduleTitle(userSchedules, "hidden-other-dept-monthly-meeting"));
+            assertFalse(containsScheduleTitle(userSchedules, "rejected-own-monthly-meeting"));
+            assertFalse(containsScheduleTitle(userSchedules, "next-month-own-meeting"));
+
+            JsonNode adminSchedules = dashboard(adminToken).get("monthlyScheduleItems");
+            assertNotNull(adminSchedules, "dashboard monthlyScheduleItems field should exist for admin");
+            assertNotNull(findScheduleByTitle(adminSchedules, "own-visible-monthly-activity"),
+                    "admin schedules should include own current-month meeting");
+            assertNotNull(findScheduleByTitle(adminSchedules, "hidden-other-dept-monthly-meeting"),
+                    "admin schedules should include other-department current-month meeting");
+            assertFalse(containsScheduleTitle(adminSchedules, "rejected-own-monthly-meeting"));
+            assertFalse(containsScheduleTitle(adminSchedules, "next-month-own-meeting"));
+        } finally {
+            db.meetings().remove(ownVisible.getId());
+            db.meetings().remove(hiddenOtherDept.getId());
+            db.meetings().remove(rejectedOwn.getId());
+            db.meetings().remove(nextMonthOwn.getId());
+        }
+    }
+
     private void createDocument(String title, String token) throws Exception {
         postJson("/api/documents",
                 "{\"title\":\"" + title + "\",\"docType\":\"通知\",\"secrecyLevel\":\"内部\","
                         + "\"content\":\"scope verification content\",\"applicantId\":2}", token);
+    }
+
+    private Meeting meeting(String title, Long organizerId, LocalDateTime startTime, LocalDateTime endTime,
+                            String status, boolean largeActivity) {
+        Meeting meeting = new Meeting();
+        db.fill(meeting, db.nextId());
+        meeting.setTitle(title);
+        meeting.setRoomId(1L);
+        meeting.setOrganizerId(organizerId);
+        meeting.setStartTime(startTime);
+        meeting.setEndTime(endTime);
+        meeting.setExpectedCount(largeActivity ? 600 : 20);
+        meeting.setVenueType("室内");
+        meeting.setMeetingType("国内业务会议");
+        meeting.setStatus(status);
+        meeting.setLargeActivity(largeActivity);
+        return meeting;
+    }
+
+    private boolean containsScheduleTitle(JsonNode schedules, String title) {
+        return findScheduleByTitle(schedules, title) != null;
+    }
+
+    private JsonNode findScheduleByTitle(JsonNode schedules, String title) {
+        for (JsonNode schedule : schedules) {
+            if (title.equals(schedule.path("title").asText())) {
+                return schedule;
+            }
+        }
+        return null;
     }
 
     private JsonNode dashboard(String token) throws Exception {

@@ -69,6 +69,7 @@ public class DashboardFacade {
         countByMonth(monthly, travels, fmt);
         countByMonth(monthly, reports, fmt);
         stats.setMonthlyBusinessCounts(monthly);
+        stats.setMonthlyScheduleItems(monthlyScheduleItems(meetings, now));
 
         return stats;
     }
@@ -94,5 +95,49 @@ public class DashboardFacade {
                 }
             }
         }
+    }
+
+    private List<DashboardScheduleItem> monthlyScheduleItems(Collection<Meeting> meetings, LocalDateTime now) {
+        LocalDateTime monthStart = now.withDayOfMonth(1).toLocalDate().atStartOfDay();
+        LocalDateTime nextMonthStart = monthStart.plusMonths(1);
+        List<DashboardScheduleItem> items = new ArrayList<>();
+        for (Meeting meeting : meetings) {
+            if (isCurrentMonthSchedule(meeting, monthStart, nextMonthStart)) {
+                items.add(toScheduleItem(meeting));
+            }
+        }
+        items.sort(Comparator.comparing(DashboardScheduleItem::getStartTime));
+        return items;
+    }
+
+    private boolean isCurrentMonthSchedule(Meeting meeting, LocalDateTime monthStart,
+                                           LocalDateTime nextMonthStart) {
+        return meeting.getStartTime() != null
+                && meeting.getEndTime() != null
+                && !"rejected".equals(meeting.getStatus())
+                && meeting.getStartTime().isBefore(nextMonthStart)
+                && meeting.getEndTime().isAfter(monthStart);
+    }
+
+    private DashboardScheduleItem toScheduleItem(Meeting meeting) {
+        DashboardScheduleItem item = new DashboardScheduleItem();
+        item.setId(meeting.getId());
+        item.setBizType("meeting");
+        item.setTitle(meeting.getTitle());
+        item.setStartTime(meeting.getStartTime());
+        item.setEndTime(meeting.getEndTime());
+        item.setStatus(meeting.getStatus());
+        item.setLargeActivity(meeting.isLargeActivity());
+        item.setRoomName(roomName(meeting.getRoomId()));
+        item.setTypeText(meeting.isLargeActivity() ? "大型活动" : "会议");
+        return item;
+    }
+
+    private String roomName(Long roomId) {
+        if (roomId == null) {
+            return "";
+        }
+        MeetingRoom room = db.rooms().get(roomId);
+        return room == null || room.getRoomName() == null ? "" : room.getRoomName();
     }
 }
