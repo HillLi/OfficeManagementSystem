@@ -7,7 +7,7 @@
       node-key="id"
       show-checkbox
       default-expand-all
-      :check-strictly="true"
+      :check-strictly="false"
       @check="handleCheck"
     />
     <div v-if="selectedUsers.length" class="selected-users">

@@ -12,7 +12,7 @@ describe('organization user tree selector', () => {
     expect(source).toContain('show-checkbox')
     expect(source).toContain('node-key="id"')
     expect(source).toContain('default-expand-all')
-    expect(source).toContain(':check-strictly="true"')
+    expect(source).toContain(':check-strictly="false"')
     expect(source).toContain(':props="treeProps"')
     expect(source).toContain('node.type === \'user\'')
     expect(source).toContain('emit(\'update:modelValue\'')
