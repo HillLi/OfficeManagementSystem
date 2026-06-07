@@ -2,6 +2,7 @@ package com.university.oms.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 
@@ -27,6 +28,13 @@ public class MeetingRequest {
     private String riskReportUrl;
     private String securityPlanUrl;
     private String emergencyPlanUrl;
+    private List<Long> participants;
+    private Long recorderId;
+
+    public List<Long> getParticipants() { return participants; }
+    public void setParticipants(List<Long> participants) { this.participants = participants; }
+    public Long getRecorderId() { return recorderId; }
+    public void setRecorderId(Long recorderId) { this.recorderId = recorderId; }
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }

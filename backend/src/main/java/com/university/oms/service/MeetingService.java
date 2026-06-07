@@ -5,7 +5,9 @@ import com.university.oms.design.MeetingBuilder;
 import com.university.oms.dto.MeetingRequest;
 import com.university.oms.dto.MeetingMinutesRequest;
 import com.university.oms.dto.RecommendRoomRequest;
+import com.university.oms.model.Announcement;
 import com.university.oms.model.Meeting;
+import com.university.oms.model.MeetingParticipant;
 import com.university.oms.model.MeetingRoom;
 import com.university.oms.model.User;
 import com.university.oms.repository.DataPersistence;
@@ -19,8 +21,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -60,7 +64,8 @@ public class MeetingService {
         for (Meeting meeting : meetings) {
             User organizer = db.users().get(meeting.getOrganizerId());
             if (meeting.getOrganizerId().equals(user.getId())
-                    || (user.getRoleKeys().contains("dept_head") && organizer != null && user.getDeptId().equals(organizer.getDeptId()))) {
+                    || (user.getRoleKeys().contains("dept_head") && organizer != null && user.getDeptId().equals(organizer.getDeptId()))
+                    || isParticipant(meeting.getId(), user.getId())) {
                 scoped.add(meeting);
             }
         }
@@ -103,6 +108,17 @@ public class MeetingService {
         }
         validateMeetingFee(request);
 
+        // 校验参会人
+        if (request.getParticipants() == null || request.getParticipants().isEmpty()) {
+            throw new BusinessException("请选择至少一位参会人员");
+        }
+        if (request.getRecorderId() == null) {
+            throw new BusinessException("请指定会议记录员");
+        }
+        if (!request.getParticipants().contains(request.getRecorderId())) {
+            throw new BusinessException("记录员必须在参会人员中");
+        }
+
         Meeting meeting = new MeetingBuilder()
                 .title(request.getTitle())
                 .roomId(request.getRoomId())
@@ -121,6 +137,7 @@ public class MeetingService {
         meeting.setMealFee(request.getMealFee());
         meeting.setVenueFee(request.getVenueFee());
         meeting.setOtherFee(request.getOtherFee());
+        meeting.setRecorderId(request.getRecorderId());
 
         db.fill(meeting, db.nextId());
         meeting.setLargeActivity(large);
@@ -129,6 +146,16 @@ public class MeetingService {
         persistence.saveMeeting(meeting);
         approvalService.record("meeting", meeting.getId(), organizerId, "submit", "提交会议申请");
         workflowService.startFlow("meeting", meeting.getId(), meeting.getStatus(), organizerId);
+        // 保存参会人
+        for (Long userId : request.getParticipants()) {
+            MeetingParticipant participant = new MeetingParticipant();
+            db.fill(participant, db.nextId());
+            participant.setMeetingId(meeting.getId());
+            participant.setUserId(userId);
+            participant.setRecorder(userId.equals(request.getRecorderId()));
+            db.participants().put(participant.getId(), participant);
+            persistence.saveMeetingParticipant(participant);
+        }
         return meeting;
     }
 
@@ -137,18 +164,192 @@ public class MeetingService {
         if (meeting == null) {
             throw new BusinessException("会议不存在");
         }
-        accessService.requireMeetingMinutesArchive(meeting);
         if (!"approved".equals(meeting.getStatus())) {
-            throw new BusinessException("只有审批通过的会议可以归档纪要");
+            throw new BusinessException("只有审批通过的会议可以填写纪要");
+        }
+        Long currentUserId = AuthContext.currentUserIdOr(0L);
+        if (!currentUserId.equals(meeting.getRecorderId())) {
+            throw new BusinessException("只有记录员可以填写会议纪要");
         }
         meeting.setMinutes(request.getMinutes());
         meeting.setSignInCount(request.getSignInCount() == null ? 0 : request.getSignInCount());
+        meeting.setStatus("minutes_pending");
+        meeting.setUpdatedAt(LocalDateTime.now());
+        persistence.saveMeeting(meeting);
+        approvalService.record("meeting", id, currentUserId, "archive_minutes", "记录员填写会议纪要");
+        workflowService.advanceFlow("meeting", id, "approved", "minutes_pending", meeting.getOrganizerId());
+        // 通知所有参会人确认纪要
+        for (MeetingParticipant p : getMeetingParticipants(meeting.getId())) {
+            if (!p.isRecorder()) {
+                workflowService.notifyUser(p.getUserId(), "会议纪要待确认",
+                        "会议《" + meeting.getTitle() + "》的纪要已填写，请及时确认。", "meeting", meeting.getId());
+            }
+        }
+        return meeting;
+    }
+
+    public List<MeetingParticipant> getMeetingParticipants(Long meetingId) {
+        List<MeetingParticipant> result = new ArrayList<MeetingParticipant>();
+        for (MeetingParticipant p : db.participants().values()) {
+            if (p.getMeetingId().equals(meetingId)) {
+                result.add(p);
+            }
+        }
+        return result;
+    }
+
+    public List<Meeting> participatedMeetings() {
+        User user = AuthContext.requireUser();
+        Set<Long> meetingIds = new HashSet<Long>();
+        for (MeetingParticipant p : db.participants().values()) {
+            if (p.getUserId().equals(user.getId())) {
+                meetingIds.add(p.getMeetingId());
+            }
+        }
+        List<Meeting> result = new ArrayList<Meeting>();
+        for (Long mid : meetingIds) {
+            Meeting m = db.meetings().get(mid);
+            if (m != null) {
+                result.add(m);
+            }
+        }
+        return result;
+    }
+
+    public Meeting confirmMinutes(Long meetingId) {
+        User user = AuthContext.requireUser();
+        Meeting meeting = db.meetings().get(meetingId);
+        if (meeting == null) {
+            throw new BusinessException("会议不存在");
+        }
+        if (!"minutes_pending".equals(meeting.getStatus())) {
+            throw new BusinessException("当前状态无法确认纪要");
+        }
+        MeetingParticipant target = null;
+        for (MeetingParticipant p : db.participants().values()) {
+            if (p.getMeetingId().equals(meetingId) && p.getUserId().equals(user.getId())) {
+                target = p;
+                break;
+            }
+        }
+        if (target == null) {
+            throw new BusinessException("您不是该会议的参会人员");
+        }
+        if (target.isMinutesConfirmed()) {
+            throw new BusinessException("您已确认过纪要");
+        }
+        target.setMinutesConfirmed(true);
+        target.setConfirmedAt(LocalDateTime.now());
+        target.setUpdatedAt(LocalDateTime.now());
+        persistence.saveMeetingParticipant(target);
+        approvalService.record("meeting", meetingId, user.getId(), "confirm_minutes", "参会人确认纪要");
+
+        // 检查是否全员确认
+        boolean allConfirmed = true;
+        for (MeetingParticipant p : getMeetingParticipants(meetingId)) {
+            if (!p.isMinutesConfirmed()) {
+                allConfirmed = false;
+                break;
+            }
+        }
+        if (allConfirmed) {
+            meeting.setStatus("minutes_confirmed");
+            meeting.setUpdatedAt(LocalDateTime.now());
+            persistence.saveMeeting(meeting);
+            workflowService.advanceFlow("meeting", meetingId, "minutes_pending", "minutes_confirmed", meeting.getOrganizerId());
+            workflowService.notifyUser(meeting.getOrganizerId(), "会议纪要全员确认完成",
+                    "会议《" + meeting.getTitle() + "》的纪要已由所有参会人确认，请决定是否公示。", "meeting", meetingId);
+        }
+        return meeting;
+    }
+
+    public Meeting publishMeeting(Long meetingId) {
+        User user = AuthContext.requireUser();
+        Meeting meeting = db.meetings().get(meetingId);
+        if (meeting == null) {
+            throw new BusinessException("会议不存在");
+        }
+        if (!user.getId().equals(meeting.getOrganizerId())) {
+            throw new BusinessException("只有组织者可以发布");
+        }
+        if (!"minutes_confirmed".equals(meeting.getStatus())) {
+            throw new BusinessException("只有全员确认后的会议可以发布");
+        }
+        // 创建通知公告
+        Announcement announcement = new Announcement();
+        db.fill(announcement, db.nextId());
+        announcement.setTitle("会议纪要公示：" + meeting.getTitle());
+        announcement.setContent(meeting.getMinutes() != null ? meeting.getMinutes() : "");
+        announcement.setCategory("会议纪要");
+        announcement.setTargetType("all");
+        announcement.setPublisherId(user.getId());
+        announcement.setStatus("published");
+        announcement.setPublishedAt(LocalDateTime.now());
+        db.announcements().put(announcement.getId(), announcement);
+        persistence.saveAnnouncement(announcement);
+
         meeting.setStatus("archived");
         meeting.setUpdatedAt(LocalDateTime.now());
         persistence.saveMeeting(meeting);
-        approvalService.record("meeting", id, AuthContext.currentUserIdOr(meeting.getOrganizerId()), "archive_minutes", "会议纪要归档");
-        workflowService.advanceFlow("meeting", id, "approved", "archived", meeting.getOrganizerId());
+        approvalService.record("meeting", meetingId, user.getId(), "publish", "发布为公告");
+        workflowService.advanceFlow("meeting", meetingId, "minutes_confirmed", "archived", meeting.getOrganizerId());
         return meeting;
+    }
+
+    public Meeting archiveDirectly(Long meetingId) {
+        User user = AuthContext.requireUser();
+        Meeting meeting = db.meetings().get(meetingId);
+        if (meeting == null) {
+            throw new BusinessException("会议不存在");
+        }
+        if (!user.getId().equals(meeting.getOrganizerId())) {
+            throw new BusinessException("只有组织者可以归档");
+        }
+        if (!"minutes_confirmed".equals(meeting.getStatus())) {
+            throw new BusinessException("只有全员确认后的会议可以归档");
+        }
+        meeting.setStatus("archived");
+        meeting.setUpdatedAt(LocalDateTime.now());
+        persistence.saveMeeting(meeting);
+        approvalService.record("meeting", meetingId, user.getId(), "archive", "直接归档");
+        workflowService.advanceFlow("meeting", meetingId, "minutes_confirmed", "archived", meeting.getOrganizerId());
+        return meeting;
+    }
+
+    public void remindParticipant(Long meetingId, Long userId) {
+        User currentUser = AuthContext.requireUser();
+        Meeting meeting = db.meetings().get(meetingId);
+        if (meeting == null) {
+            throw new BusinessException("会议不存在");
+        }
+        if (!currentUser.getId().equals(meeting.getOrganizerId())) {
+            throw new BusinessException("只有组织者可以催办");
+        }
+        // 验证被催办人是参会人且未确认
+        MeetingParticipant target = null;
+        for (MeetingParticipant p : db.participants().values()) {
+            if (p.getMeetingId().equals(meetingId) && p.getUserId().equals(userId)) {
+                target = p;
+                break;
+            }
+        }
+        if (target == null) {
+            throw new BusinessException("该用户不是参会人员");
+        }
+        if (target.isMinutesConfirmed()) {
+            throw new BusinessException("该参会人已确认纪要");
+        }
+        workflowService.notifyUser(userId, "会议纪要确认催办",
+                "组织者提醒您尽快确认会议《" + meeting.getTitle() + "》的纪要。", "meeting", meetingId);
+    }
+
+    private boolean isParticipant(Long meetingId, Long userId) {
+        for (MeetingParticipant p : db.participants().values()) {
+            if (p.getMeetingId().equals(meetingId) && p.getUserId().equals(userId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void validateMeetingFee(MeetingRequest request) {

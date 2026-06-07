@@ -58,6 +58,20 @@ public class BusinessAccessService {
         }
     }
 
+    public void requireMeetingRecorder(Meeting meeting) {
+        User user = AuthContext.requireUser();
+        if (!user.getId().equals(meeting.getRecorderId())) {
+            throw new ForbiddenException("只有记录员可以填写会议纪要");
+        }
+    }
+
+    public void requireMeetingOrganizer(Meeting meeting) {
+        User user = AuthContext.requireUser();
+        if (!user.getId().equals(meeting.getOrganizerId())) {
+            throw new ForbiddenException("只有组织者可以操作");
+        }
+    }
+
     public void requireReportReply(Report report) {
         User user = AuthContext.requireUser();
         if (!hasRole(user, "office_admin")
