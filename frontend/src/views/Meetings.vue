@@ -90,25 +90,25 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="记录员">
-              <el-select v-model="form.recorderId" :disabled="form.participants.length === 0" clearable placeholder="请先选择参会人员" style="width:100%">
-                <el-option v-for="uid in form.participants" :key="uid" :label="userName(uid)" :value="uid" />
-              </el-select>
-            </el-form-item>
+            <el-form-item label="开始时间"><el-date-picker v-model="form.startTime" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" style="width:100%" /></el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="16">
           <el-col :span="12">
-            <el-form-item label="开始时间"><el-date-picker v-model="form.startTime" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" style="width:100%" /></el-form-item>
+            <el-form-item label="结束时间"><el-date-picker v-model="form.endTime" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" style="width:100%" /></el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="结束时间"><el-date-picker v-model="form.endTime" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" style="width:100%" /></el-form-item>
           </el-col>
         </el-row>
 
         <!-- 参会人员 -->
         <el-form-item :label="`参会人员（已选：${form.participants.length} 人）`">
           <OrgUserTreeSelect v-model="form.participants" :treeData="orgTree" />
+        </el-form-item>
+        <el-form-item label="记录员">
+          <el-select v-model="form.recorderId" :disabled="form.participants.length === 0" clearable placeholder="请先选择参会人员" style="width:100%">
+            <el-option v-for="uid in form.participants" :key="uid" :label="userName(uid)" :value="uid" />
+          </el-select>
         </el-form-item>
 
         <!-- 会议类型 -->
@@ -128,19 +128,19 @@
         <!-- 费用明细 -->
         <el-row :gutter="16">
           <el-col :span="6">
-            <el-form-item label="住宿费"><el-input-number v-model="form.accommodationFee" :min="0" :controls="false" style="width:100%" /></el-form-item>
+            <el-form-item label="住宿费"><el-input v-model.number="form.accommodationFee" type="number" :min="0" placeholder="0"><template #append>元</template></el-input></el-form-item>
           </el-col>
           <el-col :span="6">
-            <el-form-item label="伙食费"><el-input-number v-model="form.mealFee" :min="0" :controls="false" style="width:100%" /></el-form-item>
+            <el-form-item label="伙食费"><el-input v-model.number="form.mealFee" type="number" :min="0" placeholder="0"><template #append>元</template></el-input></el-form-item>
           </el-col>
           <el-col :span="6">
-            <el-form-item label="场地费"><el-input-number v-model="form.venueFee" :min="0" :controls="false" style="width:100%" /></el-form-item>
+            <el-form-item label="场地费"><el-input v-model.number="form.venueFee" type="number" :min="0" placeholder="0"><template #append>元</template></el-input></el-form-item>
           </el-col>
           <el-col :span="6">
-            <el-form-item label="其他费用"><el-input-number v-model="form.otherFee" :min="0" :controls="false" style="width:100%" /></el-form-item>
+            <el-form-item label="其他费用"><el-input v-model.number="form.otherFee" type="number" :min="0" placeholder="0"><template #append>元</template></el-input></el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="申报预算"><el-input-number v-model="form.budget" :min="0" style="width:200px" /></el-form-item>
+        <el-form-item label="申报预算"><el-input v-model.number="form.budget" type="number" :min="0" placeholder="0" style="width:200px"><template #append>元</template></el-input></el-form-item>
 
         <!-- 大型活动 -->
         <template v-if="isLarge">
