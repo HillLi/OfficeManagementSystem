@@ -3,38 +3,98 @@
     <div class="panel report-header">
       <h3>会议管理</h3>
     </div>
-    <div class="page-actions">
-      <el-button type="primary" @click="applicationDialog = true">会议申请</el-button>
-    </div>
 
-    <el-table :data="meetings" border>
-      <el-table-column prop="title" label="主题" min-width="160" />
-      <el-table-column prop="expectedCount" label="人数" width="65" />
-      <el-table-column label="类别" width="130"><template #default="{ row }">{{ labelOf('meeting_type', row.meetingType) }}</template></el-table-column>
-      <el-table-column label="场地" width="72"><template #default="{ row }">{{ labelOf('venue_type', row.venueType) }}</template></el-table-column>
-      <el-table-column prop="budget" label="预算" width="90" />
-      <el-table-column label="大型活动" width="88"><template #default="{ row }">{{ row.largeActivity ? '是' : '否' }}</template></el-table-column>
-      <el-table-column prop="signInCount" label="签到" width="65" />
-      <el-table-column label="状态" width="115"><template #default="{ row }">{{ labelOf('business_status', row.status) }}</template></el-table-column>
-      <el-table-column label="办理" width="190">
-        <template #default="{ row }">
-          <div class="table-actions">
-            <el-button v-if="row.status === 'approved'" size="small" type="success" @click="archiveMinutes(row)">纪要归档</el-button>
-            <el-button size="small" @click="openFlowGuide(row)">流程导览</el-button>
-          </div>
-        </template>
-      </el-table-column>
-    </el-table>
+    <el-tabs v-model="activeTab">
+      <!-- Tab 1: 会议列表 -->
+      <el-tab-pane label="会议列表" name="list">
+        <div class="page-actions">
+          <el-button type="primary" @click="openApplicationDialog">会议申请</el-button>
+        </div>
 
+        <el-table :data="meetings" border v-loading="loading">
+          <el-table-column prop="title" label="主题" min-width="160" />
+          <el-table-column label="参会人" width="90" align="center">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="showParticipants(row)">
+                {{ row.expectedCount || 0 }} 人
+              </el-button>
+            </template>
+          </el-table-column>
+          <el-table-column label="类别" width="130">
+            <template #default="{ row }">{{ labelOf('meeting_type', row.meetingType) }}</template>
+          </el-table-column>
+          <el-table-column label="场地" width="72">
+            <template #default="{ row }">{{ labelOf('venue_type', row.venueType) }}</template>
+          </el-table-column>
+          <el-table-column prop="budget" label="预算" width="90" />
+          <el-table-column label="大型活动" width="88">
+            <template #default="{ row }">{{ row.largeActivity ? '是' : '否' }}</template>
+          </el-table-column>
+          <el-table-column label="状态" width="115">
+            <template #default="{ row }">{{ labelOf('business_status', row.status) }}</template>
+          </el-table-column>
+          <el-table-column label="办理" min-width="280">
+            <template #default="{ row }">
+              <div class="table-actions">
+                <el-button v-if="row.status === 'approved' && isRecorder(row)" size="small" type="success" @click="archiveMinutes(row)">填写纪要</el-button>
+                <el-button v-if="row.status === 'minutes_confirmed' && isOrganizer(row)" size="small" type="warning" @click="publishMeeting(row)">发布为公告</el-button>
+                <el-button v-if="row.status === 'minutes_confirmed' && isOrganizer(row)" size="small" @click="archiveDirectly(row)">直接归档</el-button>
+                <el-button v-if="row.status === 'minutes_pending' || row.status === 'minutes_confirmed'" size="small" type="info" @click="showConfirmProgress(row)">确认进度</el-button>
+                <el-button size="small" @click="openFlowGuide(row)">流程导览</el-button>
+              </div>
+            </template>
+          </el-table-column>
+          <template #empty><el-empty description="暂无会议" /></template>
+        </el-table>
+      </el-tab-pane>
+
+      <!-- Tab 2: 我参与的会议 -->
+      <el-tab-pane label="我参与的会议" name="participated">
+        <el-table :data="participatedMeetings" border v-loading="loading">
+          <el-table-column prop="title" label="主题" min-width="160" />
+          <el-table-column label="开始时间" width="170">
+            <template #default="{ row }">{{ formatDate(row.startTime) }}</template>
+          </el-table-column>
+          <el-table-column label="状态" width="115">
+            <template #default="{ row }">{{ labelOf('business_status', row.status) }}</template>
+          </el-table-column>
+          <el-table-column label="纪要状态" width="110">
+            <template #default="{ row }">
+              <el-tag v-if="row.status === 'minutes_pending'" type="warning">待确认</el-tag>
+              <el-tag v-else-if="row.status === 'minutes_confirmed' || row.status === 'archived'" type="success">已确认</el-tag>
+              <el-tag v-else type="info">未填写</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="160">
+            <template #default="{ row }">
+              <el-button v-if="row.status === 'minutes_pending' && !row.minutesConfirmedByMe" size="small" type="primary" @click="confirmMinutes(row)">确认纪要</el-button>
+              <el-button v-if="row.minutes" size="small" @click="viewMinutes(row)">查看纪要</el-button>
+            </template>
+          </el-table-column>
+          <template #empty><el-empty description="暂无参与的会议" /></template>
+        </el-table>
+      </el-tab-pane>
+    </el-tabs>
+
+    <!-- Application Dialog -->
     <el-dialog v-model="applicationDialog" title="会议申请" width="640px" :close-on-click-modal="false">
       <el-form label-position="top">
         <el-form-item label="主题"><el-input v-model="form.title" /></el-form-item>
         <el-form-item label="会议室">
-          <el-select v-model="form.roomId"><el-option v-for="room in rooms" :key="room.id" :label="`${room.roomName}（${room.capacity} 人）`" :value="room.id" /></el-select>
+          <el-select v-model="form.roomId">
+            <el-option v-for="room in rooms" :key="room.id" :label="`${room.roomName}（${room.capacity} 人）`" :value="room.id" />
+          </el-select>
         </el-form-item>
         <el-form-item label="开始时间"><el-date-picker v-model="form.startTime" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" /></el-form-item>
         <el-form-item label="结束时间"><el-date-picker v-model="form.endTime" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" /></el-form-item>
-        <el-form-item label="预计人数"><el-input-number v-model="form.expectedCount" :min="1" /></el-form-item>
+        <el-form-item :label="`参会人员（已选：${form.participants.length} 人）`">
+          <OrgUserTreeSelect v-model="form.participants" :treeData="orgTree" />
+        </el-form-item>
+        <el-form-item label="记录员">
+          <el-select v-model="form.recorderId" :disabled="form.participants.length === 0" clearable placeholder="请先选择参会人员">
+            <el-option v-for="uid in form.participants" :key="uid" :label="userName(uid)" :value="uid" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="场地类型">
           <el-select v-model="form.venueType"><el-option v-for="item in optionsOf('venue_type')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
         </el-form-item>
@@ -59,6 +119,40 @@
         <el-button type="primary" @click="submit">提交会议</el-button>
       </template>
     </el-dialog>
+
+    <!-- Participant Dialog -->
+    <el-dialog v-model="participantDialog" :title="participantDialogTitle" width="640px">
+      <el-table :data="participantList" border v-loading="participantLoading">
+        <el-table-column prop="userId" label="用户ID" width="80" />
+        <el-table-column label="姓名" width="120">
+          <template #default="{ row }">{{ userName(row.userId) }}</template>
+        </el-table-column>
+        <el-table-column label="角色" width="100">
+          <template #default="{ row }">
+            <el-tag v-if="row.role === 'recorder'" type="warning">记录员</el-tag>
+            <el-tag v-else>参会人</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="确认状态" min-width="120">
+          <template #default="{ row }">
+            <el-tag v-if="row.confirmed" type="success">已确认</el-tag>
+            <el-tag v-else type="info">未确认</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="80">
+          <template #default="{ row }">
+            <el-button v-if="!row.confirmed && participantDialogMode === 'progress'" size="small" link type="primary" @click="remindParticipant(row)">提醒</el-button>
+          </template>
+        </el-table-column>
+        <template #empty><el-empty description="暂无参会人员" /></template>
+      </el-table>
+    </el-dialog>
+
+    <!-- Minutes View Dialog -->
+    <el-dialog v-model="minutesViewDialog" title="会议纪要" width="560px">
+      <div style="white-space: pre-wrap; line-height: 1.8;">{{ minutesViewContent }}</div>
+    </el-dialog>
+
     <WorkflowGuideDialog ref="flowGuideDialog" />
   </div>
 </template>
@@ -70,45 +164,110 @@ import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
 import { readSessionUser } from '../utils/sessionUser'
 import WorkflowGuideDialog from '../components/WorkflowGuideDialog.vue'
+import OrgUserTreeSelect from '../components/OrgUserTreeSelect.vue'
 
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
 const optionsOf = dictionaryStore.optionsOf
 const currentUser = readSessionUser(undefined, { id: 2 })
+
+const activeTab = ref('list')
+const loading = ref(false)
 const rooms = ref([])
 const meetings = ref([])
+const participatedMeetings = ref([])
+const orgTree = ref([])
+const userOptions = ref([])
 const applicationDialog = ref(false)
 const flowGuideDialog = ref(null)
-const form = reactive({
-  title: '系统试运行培训会',
-  roomId: 1,
-  organizerId: currentUser.id || 2,
-  startTime: '2026-06-22T09:00:00',
-  endTime: '2026-06-22T11:00:00',
-  expectedCount: 60,
-  venueType: '室内',
-  meetingType: '国内管理会议',
+
+// Participant dialog state
+const participantDialog = ref(false)
+const participantDialogTitle = ref('参会人员')
+const participantDialogMode = ref('view') // 'view' or 'progress'
+const participantList = ref([])
+const participantLoading = ref(false)
+
+// Minutes view dialog state
+const minutesViewDialog = ref(false)
+const minutesViewContent = ref('')
+
+const resetForm = () => ({
+  title: '',
+  roomId: null,
+  organizerId: currentUser.id,
+  startTime: '',
+  endTime: '',
+  participants: [],
+  recorderId: null,
+  venueType: '',
+  meetingType: '',
   accommodationFee: 0,
-  mealFee: 100,
-  venueFee: 200,
+  mealFee: 0,
+  venueFee: 0,
   otherFee: 0,
-  budget: 300,
+  budget: 0,
   riskReportUrl: '',
   securityPlanUrl: '',
   emergencyPlanUrl: ''
 })
+
+const form = reactive(resetForm())
+
 const isLarge = computed(() =>
-  (form.venueType === '室内' && form.expectedCount > 500) ||
-  (form.venueType === '室外' && form.expectedCount > 100)
+  (form.venueType === '室内' && form.participants.length > 500) ||
+  (form.venueType === '室外' && form.participants.length > 100)
 )
 
-const load = async () => {
-  rooms.value = await api.rooms()
-  meetings.value = await api.meetings()
+function formatDate(dt) {
+  return dt ? String(dt).replace('T', ' ').slice(0, 16) : '-'
 }
+
+function userName(uid) {
+  const user = userOptions.value.find(u => u.id === uid || u.id === Number(uid))
+  return user ? (user.realName || user.username || uid) : uid
+}
+
+function isRecorder(row) {
+  return row.recorderId === currentUser.id
+}
+
+function isOrganizer(row) {
+  return row.organizerId === currentUser.id
+}
+
+const load = async () => {
+  loading.value = true
+  try {
+    const [roomsData, meetingsData, participatedData, treeData, userData] = await Promise.all([
+      api.rooms(),
+      api.meetings(),
+      api.meetingsParticipated().catch(() => []),
+      api.orgTree().catch(() => []),
+      api.userOptions().catch(() => [])
+    ])
+    rooms.value = roomsData
+    meetings.value = meetingsData
+    participatedMeetings.value = participatedData
+    orgTree.value = treeData
+    userOptions.value = userData
+  } catch (e) {
+    ElMessage.error('加载数据失败：' + (e.message || '网络异常'))
+  } finally {
+    loading.value = false
+  }
+}
+
+const openApplicationDialog = () => {
+  Object.assign(form, resetForm())
+  applicationDialog.value = true
+}
+
 const submit = async () => {
   try {
-    await api.createMeeting(form)
+    const data = { ...form }
+    data.expectedCount = form.participants.length
+    await api.createMeeting(data)
     ElMessage.success('会议申请已提交')
     applicationDialog.value = false
     await load()
@@ -116,6 +275,7 @@ const submit = async () => {
     ElMessage.error(error.message || '提交失败')
   }
 }
+
 const archiveMinutes = async (meeting) => {
   const { value } = await ElMessageBox.prompt('请输入会议纪要', '纪要归档', {
     inputType: 'textarea',
@@ -125,9 +285,84 @@ const archiveMinutes = async (meeting) => {
   ElMessage.success('会议纪要已归档')
   await load()
 }
+
+const confirmMinutes = async (row) => {
+  await ElMessageBox.confirm('确认会议纪要内容无误？', '确认纪要', { type: 'info' })
+  await api.confirmMeetingMinutes(row.id)
+  ElMessage.success('纪要已确认')
+  await load()
+}
+
+const publishMeeting = async (row) => {
+  await ElMessageBox.confirm('确定将该会议发布为公告？', '发布确认', { type: 'warning' })
+  await api.publishMeeting(row.id)
+  ElMessage.success('已发布为公告')
+  await load()
+}
+
+const archiveDirectly = async (row) => {
+  await ElMessageBox.confirm('确定直接归档该会议？', '归档确认', { type: 'warning' })
+  await api.archiveMeeting(row.id)
+  ElMessage.success('会议已归档')
+  await load()
+}
+
+const showParticipants = async (row) => {
+  participantDialogMode.value = 'view'
+  participantDialogTitle.value = `参会人员 — ${row.title}`
+  participantDialog.value = true
+  participantLoading.value = true
+  try {
+    participantList.value = await api.meetingParticipants(row.id)
+  } catch (e) {
+    ElMessage.error('加载参会人员失败')
+    participantList.value = []
+  } finally {
+    participantLoading.value = false
+  }
+}
+
+const showConfirmProgress = async (row) => {
+  participantDialogMode.value = 'progress'
+  participantDialogTitle.value = `确认进度 — ${row.title}`
+  participantDialog.value = true
+  participantLoading.value = true
+  try {
+    participantList.value = await api.meetingParticipants(row.id)
+  } catch (e) {
+    ElMessage.error('加载确认进度失败')
+    participantList.value = []
+  } finally {
+    participantLoading.value = false
+  }
+}
+
+const remindParticipant = async (participant) => {
+  try {
+    const meetingId = participantList.value.length > 0 ? participant.meetingId : null
+    if (!meetingId) return
+    await api.remindParticipant(meetingId, participant.userId)
+    ElMessage.success('已发送提醒')
+  } catch (e) {
+    ElMessage.error('提醒失败：' + (e.message || '网络异常'))
+  }
+}
+
+const viewMinutes = (row) => {
+  minutesViewContent.value = row.minutes || '暂无纪要内容'
+  minutesViewDialog.value = true
+}
+
 const openFlowGuide = (meeting) => {
   flowGuideDialog.value?.open('meeting', meeting.id)
 }
 
 onMounted(load)
 </script>
+
+<style scoped>
+.rule-note {
+  color: #e6a23c;
+  font-size: 12px;
+}
+</style>
