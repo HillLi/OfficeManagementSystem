@@ -53,6 +53,9 @@ http.interceptors.response.use((response) => {
     }
     return Promise.reject(error)
   }
+  if (response.config.method && response.config.method.toLowerCase() !== 'get') {
+    globalThis.window?.dispatchEvent?.(new CustomEvent('oms:business-action'))
+  }
   return body.data
 }, (error) => {
   if (isAuthExpiredError(error)) {

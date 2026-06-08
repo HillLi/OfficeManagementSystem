@@ -27,8 +27,8 @@
 </template>
 
 <script setup>
-import { computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { api } from './api'
 import { useUserStore } from './stores/user'
 import { useDictionaryStore } from './stores/dictionary'
@@ -37,13 +37,15 @@ import { visibleMenuItems } from './utils/navigation'
 import Login from './views/Login.vue'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const dictionaryStore = useDictionaryStore()
 const actionBadgeStore = useActionBadgeStore()
 const visibleItems = computed(() => visibleMenuItems(userStore.roleKeys))
-const hasApprovalMenu = computed(() => visibleItems.value.some((item) => item.index === '/approvals'))
+let refreshTimer = null
 
-const menuBadge = (item) => item.index === '/approvals' ? actionBadgeStore.approvalTotal : 0
+const menuBadge = (item) => actionBadgeStore.menuBadgeFor(item.index)
+const handleBusinessAction = () => refreshShellData()
 
 const refreshShellData = async () => {
   if (!userStore.isLoggedIn) {
@@ -55,17 +57,25 @@ const refreshShellData = async () => {
   } catch (error) {
     dictionaryStore.restoreCached()
   }
-  if (hasApprovalMenu.value) {
-    try {
-      await actionBadgeStore.refresh()
-    } catch (error) {
-      actionBadgeStore.reset()
-    }
+  try {
+    await actionBadgeStore.refresh(userStore.user)
+  } catch (error) {
+    actionBadgeStore.reset()
   }
 }
 
-onMounted(refreshShellData)
-watch(() => userStore.isLoggedIn, refreshShellData)
+onMounted(() => {
+  refreshShellData()
+  window.addEventListener('oms:business-action', handleBusinessAction)
+  refreshTimer = window.setInterval(refreshShellData, 30000)
+})
+onUnmounted(() => {
+  window.removeEventListener('oms:business-action', handleBusinessAction)
+  if (refreshTimer) {
+    window.clearInterval(refreshTimer)
+  }
+})
+watch(() => [userStore.isLoggedIn, route.path], refreshShellData)
 
 const handleLogout = async () => {
   try {

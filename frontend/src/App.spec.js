@@ -12,4 +12,9 @@ describe('app shell menu badge layout', () => {
     expect(source).toContain('class="menu-badge-count"')
     expect(source).toContain('align-items: center')
   })
+
+  it('reads badge counts from each menu route instead of only approvals', () => {
+    expect(source).toContain('actionBadgeStore.menuBadgeFor(item.index)')
+    expect(source).not.toContain("item.index === '/approvals' ? actionBadgeStore.approvalTotal : 0")
+  })
 })
