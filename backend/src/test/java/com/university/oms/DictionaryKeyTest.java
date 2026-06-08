@@ -26,6 +26,17 @@ class DictionaryKeyTest {
         assertSame(campusAreaNorth, db.dictionaryItems().get(campusAreaNorthKey));
     }
 
+    @Test
+    void inMemoryBusinessStatusIncludesMeetingMinutesStates() {
+        InMemoryDatabase db = new InMemoryDatabase();
+        db.init();
+
+        assertEquals("纪要待确认",
+                db.dictionaryItems().get(db.dictionaryItemKey("business_status", "minutes_pending")).getDictLabel());
+        assertEquals("纪要已确认",
+                db.dictionaryItems().get(db.dictionaryItemKey("business_status", "minutes_confirmed")).getDictLabel());
+    }
+
     private DictionaryItem item(String type, String code) {
         DictionaryItem item = new DictionaryItem();
         item.setDictType(type);

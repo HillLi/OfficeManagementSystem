@@ -2,6 +2,7 @@ package com.university.oms.service;
 
 import com.university.oms.common.BusinessException;
 import com.university.oms.design.MeetingBuilder;
+import com.university.oms.dto.MeetingParticipationResponse;
 import com.university.oms.dto.MeetingRequest;
 import com.university.oms.dto.MeetingMinutesRequest;
 import com.university.oms.dto.RecommendRoomRequest;
@@ -22,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -89,6 +91,27 @@ public class MeetingService {
             throw new BusinessException("结束时间必须晚于开始时间");
         }
         Long organizerId = AuthContext.currentUserIdOr(request.getOrganizerId());
+
+        if (request.getParticipants() == null || request.getParticipants().isEmpty()) {
+            throw new BusinessException("请选择至少一位参会人员");
+        }
+        Set<Long> participantIds = new LinkedHashSet<Long>(request.getParticipants());
+        if (request.getRecorderId() == null) {
+            throw new BusinessException("请指定会议记录员");
+        }
+        if (!participantIds.contains(request.getRecorderId())) {
+            throw new BusinessException("记录员必须在参会人员中");
+        }
+        for (Long participantId : participantIds) {
+            if (!db.users().containsKey(participantId)) {
+                throw new BusinessException("参会人员不存在：" + participantId);
+            }
+        }
+        int regulatoryExpectedCount = request.getExpectedCount() == null
+                ? participantIds.size()
+                : Math.max(participantIds.size(), request.getExpectedCount());
+        request.setExpectedCount(participantIds.size());
+
         MeetingRoom room = db.rooms().get(request.getRoomId());
         if (room == null || !room.isEnabled()) {
             throw new BusinessException("会议室不可用");
@@ -99,7 +122,7 @@ public class MeetingService {
         if (hasConflict(request.getRoomId(), request.getStartTime(), request.getEndTime())) {
             throw new BusinessException("会议室在该时段已被占用");
         }
-        boolean large = isLargeActivity(request.getVenueType(), request.getExpectedCount());
+        boolean large = isLargeActivity(request.getVenueType(), regulatoryExpectedCount);
         if (large && workingDaysBetween(LocalDate.now(), request.getStartTime().toLocalDate()) < 15) {
             throw new BusinessException("大型活动必须至少提前15个工作日申请");
         }
@@ -107,17 +130,6 @@ public class MeetingService {
             throw new BusinessException("大型活动必须上传风险报告、安全方案和应急预案");
         }
         validateMeetingFee(request);
-
-        // 校验参会人
-        if (request.getParticipants() == null || request.getParticipants().isEmpty()) {
-            throw new BusinessException("请选择至少一位参会人员");
-        }
-        if (request.getRecorderId() == null) {
-            throw new BusinessException("请指定会议记录员");
-        }
-        if (!request.getParticipants().contains(request.getRecorderId())) {
-            throw new BusinessException("记录员必须在参会人员中");
-        }
 
         Meeting meeting = new MeetingBuilder()
                 .title(request.getTitle())
@@ -147,7 +159,7 @@ public class MeetingService {
         approvalService.record("meeting", meeting.getId(), organizerId, "submit", "提交会议申请");
         workflowService.startFlow("meeting", meeting.getId(), meeting.getStatus(), organizerId);
         // 保存参会人
-        for (Long userId : request.getParticipants()) {
+        for (Long userId : participantIds) {
             MeetingParticipant participant = new MeetingParticipant();
             db.fill(participant, db.nextId());
             participant.setMeetingId(meeting.getId());
@@ -198,22 +210,39 @@ public class MeetingService {
         return result;
     }
 
-    public List<Meeting> participatedMeetings() {
+    public List<MeetingParticipationResponse> participatedMeetings() {
         User user = AuthContext.requireUser();
+        List<MeetingParticipationResponse> result = new ArrayList<MeetingParticipationResponse>();
         Set<Long> meetingIds = new HashSet<Long>();
         for (MeetingParticipant p : db.participants().values()) {
             if (p.getUserId().equals(user.getId())) {
-                meetingIds.add(p.getMeetingId());
-            }
-        }
-        List<Meeting> result = new ArrayList<Meeting>();
-        for (Long mid : meetingIds) {
-            Meeting m = db.meetings().get(mid);
-            if (m != null) {
-                result.add(m);
+                if (!meetingIds.add(p.getMeetingId())) {
+                    continue;
+                }
+                Meeting meeting = db.meetings().get(p.getMeetingId());
+                if (meeting != null) {
+                    result.add(toParticipationResponse(meeting, p));
+                }
             }
         }
         return result;
+    }
+
+    private MeetingParticipationResponse toParticipationResponse(Meeting meeting, MeetingParticipant participant) {
+        MeetingParticipationResponse response = new MeetingParticipationResponse();
+        response.setId(meeting.getId());
+        response.setMeetingId(meeting.getId());
+        response.setTitle(meeting.getTitle());
+        response.setStartTime(meeting.getStartTime());
+        response.setEndTime(meeting.getEndTime());
+        response.setOrganizerId(meeting.getOrganizerId());
+        response.setRecorderId(meeting.getRecorderId());
+        response.setExpectedCount(meeting.getExpectedCount());
+        response.setStatus(meeting.getStatus());
+        response.setRecorder(participant.isRecorder());
+        response.setMinutesConfirmed(participant.isMinutesConfirmed());
+        response.setMinutes(meeting.getMinutes());
+        return response;
     }
 
     public Meeting confirmMinutes(Long meetingId) {

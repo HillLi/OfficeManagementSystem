@@ -52,6 +52,8 @@ class OfficeManagementSystemIntegrationTest {
         request.setEndTime(LocalDateTime.of(2026, 6, 1, 11, 0));
         request.setExpectedCount(510);
         request.setVenueType("室内");
+        request.setParticipants(java.util.Arrays.asList(2L, 3L));
+        request.setRecorderId(2L);
 
         BusinessException ex = assertThrows(BusinessException.class, () -> meetingService.create(request));
 

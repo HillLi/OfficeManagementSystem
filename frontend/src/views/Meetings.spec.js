@@ -27,6 +27,13 @@ describe('Meetings.vue', () => {
     expect(source).toContain('确认纪要')
   })
 
+  it('uses participant confirmation fields returned by the backend', () => {
+    expect(source).toContain('row.recorder')
+    expect(source).toContain('row.minutesConfirmed')
+    expect(source).not.toContain('row.role ===')
+    expect(source).not.toContain('row.confirmed')
+  })
+
   it('has publish and archive buttons', () => {
     expect(source).toContain('publishMeeting')
     expect(source).toContain('archiveMeeting')

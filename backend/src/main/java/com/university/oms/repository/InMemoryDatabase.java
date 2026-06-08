@@ -124,6 +124,8 @@ public class InMemoryDatabase {
         addDictItem(213L, "business_status", "running", "办理中", 130, true);
         addDictItem(214L, "business_status", "completed", "已完成", 140, true);
         addDictItem(215L, "business_status", "pending", "待办理", 150, true);
+        addDictItem(289L, "business_status", "minutes_pending", "纪要待确认", 156, true);
+        addDictItem(290L, "business_status", "minutes_confirmed", "纪要已确认", 157, true);
         addDictItem(216L, "distribution_status", "not_distributed", "未分发", 10, true);
         addDictItem(217L, "distribution_status", "distributed", "待签收", 20, true);
         addDictItem(218L, "distribution_status", "partially_received", "部分签收", 30, true);

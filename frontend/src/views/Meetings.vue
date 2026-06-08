@@ -67,7 +67,7 @@
           </el-table-column>
           <el-table-column label="操作" width="160">
             <template #default="{ row }">
-              <el-button v-if="row.status === 'minutes_pending' && !row.minutesConfirmedByMe" size="small" type="primary" @click="confirmMinutes(row)">确认纪要</el-button>
+              <el-button v-if="row.status === 'minutes_pending' && !row.minutesConfirmed" size="small" type="primary" @click="confirmMinutes(row)">确认纪要</el-button>
               <el-button v-if="row.minutes" size="small" @click="viewMinutes(row)">查看纪要</el-button>
             </template>
           </el-table-column>
@@ -167,19 +167,19 @@
         </el-table-column>
         <el-table-column label="角色" width="100">
           <template #default="{ row }">
-            <el-tag v-if="row.role === 'recorder'" type="warning">记录员</el-tag>
+            <el-tag v-if="row.recorder" type="warning">记录员</el-tag>
             <el-tag v-else>参会人</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="确认状态" min-width="120">
           <template #default="{ row }">
-            <el-tag v-if="row.confirmed" type="success">已确认</el-tag>
+            <el-tag v-if="row.minutesConfirmed" type="success">已确认</el-tag>
             <el-tag v-else type="info">未确认</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="80">
           <template #default="{ row }">
-            <el-button v-if="!row.confirmed && participantDialogMode === 'progress'" size="small" link type="primary" @click="remindParticipant(row)">提醒</el-button>
+            <el-button v-if="!row.minutesConfirmed && participantDialogMode === 'progress'" size="small" link type="primary" @click="remindParticipant(row)">提醒</el-button>
           </template>
         </el-table-column>
         <template #empty><el-empty description="暂无参会人员" /></template>

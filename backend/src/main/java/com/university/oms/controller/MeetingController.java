@@ -1,6 +1,7 @@
 package com.university.oms.controller;
 
 import com.university.oms.common.ApiResponse;
+import com.university.oms.dto.MeetingParticipationResponse;
 import com.university.oms.dto.MeetingRequest;
 import com.university.oms.dto.MeetingMinutesRequest;
 import com.university.oms.dto.RecommendRoomRequest;
@@ -48,7 +49,7 @@ public class MeetingController {
     }
 
     @GetMapping("/participated")
-    public ApiResponse<List<Meeting>> participatedMeetings() {
+    public ApiResponse<List<MeetingParticipationResponse>> participatedMeetings() {
         return ApiResponse.ok(service.participatedMeetings());
     }
 

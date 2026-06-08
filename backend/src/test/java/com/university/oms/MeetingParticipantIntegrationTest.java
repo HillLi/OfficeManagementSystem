@@ -49,6 +49,42 @@ class MeetingParticipantIntegrationTest {
     }
 
     @Test
+    void createMeetingDerivesExpectedCountFromParticipants() throws Exception {
+        String userToken = login("user");
+
+        String json = "{" +
+                "\"title\":\"自动人数测试会议\"," +
+                "\"roomId\":1," +
+                "\"organizerId\":2," +
+                "\"startTime\":\"2026-07-09T09:00:00\"," +
+                "\"endTime\":\"2026-07-09T11:00:00\"," +
+                "\"venueType\":\"室内\"," +
+                "\"meetingType\":\"国内管理会议\"," +
+                "\"budget\":0," +
+                "\"expectedCount\":99," +
+                "\"participants\":[2,3]," +
+                "\"recorderId\":3" +
+                "}";
+
+        JsonNode created = postJson("/api/meetings", json, userToken).get("data");
+        assertEquals(2, created.get("expectedCount").asInt());
+    }
+
+    @Test
+    void participantsEndpointReturnsRecorderAndConfirmationFields() throws Exception {
+        String userToken = login("user");
+
+        String createJson = meetingJson("参会人字段测试", 9, "2026-07-09T14:00:00", "2026-07-09T16:00:00");
+        JsonNode created = postJson("/api/meetings", createJson, userToken).get("data");
+        long meetingId = created.get("id").asLong();
+
+        JsonNode participants = getJson("/api/meetings/" + meetingId + "/participants", userToken).get("data");
+        JsonNode recorder = findParticipant(participants, 3);
+        assertTrue(recorder.get("recorder").asBoolean());
+        assertFalse(recorder.get("minutesConfirmed").asBoolean());
+    }
+
+    @Test
     void createMeetingWithoutParticipantsFails() throws Exception {
         String userToken = login("user");
 
@@ -161,6 +197,29 @@ class MeetingParticipantIntegrationTest {
     }
 
     @Test
+    void participatedMeetingsIncludeCurrentUserConfirmationState() throws Exception {
+        String userToken = login("user");
+        String headToken = login("head");
+
+        String createJson = meetingJson("参与会议确认状态测试", 10, "2026-07-10T09:00:00", "2026-07-10T11:00:00");
+        JsonNode created = postJson("/api/meetings", createJson, userToken).get("data");
+        long meetingId = created.get("id").asLong();
+
+        postJson("/api/approvals/meeting/" + meetingId, "{\"action\":\"approve\",\"opinion\":\"同意\"}", headToken);
+        postJson("/api/meetings/" + meetingId + "/minutes",
+                "{\"minutes\":\"参与会议状态纪要\",\"signInCount\":2}", headToken);
+
+        JsonNode before = findParticipated(getJson("/api/meetings/participated", userToken).get("data"), meetingId);
+        assertEquals(meetingId, before.get("meetingId").asLong());
+        assertFalse(before.get("minutesConfirmed").asBoolean());
+
+        postJson("/api/meetings/" + meetingId + "/confirm-minutes", "{}", userToken);
+
+        JsonNode after = findParticipated(getJson("/api/meetings/participated", userToken).get("data"), meetingId);
+        assertTrue(after.get("minutesConfirmed").asBoolean());
+    }
+
+    @Test
     void publishCreatesAnnouncement() throws Exception {
         String userToken = login("user");
         String headToken = login("head");
@@ -254,6 +313,24 @@ class MeetingParticipantIntegrationTest {
     private JsonNode find(JsonNode rows, long id) {
         for (JsonNode row : rows) {
             if (row.get("id").asLong() == id) {
+                return row;
+            }
+        }
+        return null;
+    }
+
+    private JsonNode findParticipant(JsonNode rows, long userId) {
+        for (JsonNode row : rows) {
+            if (row.get("userId").asLong() == userId) {
+                return row;
+            }
+        }
+        return null;
+    }
+
+    private JsonNode findParticipated(JsonNode rows, long meetingId) {
+        for (JsonNode row : rows) {
+            if (row.get("meetingId").asLong() == meetingId) {
                 return row;
             }
         }
