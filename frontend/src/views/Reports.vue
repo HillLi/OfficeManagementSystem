@@ -24,15 +24,15 @@
     </el-table>
 
     <el-dialog v-model="applicationDialog" title="提交请示报告" width="560px" :close-on-click-modal="false">
-      <el-form label-position="top">
-        <el-form-item label="标题"><el-input v-model="form.title" /></el-form-item>
+      <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
+        <el-form-item label="标题" prop="title"><el-input v-model="form.title" /></el-form-item>
         <el-form-item label="类型">
           <el-select v-model="form.type"><el-option v-for="item in optionsOf('report_type')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
         </el-form-item>
         <el-form-item label="密级">
           <el-select v-model="form.secrecyLevel"><el-option v-for="item in optionsOf('secrecy_level')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
         </el-form-item>
-        <el-form-item label="内容"><el-input v-model="form.content" type="textarea" :rows="6" /></el-form-item>
+        <el-form-item label="内容" prop="content"><el-input v-model="form.content" type="textarea" :rows="6" /></el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="applicationDialog = false">取消</el-button>
@@ -57,6 +57,7 @@ const rows = ref([])
 const applicationDialog = ref(false)
 const flowGuideDialog = ref(null)
 const loading = ref(false)
+const formRef = ref(null)
 const form = reactive({
   title: '',
   type: '',
@@ -64,6 +65,10 @@ const form = reactive({
   content: '',
   applicantId: null
 })
+const rules = {
+  title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
+  content: [{ required: true, message: '请输入内容', trigger: 'blur' }]
+}
 const load = async () => {
   loading.value = true
   try {
@@ -76,12 +81,15 @@ const load = async () => {
 }
 const submit = async () => {
   try {
+    await formRef.value.validate()
     await api.createReport(form)
     ElMessage.success('已提交')
     applicationDialog.value = false
     await load()
   } catch (e) {
-    ElMessage.error(e.message || '提交失败')
+    if (e.message !== 'validation failed') {
+      ElMessage.error(e.message || '提交失败')
+    }
   }
 }
 const reply = async (row) => {

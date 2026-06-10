@@ -30,15 +30,15 @@
     </el-table>
 
     <el-dialog v-model="draftDialog" title="公文起草" width="620px" :close-on-click-modal="false">
-      <el-form label-position="top">
-        <el-form-item label="标题"><el-input v-model="form.title" /></el-form-item>
-        <el-form-item label="文种">
+      <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
+        <el-form-item label="标题" prop="title"><el-input v-model="form.title" /></el-form-item>
+        <el-form-item label="文种" prop="docType">
           <el-select v-model="form.docType"><el-option v-for="item in optionsOf('document_type')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
         </el-form-item>
         <el-form-item label="密级">
           <el-select v-model="form.secrecyLevel"><el-option v-for="item in optionsOf('secrecy_level')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
         </el-form-item>
-        <el-form-item label="正文"><el-input v-model="form.content" type="textarea" :rows="6" /></el-form-item>
+        <el-form-item label="正文" prop="content"><el-input v-model="form.content" type="textarea" :rows="6" /></el-form-item>
       </el-form>
       <p v-if="form.secrecyLevel !== '公开'" class="rule-note">非公开公文禁止调用外部 AI。</p>
       <template #footer>
@@ -49,8 +49,8 @@
     </el-dialog>
 
     <el-dialog v-model="distributionDialog" title="公文分发与签收" width="820px" :close-on-click-modal="false">
-      <el-form v-if="canManage" :inline="true">
-        <el-form-item label="接收人">
+      <el-form v-if="canManage" ref="distributionFormRef" :model="distributionForm" :rules="distributionRules" :inline="true">
+        <el-form-item label="接收人" prop="receiverId">
           <el-select v-model="distributionForm.receiverId" filterable @change="selectReceiver">
             <el-option v-for="user in userOptions" :key="user.id" :label="user.realName" :value="user.id" />
           </el-select>
@@ -77,9 +77,9 @@
     </el-dialog>
 
     <el-dialog v-model="attachmentDialog" title="附件管理" width="620px" :close-on-click-modal="false">
-      <el-form label-position="top">
-        <el-form-item label="文件名"><el-input v-model="attachmentForm.fileName" /></el-form-item>
-        <el-form-item label="文件地址"><el-input v-model="attachmentForm.fileUrl" /></el-form-item>
+      <el-form ref="attachmentFormRef" :model="attachmentForm" :rules="attachmentRules" label-position="top">
+        <el-form-item label="文件名" prop="fileName"><el-input v-model="attachmentForm.fileName" /></el-form-item>
+        <el-form-item label="文件地址" prop="fileUrl"><el-input v-model="attachmentForm.fileUrl" /></el-form-item>
         <el-form-item label="密级">
           <el-select v-model="attachmentForm.secrecyLevel"><el-option v-for="item in optionsOf('secrecy_level')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
         </el-form-item>
@@ -119,6 +119,9 @@ const attachmentDialog = ref(false)
 const distributionDialog = ref(false)
 const currentDocument = ref(null)
 const flowGuideDialog = ref(null)
+const formRef = ref(null)
+const distributionFormRef = ref(null)
+const attachmentFormRef = ref(null)
 const form = reactive({
   title: '',
   docType: '',
@@ -129,6 +132,18 @@ const form = reactive({
 const attachmentForm = reactive({ fileName: '', fileUrl: '', secrecyLevel: '公开' })
 const distributionForm = reactive({ receiverId: 2, receiverDeptId: 1 })
 const selectedReceiver = computed(() => userOptions.value.find((user) => user.id === distributionForm.receiverId))
+const rules = {
+  title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
+  docType: [{ required: true, message: '请选择文种', trigger: 'change' }],
+  content: [{ required: true, message: '请输入正文', trigger: 'blur' }]
+}
+const distributionRules = {
+  receiverId: [{ required: true, message: '请选择接收人', trigger: 'change' }]
+}
+const attachmentRules = {
+  fileName: [{ required: true, message: '请输入文件名', trigger: 'blur' }],
+  fileUrl: [{ required: true, message: '请输入文件地址', trigger: 'blur' }]
+}
 
 const canAi = (document) => ['公开', 'public'].includes(document.secrecyLevel)
 const hasDistribution = (document) => document.distributionStatus && document.distributionStatus !== 'not_distributed'
@@ -148,12 +163,15 @@ const selectReceiver = () => {
 
 const save = async () => {
   try {
+    await formRef.value.validate()
     await api.createDocument(form)
     ElMessage.success('草稿已保存')
     draftDialog.value = false
     await load()
   } catch (e) {
-    ElMessage.error(e.message || '操作失败')
+    if (e.message !== 'validation failed') {
+      ElMessage.error(e.message || '操作失败')
+    }
   }
 }
 const submitFlow = async (id) => {
@@ -206,12 +224,15 @@ const openDistribution = async (document) => {
 }
 const distribute = async () => {
   try {
+    await distributionFormRef.value.validate()
     await api.distributeDocument(currentDocument.value.id, distributionForm)
     ElMessage.success('公文已分发')
     distributions.value = await api.documentDistributions(currentDocument.value.id)
     await load()
   } catch (e) {
-    ElMessage.error(e.message || '操作失败')
+    if (e.message !== 'validation failed') {
+      ElMessage.error(e.message || '操作失败')
+    }
   }
 }
 const receive = async (distributionId) => {
@@ -250,6 +271,7 @@ const openFlowGuide = (document) => {
 }
 const addAttachment = async () => {
   try {
+    await attachmentFormRef.value.validate()
     await api.addAttachment({
       bizType: 'document',
       bizId: currentDocument.value.id,
@@ -260,7 +282,9 @@ const addAttachment = async () => {
     ElMessage.success('附件已保存')
     attachments.value = await api.attachments({ bizType: 'document', bizId: currentDocument.value.id })
   } catch (e) {
-    ElMessage.error(e.message || '操作失败')
+    if (e.message !== 'validation failed') {
+      ElMessage.error(e.message || '操作失败')
+    }
   }
 }
 

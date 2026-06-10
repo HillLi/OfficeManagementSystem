@@ -49,15 +49,15 @@
     </section>
 
     <el-dialog v-model="applicationDialog" title="用印申请" width="620px" :close-on-click-modal="false">
-      <el-form label-position="top">
-        <el-form-item label="印章">
+      <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
+        <el-form-item label="印章" prop="sealId">
           <el-select v-model="form.sealId">
             <el-option v-for="seal in seals" :key="seal.id" :label="seal.sealName" :value="seal.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="用途"><el-input v-model="form.purpose" /></el-form-item>
-        <el-form-item label="份数"><el-input-number v-model="form.copies" :min="1" /></el-form-item>
-        <el-form-item label="事项等级">
+        <el-form-item label="用途" prop="purpose"><el-input v-model="form.purpose" /></el-form-item>
+        <el-form-item label="份数" prop="copies"><el-input-number v-model="form.copies" :min="1" /></el-form-item>
+        <el-form-item label="事项等级" prop="matterLevel">
           <el-select v-model="form.matterLevel">
             <el-option v-for="level in optionsOf('matter_level')" :key="level.value" :label="level.label" :value="level.value" />
           </el-select>
@@ -87,23 +87,23 @@
     </el-dialog>
 
     <el-dialog v-model="transferDialog" title="印章移交" width="560px" :close-on-click-modal="false">
-      <el-form label-position="top">
-        <el-form-item label="印章">
+      <el-form ref="transferFormRef" :model="transferForm" :rules="transferRules" label-position="top">
+        <el-form-item label="印章" prop="sealId">
           <el-select v-model="transferForm.sealId">
             <el-option v-for="seal in seals" :key="seal.id" :label="seal.sealName" :value="seal.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="接收人">
+        <el-form-item label="接收人" prop="receiverId">
           <el-select v-model="transferForm.receiverId" filterable>
             <el-option v-for="user in userOptions" :key="user.id" :label="user.realName" :value="user.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="监督人">
+        <el-form-item label="监督人" prop="supervisorId">
           <el-select v-model="transferForm.supervisorId" filterable>
             <el-option v-for="user in userOptions" :key="user.id" :label="user.realName" :value="user.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="移交凭证地址"><el-input v-model="transferForm.materialUrl" /></el-form-item>
+        <el-form-item label="移交凭证地址" prop="materialUrl"><el-input v-model="transferForm.materialUrl" /></el-form-item>
         <el-form-item label="备注"><el-input v-model="transferForm.remark" /></el-form-item>
       </el-form>
       <template #footer>
@@ -147,8 +147,8 @@
     </el-dialog>
 
     <el-dialog v-model="editDialog" title="修改材料信息" width="min(430px, calc(100vw - 24px))" :close-on-click-modal="false">
-      <el-form label-position="top">
-        <el-form-item label="材料名称"><el-input v-model="editForm.fileName" /></el-form-item>
+      <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-position="top">
+        <el-form-item label="材料名称" prop="fileName"><el-input v-model="editForm.fileName" /></el-form-item>
         <el-form-item label="密级">
           <el-select v-model="editForm.secrecyLevel">
             <el-option v-for="level in optionsOf('secrecy_level')" :key="level.value" :label="level.label" :value="level.value" />
@@ -191,6 +191,9 @@ const uploadFiles = ref([])
 const selectedFile = ref(null)
 const uploadSecrecy = ref('内部')
 const flowGuideDialog = ref(null)
+const formRef = ref(null)
+const transferFormRef = ref(null)
+const editFormRef = ref(null)
 const form = reactive({
   sealId: null,
   applicantId: currentUser.id,
@@ -214,6 +217,21 @@ const editForm = reactive({ id: null, fileName: '', secrecyLevel: '内部' })
 const materialTitle = computed(() => currentApplication.value ? `${currentApplication.value.sealName} - 用印材料` : '用印材料')
 const canUpload = computed(() => currentApplication.value?.status === 'draft'
   && currentApplication.value?.applicantId === currentUser.id)
+const rules = {
+  sealId: [{ required: true, message: '请选择印章', trigger: 'change' }],
+  purpose: [{ required: true, message: '请输入用途', trigger: 'blur' }],
+  copies: [{ required: true, message: '请输入份数', trigger: 'blur' }, { type: 'number', min: 1, message: '份数不能小于1', trigger: 'blur' }],
+  matterLevel: [{ required: true, message: '请选择事项等级', trigger: 'change' }]
+}
+const transferRules = {
+  sealId: [{ required: true, message: '请选择印章', trigger: 'change' }],
+  receiverId: [{ required: true, message: '请选择接收人', trigger: 'change' }],
+  supervisorId: [{ required: true, message: '请选择监督人', trigger: 'change' }],
+  materialUrl: [{ required: true, message: '请输入移交凭证地址', trigger: 'blur' }]
+}
+const editRules = {
+  fileName: [{ required: true, message: '请输入材料名称', trigger: 'blur' }]
+}
 
 const sealName = (sealId) => seals.value.find((seal) => seal.id === sealId)?.sealName || `印章 #${sealId}`
 const userName = (userId) => userOptions.value.find((user) => user.id === userId)?.realName || `#${userId}`
@@ -236,13 +254,16 @@ const load = async () => {
 }
 const saveDraft = async () => {
   try {
+    await formRef.value.validate()
     const created = await api.createSealApp(form)
     ElMessage.success('草稿已保存，请上传材料后提交审批')
     applicationDialog.value = false
     await load()
     await openMaterials(created)
   } catch (error) {
-    ElMessage.error(error.message || '保存草稿失败')
+    if (error.message !== 'validation failed') {
+      ElMessage.error(error.message || '保存草稿失败')
+    }
   }
 }
 const submitDraft = async (row) => {
@@ -325,12 +346,15 @@ const openEdit = (row) => {
 }
 const saveEdit = async () => {
   try {
+    await editFormRef.value.validate()
     await api.updateAttachment(editForm.id, { fileName: editForm.fileName, secrecyLevel: editForm.secrecyLevel })
     editDialog.value = false
     ElMessage.success('材料信息已更新')
     await loadMaterials()
   } catch (e) {
-    ElMessage.error(e.message || '更新材料失败')
+    if (e.message !== 'validation failed') {
+      ElMessage.error(e.message || '更新材料失败')
+    }
   }
 }
 const removeMaterial = async (row) => {
@@ -369,12 +393,15 @@ const markReturned = async (id) => {
 }
 const createTransfer = async () => {
   try {
+    await transferFormRef.value.validate()
     await api.createSealTransfer(transferForm)
     ElMessage.success('印章移交已登记')
     transferDialog.value = false
     await load()
   } catch (e) {
-    ElMessage.error(e.message || '登记移交失败')
+    if (e.message !== 'validation failed') {
+      ElMessage.error(e.message || '登记移交失败')
+    }
   }
 }
 

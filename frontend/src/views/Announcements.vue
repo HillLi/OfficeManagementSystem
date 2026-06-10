@@ -95,8 +95,8 @@
     </el-dialog>
 
     <el-dialog v-model="dialogVisible" :title="editing ? '编辑公告' : '新增公告'" width="620px" :close-on-click-modal="false">
-      <el-form label-position="top">
-        <el-form-item label="标题"><el-input v-model="form.title" /></el-form-item>
+      <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
+        <el-form-item label="标题" prop="title"><el-input v-model="form.title" /></el-form-item>
         <el-form-item label="分类">
           <el-select v-model="form.category">
             <el-option label="通知" value="notice" />
@@ -116,7 +116,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="置顶"><el-switch v-model="form.pinned" /></el-form-item>
-        <el-form-item label="正文"><el-input v-model="form.content" type="textarea" :rows="7" /></el-form-item>
+        <el-form-item label="正文" prop="content"><el-input v-model="form.content" type="textarea" :rows="7" /></el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -144,6 +144,7 @@ const dialogVisible = ref(false)
 const editing = ref(null)
 const saving = ref(false)
 const loading = ref(false)
+const formRef = ref(null)
 const form = reactive({
   title: '',
   content: '',
@@ -152,6 +153,10 @@ const form = reactive({
   targetDeptId: null,
   pinned: false
 })
+const rules = {
+  title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
+  content: [{ required: true, message: '请输入正文', trigger: 'blur' }]
+}
 
 const canMaintain = computed(() => userStore.roleKeys.includes('admin') || userStore.roleKeys.includes('office_admin'))
 const publishedRows = computed(() => rows.value)
@@ -199,6 +204,7 @@ function openAnnouncement(row) {
 async function save() {
   saving.value = true
   try {
+    await formRef.value.validate()
     if (editing.value) {
       await api.updateAnnouncement(editing.value.id, form)
     } else {
@@ -208,7 +214,9 @@ async function save() {
     await load()
     ElMessage.success('公告已保存')
   } catch (e) {
-    ElMessage.error(e.message || '保存失败')
+    if (e.message !== 'validation failed') {
+      ElMessage.error(e.message || '保存失败')
+    }
   } finally {
     saving.value = false
   }

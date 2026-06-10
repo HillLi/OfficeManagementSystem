@@ -84,17 +84,17 @@
     </el-tabs>
 
     <el-dialog v-model="composeVisible" title="写邮件" width="720px" :close-on-click-modal="false">
-      <el-form label-position="top">
-        <el-form-item label="主题">
+      <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
+        <el-form-item label="主题" prop="subject">
           <el-input v-model="form.subject" maxlength="255" show-word-limit />
         </el-form-item>
-        <el-form-item label="收件人">
+        <el-form-item label="收件人" prop="toUserIds">
           <OrgUserTreeSelect v-model="form.toUserIds" :tree-data="orgTree" />
         </el-form-item>
         <el-form-item label="抄送">
           <OrgUserTreeSelect v-model="form.ccUserIds" :tree-data="orgTree" />
         </el-form-item>
-        <el-form-item label="正文">
+        <el-form-item label="正文" prop="content">
           <el-input v-model="form.content" type="textarea" :rows="8" />
         </el-form-item>
       </el-form>
@@ -182,6 +182,7 @@ const inboxRows = ref([])
 const sentRows = ref([])
 const orgTree = ref([])
 const detail = ref(null)
+const formRef = ref(null)
 
 const form = reactive({
   subject: '',
@@ -189,6 +190,11 @@ const form = reactive({
   toUserIds: [],
   ccUserIds: []
 })
+const rules = {
+  subject: [{ required: true, message: '请输入主题', trigger: 'blur' }],
+  toUserIds: [{ required: true, type: 'array', message: '请选择收件人', trigger: 'change' }],
+  content: [{ required: true, message: '请输入正文', trigger: 'blur' }]
+}
 
 const currentUser = readSessionUser(undefined, { id: 0 })
 const showRecipientStates = computed(() => detail.value && detail.value.senderId === currentUser.id)
@@ -229,20 +235,9 @@ function openCompose() {
 }
 
 async function send() {
-  if (!form.subject.trim()) {
-    ElMessage.warning('主题不能为空')
-    return
-  }
-  if (form.toUserIds.length === 0) {
-    ElMessage.warning('请选择收件人')
-    return
-  }
-  if (!form.content.trim()) {
-    ElMessage.warning('正文不能为空')
-    return
-  }
-  sending.value = true
   try {
+    await formRef.value.validate()
+    sending.value = true
     await api.sendMail({
       subject: form.subject.trim(),
       content: form.content.trim(),
@@ -254,7 +249,9 @@ async function send() {
     activeTab.value = 'sent'
     await refreshAll()
   } catch (error) {
-    ElMessage.error(error.message || '发送失败')
+    if (error.message !== 'validation failed') {
+      ElMessage.error(error.message || '发送失败')
+    }
   } finally {
     sending.value = false
   }

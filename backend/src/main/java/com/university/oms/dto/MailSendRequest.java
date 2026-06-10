@@ -1,6 +1,7 @@
 package com.university.oms.dto;
 
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,8 +12,10 @@ public class MailSendRequest {
     private String subject;
 
     @NotBlank(message = "邮件内容不能为空")
+    @Size(max = 10000, message = "邮件内容不能超过10000字")
     private String content;
 
+    @NotEmpty(message = "收件人不能为空")
     private List<Long> toUserIds = new ArrayList<Long>();
     private List<Long> ccUserIds = new ArrayList<Long>();
 

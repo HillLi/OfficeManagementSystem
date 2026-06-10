@@ -2,23 +2,25 @@ package com.university.oms.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
+import javax.validation.constraints.*;
 
 public class TravelRequest {
     @NotNull(message = "申请人不能为空")
     private Long applicantId;
     @NotBlank(message = "目的地不能为空")
+    @Size(max = 100, message = "目的地不能超过100字")
     private String destination;
     @NotNull(message = "出发日期不能为空")
     private LocalDate startDate;
     @NotNull(message = "返回日期不能为空")
     private LocalDate endDate;
     @NotBlank(message = "出差事由不能为空")
+    @Size(max = 500, message = "出差事由不能超过500字")
     private String reason;
     private String staffLevel = "三类";
     private String travelType = "教学科研业务";
     private String transport = "高铁二等座";
+    @DecimalMin(value = "0", message = "预算不能为负数")
     private BigDecimal budget = BigDecimal.ZERO;
     private BigDecimal actualExpense = BigDecimal.ZERO;
 

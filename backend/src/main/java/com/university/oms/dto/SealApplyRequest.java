@@ -1,7 +1,6 @@
 package com.university.oms.dto;
 
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
+import javax.validation.constraints.*;
 import java.time.LocalDateTime;
 
 public class SealApplyRequest {
@@ -10,8 +9,10 @@ public class SealApplyRequest {
     @NotNull(message = "申请人不能为空")
     private Long applicantId;
     @NotBlank(message = "用印用途不能为空")
+    @Size(max = 500, message = "用印用途不能超过500字")
     private String purpose;
     private String materialUrl;
+    @Min(value = 1, message = "用印份数至少为1")
     private Integer copies = 1;
     private boolean takeOut;
     private String matterLevel = "常规事项";

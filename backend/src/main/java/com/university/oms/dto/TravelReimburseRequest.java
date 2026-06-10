@@ -1,10 +1,12 @@
 package com.university.oms.dto;
 
 import java.math.BigDecimal;
+import javax.validation.constraints.DecimalMin;
 import javax.validation.constraints.NotNull;
 
 public class TravelReimburseRequest {
     @NotNull(message = "实际费用不能为空")
+    @DecimalMin(value = "0", message = "实际费用不能为负数")
     private BigDecimal actualExpense;
     private String receiptUrl;
     private String overLimitReason;

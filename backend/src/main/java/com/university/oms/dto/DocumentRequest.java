@@ -2,9 +2,11 @@ package com.university.oms.dto;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
 public class DocumentRequest {
     @NotBlank(message = "公文标题不能为空")
+    @Size(max = 200, message = "公文标题不能超过200字")
     private String title;
     @NotBlank(message = "文种不能为空")
     private String docType;
@@ -12,6 +14,7 @@ public class DocumentRequest {
     private String secrecyLevel = "公开";
     private String knowledgeScope = "全校";
     @NotBlank(message = "正文不能为空")
+    @Size(max = 10000, message = "正文不能超过10000字")
     private String content;
     @NotNull(message = "申请人不能为空")
     private Long applicantId;

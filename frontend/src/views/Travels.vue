@@ -29,11 +29,11 @@
     </el-table>
 
     <el-dialog v-model="applicationDialog" title="差旅申请" width="560px" :close-on-click-modal="false">
-      <el-form label-position="top">
-        <el-form-item label="目的地"><el-input v-model="form.destination" /></el-form-item>
-        <el-form-item label="出差事由"><el-input v-model="form.reason" /></el-form-item>
-        <el-form-item label="出发日期"><el-date-picker v-model="form.startDate" value-format="YYYY-MM-DD" /></el-form-item>
-        <el-form-item label="返回日期"><el-date-picker v-model="form.endDate" value-format="YYYY-MM-DD" /></el-form-item>
+      <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
+        <el-form-item label="目的地" prop="destination"><el-input v-model="form.destination" /></el-form-item>
+        <el-form-item label="出差事由" prop="reason"><el-input v-model="form.reason" /></el-form-item>
+        <el-form-item label="出发日期" prop="startDate"><el-date-picker v-model="form.startDate" value-format="YYYY-MM-DD" /></el-form-item>
+        <el-form-item label="返回日期" prop="endDate"><el-date-picker v-model="form.endDate" value-format="YYYY-MM-DD" /></el-form-item>
         <el-form-item label="人员类别">
           <el-select v-model="form.staffLevel"><el-option v-for="item in optionsOf('staff_level')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
         </el-form-item>
@@ -52,8 +52,8 @@
     </el-dialog>
 
     <el-dialog v-model="reimburseDialog" title="差旅报销登记" width="520px" :close-on-click-modal="false">
-      <el-form label-position="top">
-        <el-form-item label="实际报销金额"><el-input-number v-model="reimburseForm.actualExpense" :min="0" /></el-form-item>
+      <el-form ref="reimburseFormRef" :model="reimburseForm" :rules="reimburseRules" label-position="top">
+        <el-form-item label="实际报销金额" prop="actualExpense"><el-input-number v-model="reimburseForm.actualExpense" :min="0" /></el-form-item>
         <el-form-item label="票据附件地址"><el-input v-model="reimburseForm.receiptUrl" /></el-form-item>
         <el-form-item label="超标准说明"><el-input v-model="reimburseForm.overLimitReason" type="textarea" :rows="3" /></el-form-item>
       </el-form>
@@ -83,6 +83,8 @@ const applicationDialog = ref(false)
 const reimburseDialog = ref(false)
 const currentTravel = ref(null)
 const flowGuideDialog = ref(null)
+const formRef = ref(null)
+const reimburseFormRef = ref(null)
 const form = reactive({
   applicantId: currentUser.id,
   destination: '',
@@ -96,6 +98,15 @@ const form = reactive({
 })
 const reimburseForm = reactive({ actualExpense: 0, receiptUrl: '', overLimitReason: '' })
 const loading = ref(false)
+const rules = {
+  destination: [{ required: true, message: '请输入目的地', trigger: 'blur' }],
+  reason: [{ required: true, message: '请输入出差事由', trigger: 'blur' }],
+  startDate: [{ required: true, message: '请选择出发日期', trigger: 'change' }],
+  endDate: [{ required: true, message: '请选择返回日期', trigger: 'change' }]
+}
+const reimburseRules = {
+  actualExpense: [{ required: true, message: '请输入实际报销金额', trigger: 'blur' }]
+}
 
 const load = async () => {
   loading.value = true
@@ -109,12 +120,15 @@ const load = async () => {
 }
 const submit = async () => {
   try {
+    await formRef.value.validate()
     await api.createTravel(form)
     ElMessage.success('差旅申请已提交')
     applicationDialog.value = false
     await load()
   } catch (error) {
-    ElMessage.error(error.message || '提交失败')
+    if (error.message !== 'validation failed') {
+      ElMessage.error(error.message || '提交失败')
+    }
   }
 }
 const openReimburse = (travel) => {
@@ -126,12 +140,15 @@ const openReimburse = (travel) => {
 }
 const reimburse = async () => {
   try {
+    await reimburseFormRef.value.validate()
     await api.reimburseTravel(currentTravel.value.id, reimburseForm)
     ElMessage.success('报销申请已提交财务复核')
     reimburseDialog.value = false
     await load()
   } catch (error) {
-    ElMessage.error(error.message || '报销提交失败')
+    if (error.message !== 'validation failed') {
+      ElMessage.error(error.message || '报销提交失败')
+    }
   }
 }
 const openFlowGuide = (travel) => {

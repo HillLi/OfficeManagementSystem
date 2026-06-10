@@ -2,9 +2,12 @@ package com.university.oms.dto;
 
 import javax.validation.constraints.Email;
 import javax.validation.constraints.Pattern;
+import javax.validation.constraints.Size;
 
 public class UpdateUserRequest {
+    @Size(max = 50, message = "姓名不能超过50字")
     private String realName;
+    @Size(min = 6, max = 50, message = "密码长度必须在6到50字之间")
     private String password;
     @Email
     @Pattern(regexp = ".*\\S.*", message = "邮箱不能为空")

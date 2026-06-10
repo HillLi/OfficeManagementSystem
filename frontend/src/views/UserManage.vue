@@ -57,20 +57,20 @@
 
     <!-- 用户编辑/新增对话框 -->
     <el-dialog :title="userDialogTitle" v-model="userDialogVisible" width="520px" :close-on-click-modal="false">
-      <el-form :model="userForm" label-width="80px">
-        <el-form-item label="用户名" v-if="!editingUser">
+      <el-form ref="userFormRef" :model="userForm" :rules="userRules" label-width="80px">
+        <el-form-item label="用户名" prop="username" v-if="!editingUser">
           <el-input v-model="userForm.username" placeholder="登录用户名" />
         </el-form-item>
-        <el-form-item label="密码" v-if="!editingUser">
+        <el-form-item label="密码" prop="password" v-if="!editingUser">
           <el-input v-model="userForm.password" type="password" placeholder="登录密码" />
         </el-form-item>
         <el-form-item label="密码" v-else>
           <el-input v-model="userForm.password" type="password" placeholder="留空则不修改" />
         </el-form-item>
-        <el-form-item label="姓名">
+        <el-form-item label="姓名" prop="realName">
           <el-input v-model="userForm.realName" placeholder="真实姓名" />
         </el-form-item>
-        <el-form-item label="邮箱">
+        <el-form-item label="邮箱" prop="email">
           <el-input v-model="userForm.email" placeholder="用户邮箱" />
         </el-form-item>
         <el-form-item label="部门">
@@ -94,8 +94,8 @@
 
     <!-- 部门编辑/新增对话框 -->
     <el-dialog :title="deptDialogTitle" v-model="deptDialogVisible" width="420px" :close-on-click-modal="false">
-      <el-form :model="deptForm" label-width="80px">
-        <el-form-item label="部门名称">
+      <el-form ref="deptFormRef" :model="deptForm" :rules="deptRules" label-width="80px">
+        <el-form-item label="部门名称" prop="deptName">
           <el-input v-model="deptForm.deptName" placeholder="请输入部门名称" />
         </el-form-item>
         <el-form-item label="上级部门">
@@ -125,6 +125,8 @@ const depts = ref([])
 const allRoles = ref([])
 const saving = ref(false)
 const loading = ref(false)
+const userFormRef = ref(null)
+const deptFormRef = ref(null)
 
 function roleLabel(key) {
   return dictionaryStore.labelOf('role_key', key)
@@ -149,6 +151,23 @@ const userForm = ref({
   deptId: null,
   selectedRoles: []
 })
+const userRules = computed(() => {
+  const base = {
+    realName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+    email: [
+      { required: true, message: '请输入邮箱', trigger: 'blur' },
+      { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+    ]
+  }
+  if (!editingUser.value) {
+    base.username = [{ required: true, message: '请输入用户名', trigger: 'blur' }]
+    base.password = [{ required: true, message: '请输入密码', trigger: 'blur' }]
+  }
+  return base
+})
+const deptRules = {
+  deptName: [{ required: true, message: '请输入部门名称', trigger: 'blur' }]
+}
 
 function openUserDialog(user) {
   editingUser.value = user
@@ -175,19 +194,10 @@ function openUserDialog(user) {
 }
 
 async function handleSaveUser() {
-  const f = userForm.value
-  if (!f.email || !f.email.trim()) {
-    ElMessage.warning('邮箱为必填项')
-    return
-  }
-  if (!editingUser.value) {
-    if (!f.username || !f.password || !f.realName) {
-      ElMessage.warning('用户名、密码和姓名为必填项')
-      return
-    }
-  }
-  saving.value = true
   try {
+    await userFormRef.value.validate()
+    const f = userForm.value
+    saving.value = true
     if (editingUser.value) {
       const payload = {
         realName: f.realName,
@@ -212,7 +222,9 @@ async function handleSaveUser() {
     userDialogVisible.value = false
     await loadUsers()
   } catch (e) {
-    ElMessage.error(e.message || '保存失败')
+    if (e.message !== 'validation failed') {
+      ElMessage.error(e.message || '保存失败')
+    }
   } finally {
     saving.value = false
   }
@@ -246,13 +258,10 @@ function openDeptDialog(dept) {
 }
 
 async function handleSaveDept() {
-  const f = deptForm.value
-  if (!f.deptName) {
-    ElMessage.warning('部门名称不能为空')
-    return
-  }
-  saving.value = true
   try {
+    await deptFormRef.value.validate()
+    const f = deptForm.value
+    saving.value = true
     if (editingDept.value) {
       await api.adminUpdateDept(editingDept.value.id, f)
       ElMessage.success('部门更新成功')
@@ -264,7 +273,9 @@ async function handleSaveDept() {
     await loadDepts()
     await loadUsers()
   } catch (e) {
-    ElMessage.error(e.message || '保存失败')
+    if (e.message !== 'validation failed') {
+      ElMessage.error(e.message || '保存失败')
+    }
   } finally {
     saving.value = false
   }

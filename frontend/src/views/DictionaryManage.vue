@@ -68,9 +68,9 @@
     </div>
 
     <el-dialog v-model="typeDialog" :title="editingType ? '编辑字典类型' : '新增字典类型'" width="460px" :close-on-click-modal="false">
-      <el-form label-position="top">
-        <el-form-item label="类型代码"><el-input v-model="typeForm.dictType" :disabled="Boolean(editingType)" /></el-form-item>
-        <el-form-item label="类型名称"><el-input v-model="typeForm.dictName" /></el-form-item>
+      <el-form ref="typeFormRef" :model="typeForm" :rules="typeRules" label-position="top">
+        <el-form-item label="类型代码" prop="dictType"><el-input v-model="typeForm.dictType" :disabled="Boolean(editingType)" /></el-form-item>
+        <el-form-item label="类型名称" prop="dictName"><el-input v-model="typeForm.dictName" /></el-form-item>
         <el-form-item label="启用"><el-switch v-model="typeForm.enabled" :disabled="editingType?.systemType" /></el-form-item>
         <el-form-item label="备注"><el-input v-model="typeForm.remark" /></el-form-item>
       </el-form>
@@ -81,9 +81,9 @@
     </el-dialog>
 
     <el-dialog v-model="itemDialog" :title="editingItem ? '编辑字典项目' : '新增字典项目'" width="460px" :close-on-click-modal="false">
-      <el-form label-position="top">
-        <el-form-item label="项目代码"><el-input v-model="itemForm.dictCode" :disabled="Boolean(editingItem)" /></el-form-item>
-        <el-form-item label="显示值"><el-input v-model="itemForm.dictLabel" /></el-form-item>
+      <el-form ref="itemFormRef" :model="itemForm" :rules="itemRules" label-position="top">
+        <el-form-item label="项目代码" prop="dictCode"><el-input v-model="itemForm.dictCode" :disabled="Boolean(editingItem)" /></el-form-item>
+        <el-form-item label="显示值" prop="dictLabel"><el-input v-model="itemForm.dictLabel" /></el-form-item>
         <el-form-item label="排序"><el-input-number v-model="itemForm.sortOrder" :min="0" /></el-form-item>
         <el-form-item label="启用"><el-switch v-model="itemForm.enabled" :disabled="editingItem?.systemItem" /></el-form-item>
         <el-form-item label="备注"><el-input v-model="itemForm.remark" /></el-form-item>
@@ -114,8 +114,18 @@ const editingType = ref(null)
 const editingItem = ref(null)
 const saving = ref(false)
 const loading = ref(false)
+const typeFormRef = ref(null)
+const itemFormRef = ref(null)
 const typeForm = reactive({ dictType: '', dictName: '', enabled: true, remark: '' })
 const itemForm = reactive({ dictCode: '', dictLabel: '', sortOrder: 0, enabled: true, remark: '' })
+const typeRules = {
+  dictType: [{ required: true, message: '请输入类型代码', trigger: 'blur' }],
+  dictName: [{ required: true, message: '请输入类型名称', trigger: 'blur' }]
+}
+const itemRules = {
+  dictCode: [{ required: true, message: '请输入项目代码', trigger: 'blur' }],
+  dictLabel: [{ required: true, message: '请输入显示值', trigger: 'blur' }]
+}
 const selectedDictionaryType = computed(() => types.value.find((type) => type.dictType === selectedType.value))
 const selectedTypeTitle = computed(() => {
   if (!selectedDictionaryType.value) return ''
@@ -197,6 +207,7 @@ function openType(type = null) {
 async function saveType() {
   saving.value = true
   try {
+    await typeFormRef.value.validate()
     if (editingType.value) {
       await api.adminUpdateDictionaryType(editingType.value.dictType, typeForm)
     } else {
@@ -208,7 +219,9 @@ async function saveType() {
     await dictionaryStore.refresh(true)
     ElMessage.success('字典类型已保存')
   } catch (e) {
-    ElMessage.error(e.message || '保存字典类型失败')
+    if (e.message !== 'validation failed') {
+      ElMessage.error(e.message || '保存字典类型失败')
+    }
   } finally {
     saving.value = false
   }
@@ -223,6 +236,7 @@ function openItem(item = null) {
 async function saveItem() {
   saving.value = true
   try {
+    await itemFormRef.value.validate()
     if (editingItem.value) {
       await api.adminUpdateDictionaryItem(selectedType.value, editingItem.value.dictCode, itemForm)
     } else {
@@ -233,7 +247,9 @@ async function saveItem() {
     await dictionaryStore.refresh(true)
     ElMessage.success('字典项目已保存')
   } catch (e) {
-    ElMessage.error(e.message || '保存字典项目失败')
+    if (e.message !== 'validation failed') {
+      ElMessage.error(e.message || '保存字典项目失败')
+    }
   } finally {
     saving.value = false
   }

@@ -78,31 +78,31 @@
 
     <!-- Application Dialog -->
     <el-dialog v-model="applicationDialog" title="会议申请" width="780px" :close-on-click-modal="false">
-      <el-form label-position="top">
+      <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
         <!-- 基本信息 -->
-        <el-form-item label="主题"><el-input v-model="form.title" placeholder="请输入会议主题" /></el-form-item>
+        <el-form-item label="主题" prop="title"><el-input v-model="form.title" placeholder="请输入会议主题" /></el-form-item>
         <el-row :gutter="16">
           <el-col :span="12">
-            <el-form-item label="会议室">
+            <el-form-item label="会议室" prop="roomId">
               <el-select v-model="form.roomId" placeholder="请选择会议室" style="width:100%">
                 <el-option v-for="room in rooms" :key="room.id" :label="`${room.roomName}（${room.capacity} 人）`" :value="room.id" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="开始时间"><el-date-picker v-model="form.startTime" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" style="width:100%" /></el-form-item>
+            <el-form-item label="开始时间" prop="startTime"><el-date-picker v-model="form.startTime" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" style="width:100%" /></el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="16">
           <el-col :span="12">
-            <el-form-item label="结束时间"><el-date-picker v-model="form.endTime" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" style="width:100%" /></el-form-item>
+            <el-form-item label="结束时间" prop="endTime"><el-date-picker v-model="form.endTime" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" style="width:100%" /></el-form-item>
           </el-col>
           <el-col :span="12">
           </el-col>
         </el-row>
 
         <!-- 参会人员 -->
-        <el-form-item :label="`参会人员（已选：${form.participants.length} 人）`">
+        <el-form-item :label="`参会人员（已选：${form.participants.length} 人）`" prop="participants">
           <OrgUserTreeSelect v-model="form.participants" :treeData="orgTree" />
         </el-form-item>
         <el-form-item label="记录员">
@@ -219,6 +219,7 @@ const orgTree = ref([])
 const userOptions = ref([])
 const applicationDialog = ref(false)
 const flowGuideDialog = ref(null)
+const formRef = ref(null)
 
 // Participant dialog state
 const participantDialog = ref(false)
@@ -252,6 +253,14 @@ const resetForm = () => ({
 })
 
 const form = reactive(resetForm())
+
+const rules = {
+  title: [{ required: true, message: '请输入会议主题', trigger: 'blur' }],
+  roomId: [{ required: true, message: '请选择会议室', trigger: 'change' }],
+  startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
+  endTime: [{ required: true, message: '请选择结束时间', trigger: 'change' }],
+  participants: [{ required: true, type: 'array', message: '请选择参会人员', trigger: 'change' }]
+}
 
 const isLarge = computed(() =>
   (form.venueType === '室内' && form.participants.length > 500) ||
@@ -300,6 +309,7 @@ const openApplicationDialog = () => {
 
 const submit = async () => {
   try {
+    await formRef.value.validate()
     const data = { ...form }
     data.expectedCount = form.participants.length
     await api.createMeeting(data)
@@ -307,7 +317,9 @@ const submit = async () => {
     applicationDialog.value = false
     await load()
   } catch (error) {
-    ElMessage.error(error.message || '提交失败')
+    if (error.message !== 'validation failed') {
+      ElMessage.error(error.message || '提交失败')
+    }
   }
 }
 

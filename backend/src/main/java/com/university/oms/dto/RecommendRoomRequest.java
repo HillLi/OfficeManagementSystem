@@ -1,9 +1,12 @@
 package com.university.oms.dto;
 
+import javax.validation.constraints.*;
 import java.time.LocalDateTime;
 
 public class RecommendRoomRequest {
+    @Min(value = 1, message = "预期人数至少为1")
     private Integer expectedCount = 1;
+    @Size(max = 200, message = "设备要求不能超过200字")
     private String equipment;
     private LocalDateTime startTime;
     private LocalDateTime endTime;

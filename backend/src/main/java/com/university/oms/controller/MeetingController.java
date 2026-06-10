@@ -30,12 +30,12 @@ public class MeetingController {
     }
 
     @PostMapping("/recommend")
-    public ApiResponse<List<MeetingRoom>> recommend(@RequestBody RecommendRoomRequest request) {
+    public ApiResponse<List<MeetingRoom>> recommend(@Valid @RequestBody RecommendRoomRequest request) {
         return ApiResponse.ok(service.recommend(request));
     }
 
     @PostMapping("/recommend/enhanced")
-    public ApiResponse<List<ScoredRoom>> recommendEnhanced(@RequestBody RecommendRoomRequest request) {
+    public ApiResponse<List<ScoredRoom>> recommendEnhanced(@Valid @RequestBody RecommendRoomRequest request) {
         return ApiResponse.ok(service.recommendEnhanced(request));
     }
 

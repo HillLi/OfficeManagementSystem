@@ -47,7 +47,7 @@ class DictionaryBusinessValidationTest {
                 "{\"title\":\"Disabled dictionary meeting\",\"roomId\":1,"
                         + "\"startTime\":\"2027-03-01T09:00:00\",\"endTime\":\"2027-03-01T10:00:00\","
                         + "\"organizerId\":2,\"expectedCount\":10,\"venueType\":\"室内\","
-                        + "\"meetingType\":\"qa_disabled\",\"budget\":0}",
+                        + "\"meetingType\":\"qa_disabled\",\"budget\":0,\"participants\":[2,3],\"recorderId\":3}",
                 userToken, "会议类别不在可选字典范围内");
     }
 

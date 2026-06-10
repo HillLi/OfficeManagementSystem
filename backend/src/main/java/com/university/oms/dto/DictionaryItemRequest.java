@@ -1,10 +1,13 @@
 package com.university.oms.dto;
 
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Size;
 
 public class DictionaryItemRequest {
+    @NotBlank(message = "项目代码不能为空")
     private String dictCode;
     @NotBlank
+    @Size(max = 100, message = "显示值不能超过100字")
     private String dictLabel;
     private Integer sortOrder = 0;
     private boolean enabled = true;
