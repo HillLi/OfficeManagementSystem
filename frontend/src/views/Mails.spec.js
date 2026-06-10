@@ -33,9 +33,10 @@ describe('Mails page contract', () => {
   it('sends compose payload with to and cc user ids after validation', () => {
     expect(source).toContain('toUserIds: []')
     expect(source).toContain('ccUserIds: []')
-    expect(source).toContain('!form.subject.trim()')
-    expect(source).toContain('!form.content.trim()')
-    expect(source).toContain('form.toUserIds.length === 0')
+    expect(source).toContain("subject: [{ required: true, message: '请输入主题'")
+    expect(source).toContain("content: [{ required: true, message: '请输入正文'")
+    expect(source).toContain("toUserIds: [{ required: true, type: 'array', message: '请选择收件人'")
+    expect(source).toContain('await formRef.value.validate()')
     expect(source).toContain('api.sendMail({')
     expect(source).toContain('toUserIds: form.toUserIds')
     expect(source).toContain('ccUserIds: form.ccUserIds')

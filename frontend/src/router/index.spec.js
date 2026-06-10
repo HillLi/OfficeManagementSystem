@@ -15,6 +15,6 @@ describe('router hardening', () => {
   it('defines a catch-all not found route', () => {
     expect(source).toContain('/:pathMatch(.*)*')
     expect(source).toContain('NotFound')
-    expect(source).toContain("component: NotFound, meta: { public: true }")
+    expect(source).toContain("import('../views/NotFound.vue'), meta: { public: true }")
   })
 })
