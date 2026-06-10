@@ -8,6 +8,10 @@ public class AiReviewResult {
     private List<String> issues = new ArrayList<String>();
     private List<String> suggestions = new ArrayList<String>();
     private String recommendedSecrecyLevel;
+    private double qualityScore;
+    private double maxSimilarity;
+    private List<String> keywords = new ArrayList<String>();
+    private List<String> sensitiveWords = new ArrayList<String>();
 
     public boolean isPassed() {
         return passed;
@@ -39,5 +43,37 @@ public class AiReviewResult {
 
     public void setRecommendedSecrecyLevel(String recommendedSecrecyLevel) {
         this.recommendedSecrecyLevel = recommendedSecrecyLevel;
+    }
+
+    public double getQualityScore() {
+        return qualityScore;
+    }
+
+    public void setQualityScore(double qualityScore) {
+        this.qualityScore = qualityScore;
+    }
+
+    public double getMaxSimilarity() {
+        return maxSimilarity;
+    }
+
+    public void setMaxSimilarity(double maxSimilarity) {
+        this.maxSimilarity = maxSimilarity;
+    }
+
+    public List<String> getKeywords() {
+        return keywords;
+    }
+
+    public void setKeywords(List<String> keywords) {
+        this.keywords = keywords;
+    }
+
+    public List<String> getSensitiveWords() {
+        return sensitiveWords;
+    }
+
+    public void setSensitiveWords(List<String> sensitiveWords) {
+        this.sensitiveWords = sensitiveWords;
     }
 }

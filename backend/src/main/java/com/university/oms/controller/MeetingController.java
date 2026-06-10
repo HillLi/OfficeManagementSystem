@@ -8,6 +8,7 @@ import com.university.oms.dto.RecommendRoomRequest;
 import com.university.oms.model.Meeting;
 import com.university.oms.model.MeetingParticipant;
 import com.university.oms.model.MeetingRoom;
+import com.university.oms.recommend.ScoredRoom;
 import com.university.oms.service.MeetingService;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,6 +32,11 @@ public class MeetingController {
     @PostMapping("/recommend")
     public ApiResponse<List<MeetingRoom>> recommend(@RequestBody RecommendRoomRequest request) {
         return ApiResponse.ok(service.recommend(request));
+    }
+
+    @PostMapping("/recommend/enhanced")
+    public ApiResponse<List<ScoredRoom>> recommendEnhanced(@RequestBody RecommendRoomRequest request) {
+        return ApiResponse.ok(service.recommendEnhanced(request));
     }
 
     @GetMapping

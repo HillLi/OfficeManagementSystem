@@ -1,10 +1,11 @@
 package com.university.oms.design;
 
-import org.springframework.stereotype.Component;
-
 import java.time.LocalDate;
 
-@Component
+/**
+ * Mock AI provider - replaced by NlpAiProviderAdapter as the primary implementation.
+ * Kept as a fallback for testing.
+ */
 public class MockAiProviderAdapter implements AiProviderAdapter {
     @Override
     public String draft(String docType, String topic, String keyPoints) {

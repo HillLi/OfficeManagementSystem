@@ -11,6 +11,8 @@ import com.university.oms.model.Meeting;
 import com.university.oms.model.MeetingParticipant;
 import com.university.oms.model.MeetingRoom;
 import com.university.oms.model.User;
+import com.university.oms.recommend.RoomRecommendationService;
+import com.university.oms.recommend.ScoredRoom;
 import com.university.oms.repository.OmsRepository;
 import com.university.oms.security.AuthContext;
 import org.springframework.stereotype.Service;
@@ -36,15 +38,17 @@ public class MeetingService {
     private final WorkflowService workflowService;
     private final BusinessAccessService accessService;
     private final DictionaryService dictionaryService;
+    private final RoomRecommendationService recommendationService;
 
     public MeetingService(OmsRepository repo, ApprovalService approvalService,
                           WorkflowService workflowService, BusinessAccessService accessService,
-                          DictionaryService dictionaryService) {
+                          DictionaryService dictionaryService, RoomRecommendationService recommendationService) {
         this.repo = repo;
         this.approvalService = approvalService;
         this.workflowService = workflowService;
         this.accessService = accessService;
         this.dictionaryService = dictionaryService;
+        this.recommendationService = recommendationService;
         this.meetingFeeStandards = repo.findMeetingFeeStandards();
     }
 
@@ -79,6 +83,10 @@ public class MeetingService {
                 .filter(room -> request.getStartTime() == null || !hasConflict(room.getId(), request.getStartTime(), request.getEndTime()))
                 .sorted(Comparator.comparing(MeetingRoom::getCapacity))
                 .collect(Collectors.toList());
+    }
+
+    public List<ScoredRoom> recommendEnhanced(RecommendRoomRequest request) {
+        return recommendationService.recommendEnhanced(request);
     }
 
     public Meeting create(MeetingRequest request) {
