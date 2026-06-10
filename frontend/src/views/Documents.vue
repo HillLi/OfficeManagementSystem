@@ -17,6 +17,7 @@
         <template #default="{ row }">
           <div class="table-actions">
             <el-button size="small" :disabled="!canAi(row)" @click="review(row.id)">AI 审查</el-button>
+            <el-button v-if="row.status === 'draft' || row.status === 'rejected'" size="small" @click="openEdit(row)">编辑</el-button>
             <el-button v-if="row.status === 'draft' || row.status === 'rejected'" size="small" type="primary" @click="submitFlow(row.id)">提交</el-button>
             <el-button v-if="row.status === 'approved' && canManage" size="small" type="success" @click="archive(row.id)">归档</el-button>
             <el-button size="small" @click="openAttachment(row)">附件</el-button>
@@ -45,6 +46,25 @@
         <el-button @click="draftDialog = false">取消</el-button>
         <el-button :disabled="form.secrecyLevel !== '公开'" @click="draft">AI 起草</el-button>
         <el-button type="primary" @click="save">保存草稿</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="editDialog" title="编辑公文" width="620px" :close-on-click-modal="false">
+      <el-form ref="editFormRef" :model="editForm" :rules="rules" label-position="top">
+        <el-form-item label="标题" prop="title"><el-input v-model="editForm.title" /></el-form-item>
+        <el-form-item label="文种" prop="docType">
+          <el-select v-model="editForm.docType"><el-option v-for="item in optionsOf('document_type')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
+        </el-form-item>
+        <el-form-item label="密级">
+          <el-select v-model="editForm.secrecyLevel"><el-option v-for="item in optionsOf('secrecy_level')" :key="item.value" :label="item.label" :value="item.value" /></el-select>
+        </el-form-item>
+        <el-form-item label="正文" prop="content"><el-input v-model="editForm.content" type="textarea" :rows="6" /></el-form-item>
+      </el-form>
+      <p v-if="editForm.secrecyLevel !== '公开'" class="rule-note">非公开公文禁止调用外部 AI。</p>
+      <template #footer>
+        <el-button @click="editDialog = false">取消</el-button>
+        <el-button :disabled="editForm.secrecyLevel !== '公开'" @click="editAiDraft">AI 起草</el-button>
+        <el-button type="primary" @click="saveEdit">保存修改</el-button>
       </template>
     </el-dialog>
 
@@ -115,6 +135,7 @@ const userOptions = ref([])
 const attachments = ref([])
 const distributions = ref([])
 const draftDialog = ref(false)
+const editDialog = ref(false)
 const attachmentDialog = ref(false)
 const distributionDialog = ref(false)
 const currentDocument = ref(null)
@@ -130,6 +151,9 @@ const form = reactive({
   applicantId: currentUser.id
 })
 const attachmentForm = reactive({ fileName: '', fileUrl: '', secrecyLevel: '公开' })
+const editForm = reactive({ title: '', docType: '', secrecyLevel: '公开', urgency: '普通', knowledgeScope: '全校', content: '' })
+const editFormRef = ref(null)
+const editingDoc = ref(null)
 const distributionForm = reactive({ receiverId: 2, receiverDeptId: 1 })
 const selectedReceiver = computed(() => userOptions.value.find((user) => user.id === distributionForm.receiverId))
 const rules = {
@@ -172,6 +196,42 @@ const save = async () => {
     if (e.message !== 'validation failed') {
       ElMessage.error(e.message || '操作失败')
     }
+  }
+}
+const openEdit = (row) => {
+  editingDoc.value = row
+  editForm.title = row.title
+  editForm.docType = row.docType
+  editForm.secrecyLevel = row.secrecyLevel || '公开'
+  editForm.urgency = row.urgency || '普通'
+  editForm.knowledgeScope = row.knowledgeScope || '全校'
+  editForm.content = row.content || ''
+  editDialog.value = true
+}
+const saveEdit = async () => {
+  try {
+    await editFormRef.value.validate()
+    await api.updateDocument(editingDoc.value.id, { ...editForm, applicantId: editingDoc.value.applicantId })
+    ElMessage.success('公文已修改')
+    editDialog.value = false
+    await load()
+  } catch (e) {
+    if (e.message !== 'validation failed') {
+      ElMessage.error(e.message || '操作失败')
+    }
+  }
+}
+const editAiDraft = async () => {
+  if (editForm.secrecyLevel !== '公开') return
+  try {
+    editForm.content = await api.aiDraft({
+      docType: editForm.docType,
+      topic: editForm.title,
+      keyPoints: '明确试运行范围、反馈方式和时间要求。'
+    })
+    ElMessage.success('AI 起草完成')
+  } catch (e) {
+    ElMessage.error(e.message || '操作失败')
   }
 }
 const submitFlow = async (id) => {

@@ -32,6 +32,11 @@ public class DocumentController {
         return ApiResponse.ok(service.create(request));
     }
 
+    @PutMapping("/{id}")
+    public ApiResponse<Document> update(@PathVariable Long id, @Valid @RequestBody DocumentRequest request) {
+        return ApiResponse.ok(service.update(id, request));
+    }
+
     @PostMapping("/{id}/submit")
     public ApiResponse<Document> submit(@PathVariable Long id) {
         return ApiResponse.ok(service.submit(id));

@@ -75,6 +75,26 @@ public class DocumentService {
         return document;
     }
 
+    public Document update(Long id, DocumentRequest request) {
+        Document document = find(id);
+        if (!"draft".equals(document.getStatus()) && !"rejected".equals(document.getStatus())) {
+            throw new BusinessException("只有草稿或已驳回的公文可以修改");
+        }
+        dictionaryService.requireEnabled("document_type", request.getDocType(), "公文文种");
+        dictionaryService.requireEnabled("secrecy_level", request.getSecrecyLevel(), "密级");
+        document.setTitle(request.getTitle());
+        document.setDocType(request.getDocType());
+        document.setUrgency(request.getUrgency());
+        document.setSecrecyLevel(request.getSecrecyLevel());
+        document.setKnowledgeScope(request.getKnowledgeScope());
+        document.setContent(request.getContent());
+        document.setUpdatedAt(LocalDateTime.now());
+        repo.saveDocument(document);
+        approvalService.record("document", id, AuthContext.currentUserIdOr(document.getApplicantId()), "update", "修改公文");
+        workflowService.audit("document", "update", "document", id, document.getTitle());
+        return document;
+    }
+
     public Document submit(Long id) {
         Document document = find(id);
         accessService.requireDocumentSubmit(document);

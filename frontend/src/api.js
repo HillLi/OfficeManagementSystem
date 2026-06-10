@@ -106,6 +106,7 @@ export const api = {
 
   documents: () => http.get('/documents'),
   createDocument: (data) => http.post('/documents', data),
+  updateDocument: (id, data) => http.put(`/documents/${id}`, data),
   submitDocument: (id) => http.post(`/documents/${id}/submit`),
   archiveDocument: (id) => http.post(`/documents/${id}/archive`),
   documentDistributions: (id) => http.get(`/documents/${id}/distributions`),
