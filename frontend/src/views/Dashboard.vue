@@ -134,6 +134,7 @@ import { init, use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
+import { formatDate } from '../utils/format'
 
 use([BarChart, GaugeChart, PieChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
 
@@ -223,14 +224,18 @@ const selectedDateLabel = computed(() => {
 })
 
 onMounted(async () => {
-  const [dashboardData, announcements] = await Promise.all([
-    api.dashboard(),
-    api.latestAnnouncements({ limit: 5 })
-  ])
-  Object.assign(stats, dashboardData)
-  monthlyScheduleItems.value = Array.isArray(dashboardData.monthlyScheduleItems) ? dashboardData.monthlyScheduleItems : []
-  latestAnnouncements.value = announcements
-  initCharts()
+  try {
+    const [dashboardData, announcements] = await Promise.all([
+      api.dashboard(),
+      api.latestAnnouncements({ limit: 5 })
+    ])
+    Object.assign(stats, dashboardData)
+    monthlyScheduleItems.value = Array.isArray(dashboardData.monthlyScheduleItems) ? dashboardData.monthlyScheduleItems : []
+    latestAnnouncements.value = announcements
+    initCharts()
+  } catch (e) {
+    console.error('Dashboard load failed', e)
+  }
 })
 
 onUnmounted(() => {
@@ -359,10 +364,6 @@ function startOfDay(date) {
 
 function pad(value) {
   return String(value).padStart(2, '0')
-}
-
-function formatDate(value) {
-  return value ? String(value).replace('T', ' ').slice(0, 16) : '-'
 }
 
 function openAnnouncement(item) {

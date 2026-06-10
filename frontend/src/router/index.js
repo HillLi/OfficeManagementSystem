@@ -1,37 +1,23 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Approvals from '../views/Approvals.vue'
-import Announcements from '../views/Announcements.vue'
-import Dashboard from '../views/Dashboard.vue'
-import Documents from '../views/Documents.vue'
-import Login from '../views/Login.vue'
-import Meetings from '../views/Meetings.vue'
-import Mails from '../views/Mails.vue'
-import Reports from '../views/Reports.vue'
-import Seals from '../views/Seals.vue'
-import Statistics from '../views/Statistics.vue'
-import Travels from '../views/Travels.vue'
-import UserManage from '../views/UserManage.vue'
-import DictionaryManage from '../views/DictionaryManage.vue'
-import NotFound from '../views/NotFound.vue'
 import { canAccessPath } from '../utils/navigation'
 import { readSessionUser } from '../utils/sessionUser'
 
 const routes = [
-  { path: '/login', component: Login, meta: { public: true } },
+  { path: '/login', component: () => import('../views/Login.vue'), meta: { public: true } },
   { path: '/', redirect: '/dashboard' },
-  { path: '/dashboard', component: Dashboard },
-  { path: '/documents', component: Documents },
-  { path: '/seals', component: Seals },
-  { path: '/meetings', component: Meetings },
-  { path: '/mails', component: Mails },
-  { path: '/travels', component: Travels },
-  { path: '/reports', component: Reports },
-  { path: '/approvals', component: Approvals },
-  { path: '/announcements', component: Announcements },
-  { path: '/statistics', component: Statistics },
-  { path: '/admin/users', component: UserManage },
-  { path: '/admin/dictionaries', component: DictionaryManage },
-  { path: '/:pathMatch(.*)*', component: NotFound, meta: { public: true } }
+  { path: '/dashboard', component: () => import('../views/Dashboard.vue') },
+  { path: '/documents', component: () => import('../views/Documents.vue') },
+  { path: '/seals', component: () => import('../views/Seals.vue') },
+  { path: '/meetings', component: () => import('../views/Meetings.vue') },
+  { path: '/mails', component: () => import('../views/Mails.vue') },
+  { path: '/travels', component: () => import('../views/Travels.vue') },
+  { path: '/reports', component: () => import('../views/Reports.vue') },
+  { path: '/approvals', component: () => import('../views/Approvals.vue') },
+  { path: '/announcements', component: () => import('../views/Announcements.vue') },
+  { path: '/statistics', component: () => import('../views/Statistics.vue') },
+  { path: '/admin/users', component: () => import('../views/UserManage.vue') },
+  { path: '/admin/dictionaries', component: () => import('../views/DictionaryManage.vue') },
+  { path: '/:pathMatch(.*)*', component: () => import('../views/NotFound.vue'), meta: { public: true } }
 ]
 
 const router = createRouter({

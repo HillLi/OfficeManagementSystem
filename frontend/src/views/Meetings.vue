@@ -203,6 +203,7 @@ import { useDictionaryStore } from '../stores/dictionary'
 import { readSessionUser } from '../utils/sessionUser'
 import WorkflowGuideDialog from '../components/WorkflowGuideDialog.vue'
 import OrgUserTreeSelect from '../components/OrgUserTreeSelect.vue'
+import { formatDate } from '../utils/format'
 
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
@@ -256,10 +257,6 @@ const isLarge = computed(() =>
   (form.venueType === '室内' && form.participants.length > 500) ||
   (form.venueType === '室外' && form.participants.length > 100)
 )
-
-function formatDate(dt) {
-  return dt ? String(dt).replace('T', ' ').slice(0, 16) : '-'
-}
 
 function userName(uid) {
   const user = userOptions.value.find(u => u.id === uid || u.id === Number(uid))

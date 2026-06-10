@@ -59,6 +59,7 @@ import { ElMessage } from 'element-plus'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
 import { statusTagType, statusText, stepClass, typeText } from '../utils/workflowGuide'
+import { formatDate } from '../utils/format'
 
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
@@ -88,10 +89,6 @@ const open = async (bizType, bizId) => {
   } finally {
     loading.value = false
   }
-}
-
-function formatDate(value) {
-  return value ? String(value).replace('T', ' ').slice(0, 16) : '-'
 }
 
 defineExpose({ open })

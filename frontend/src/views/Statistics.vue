@@ -19,14 +19,16 @@
     <div class="page-grid" style="margin-top: 14px">
       <div class="panel">
         <h3>公文状态</h3>
-        <el-table :data="documentStatusRows" border>
+        <el-table :data="documentStatusRows" border v-loading="loading">
+          <template #empty><el-empty description="暂无数据" /></template>
           <el-table-column prop="status" label="状态" />
           <el-table-column prop="count" label="数量" width="90" />
         </el-table>
       </div>
       <div class="panel">
         <h3>月度业务量</h3>
-        <el-table :data="monthlyRows" border>
+        <el-table :data="monthlyRows" border v-loading="loading">
+          <template #empty><el-empty description="暂无数据" /></template>
           <el-table-column prop="month" label="月份" />
           <el-table-column prop="count" label="数量" width="90" />
         </el-table>
@@ -36,13 +38,14 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
 
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
+const loading = ref(false)
 const stats = reactive({
   documentCount: 0,
   pendingDocumentCount: 0,
@@ -65,17 +68,30 @@ const monthlyRows = computed(() =>
   Object.entries(stats.monthlyBusinessCounts || {}).map(([month, count]) => ({ month, count }))
 )
 
-onMounted(async () => Object.assign(stats, await api.statistics()))
+onMounted(async () => {
+  loading.value = true
+  try {
+    Object.assign(stats, await api.statistics())
+  } catch (e) {
+    ElMessage.error(e.message || '加载统计数据失败')
+  } finally {
+    loading.value = false
+  }
+})
 
 const download = async () => {
-  const blob = await api.exportStatistics()
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = 'statistics.csv'
-  link.click()
-  URL.revokeObjectURL(url)
-  ElMessage.success('统计报表已导出')
+  try {
+    const blob = await api.exportStatistics()
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'statistics.csv'
+    link.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('统计报表已导出')
+  } catch (e) {
+    ElMessage.error(e.message || '导出失败')
+  }
 }
 </script>
 

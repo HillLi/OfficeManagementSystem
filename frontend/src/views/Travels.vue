@@ -7,7 +7,8 @@
       <el-button type="primary" @click="applicationDialog = true">差旅申请</el-button>
     </div>
 
-    <el-table :data="rows" border>
+    <el-table :data="rows" border v-loading="loading">
+      <template #empty><el-empty description="暂无差旅数据" /></template>
       <el-table-column prop="destination" label="目的地" />
       <el-table-column label="人员类别" width="92"><template #default="{ row }">{{ labelOf('staff_level', row.staffLevel) }}</template></el-table-column>
       <el-table-column label="出差类型" width="120"><template #default="{ row }">{{ labelOf('travel_type', row.travelType) }}</template></el-table-column>
@@ -83,19 +84,29 @@ const reimburseDialog = ref(false)
 const currentTravel = ref(null)
 const flowGuideDialog = ref(null)
 const form = reactive({
-  applicantId: currentUser.id || 2,
-  destination: '上海',
-  startDate: '2026-06-01',
-  endDate: '2026-06-03',
-  reason: '参加高校信息化建设会议',
-  staffLevel: '三类',
-  travelType: '教学科研业务',
-  transport: '高铁二等座',
-  budget: 2600
+  applicantId: currentUser.id,
+  destination: '',
+  startDate: '',
+  endDate: '',
+  reason: '',
+  staffLevel: '',
+  travelType: '',
+  transport: '',
+  budget: 0
 })
 const reimburseForm = reactive({ actualExpense: 0, receiptUrl: '', overLimitReason: '' })
+const loading = ref(false)
 
-const load = async () => { rows.value = await api.travels() }
+const load = async () => {
+  loading.value = true
+  try {
+    rows.value = await api.travels()
+  } catch (e) {
+    ElMessage.error(e.message || '加载差旅数据失败')
+  } finally {
+    loading.value = false
+  }
+}
 const submit = async () => {
   try {
     await api.createTravel(form)

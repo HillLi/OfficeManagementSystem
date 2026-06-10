@@ -7,7 +7,8 @@
       <el-button type="primary" @click="applicationDialog = true">提交请示报告</el-button>
     </div>
 
-    <el-table :data="rows" border>
+    <el-table :data="rows" border v-loading="loading">
+      <template #empty><el-empty description="暂无请示报告" /></template>
       <el-table-column prop="title" label="标题" />
       <el-table-column label="类型" width="80"><template #default="{ row }">{{ labelOf('report_type', row.type) }}</template></el-table-column>
       <el-table-column label="密级" width="90"><template #default="{ row }">{{ labelOf('secrecy_level', row.secrecyLevel) }}</template></el-table-column>
@@ -55,28 +56,48 @@ const optionsOf = dictionaryStore.optionsOf
 const rows = ref([])
 const applicationDialog = ref(false)
 const flowGuideDialog = ref(null)
+const loading = ref(false)
 const form = reactive({
-  title: '关于系统上线试运行资源支持的请示',
-  type: '请示',
-  secrecyLevel: '内部',
-  content: '拟申请相关服务器资源和测试账号支持。',
-  applicantId: 2
+  title: '',
+  type: '',
+  secrecyLevel: '公开',
+  content: '',
+  applicantId: null
 })
-const load = async () => { rows.value = await api.reports() }
+const load = async () => {
+  loading.value = true
+  try {
+    rows.value = await api.reports()
+  } catch (e) {
+    ElMessage.error(e.message || '加载报告数据失败')
+  } finally {
+    loading.value = false
+  }
+}
 const submit = async () => {
-  await api.createReport(form)
-  ElMessage.success('已提交')
-  applicationDialog.value = false
-  load()
+  try {
+    await api.createReport(form)
+    ElMessage.success('已提交')
+    applicationDialog.value = false
+    await load()
+  } catch (e) {
+    ElMessage.error(e.message || '提交失败')
+  }
 }
 const reply = async (row) => {
-  const { value } = await ElMessageBox.prompt('请输入批复意见', '批复归档', {
-    inputType: 'textarea',
-    inputValue: row.reply || '同意按流程办理。'
-  })
-  await api.replyReport(row.id, { reply: value })
-  ElMessage.success('已批复归档')
-  load()
+  try {
+    const { value } = await ElMessageBox.prompt('请输入批复意见', '批复归档', {
+      inputType: 'textarea',
+      inputValue: row.reply || '同意按流程办理。'
+    })
+    await api.replyReport(row.id, { reply: value })
+    ElMessage.success('已批复归档')
+    await load()
+  } catch (e) {
+    if (e !== 'cancel' && e !== 'close') {
+      ElMessage.error(e.message || '批复失败')
+    }
+  }
 }
 const openFlowGuide = (row) => {
   flowGuideDialog.value?.open('report', row.id)

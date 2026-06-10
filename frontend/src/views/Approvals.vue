@@ -11,7 +11,8 @@
             <el-badge v-if="tabBadge(tab.name) > 0" :value="tabBadge(tab.name)" class="approval-tab-badge" />
           </span>
         </template>
-        <el-table v-if="tab.name === 'tasks'" :data="tasks" border>
+        <el-table v-if="tab.name === 'tasks'" :data="tasks" border v-loading="loading">
+          <template #empty><el-empty description="暂无待办任务" /></template>
           <el-table-column label="业务" width="100"><template #default="{ row }">{{ labelOf('biz_type', row.bizType) }}</template></el-table-column>
           <el-table-column prop="bizId" label="业务 ID" width="90" />
           <el-table-column label="当前节点" width="150"><template #default="{ row }">{{ labelOf('flow_node', row.nodeKey) }}</template></el-table-column>
@@ -30,7 +31,8 @@
           </el-table-column>
         </el-table>
 
-        <el-table v-else-if="tab.name === 'notifications'" :data="notifications" border>
+        <el-table v-else-if="tab.name === 'notifications'" :data="notifications" border v-loading="loading">
+          <template #empty><el-empty description="暂无通知" /></template>
           <el-table-column prop="title" label="标题" width="150" />
           <el-table-column prop="content" label="内容" />
           <el-table-column label="状态" width="70">
@@ -43,7 +45,8 @@
           </el-table-column>
         </el-table>
 
-        <el-table v-else-if="tab.name === 'instances'" :data="instances" border>
+        <el-table v-else-if="tab.name === 'instances'" :data="instances" border v-loading="loading">
+          <template #empty><el-empty description="暂无流程实例" /></template>
           <el-table-column label="业务" width="90"><template #default="{ row }">{{ labelOf('biz_type', row.bizType) }}</template></el-table-column>
           <el-table-column prop="bizId" label="ID" width="70" />
           <el-table-column label="节点" width="130"><template #default="{ row }">{{ labelOf('flow_node', row.currentNodeKey) }}</template></el-table-column>
@@ -55,7 +58,8 @@
           </el-table-column>
         </el-table>
 
-        <el-table v-else :data="rows" border>
+        <el-table v-else :data="rows" border v-loading="loading">
+          <template #empty><el-empty description="暂无审批记录" /></template>
           <el-table-column label="业务类型" width="110"><template #default="{ row }">{{ labelOf('biz_type', row.bizType) }}</template></el-table-column>
           <el-table-column prop="bizId" label="业务 ID" width="90" />
           <el-table-column prop="operatorId" label="操作人" width="90" />
@@ -85,6 +89,7 @@ import { useActionBadgeStore } from '../stores/actionBadges'
 import { approvalTabs, defaultApprovalTab } from '../utils/approvalTabs'
 import { approvalTabBadgeCount } from '../utils/actionBadges'
 import WorkflowGuideDialog from '../components/WorkflowGuideDialog.vue'
+import { formatDate } from '../utils/format'
 
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
@@ -95,13 +100,21 @@ const tasks = ref([])
 const notifications = ref([])
 const instances = ref([])
 const flowGuideDialog = ref(null)
+const loading = ref(false)
 
 const load = async () => {
-  rows.value = await api.approvals()
-  tasks.value = await api.flowTasks({ onlyMine: true })
-  notifications.value = await api.notifications({ unreadOnly: false })
-  instances.value = await api.flowInstances()
-  actionBadgeStore.setFromData(tasks.value, notifications.value)
+  loading.value = true
+  try {
+    rows.value = await api.approvals()
+    tasks.value = await api.flowTasks({ onlyMine: true })
+    notifications.value = await api.notifications({ unreadOnly: false })
+    instances.value = await api.flowInstances()
+    actionBadgeStore.setFromData(tasks.value, notifications.value)
+  } catch (e) {
+    ElMessage.error(e.message || '加载审批数据失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 const tabBadge = (tabName) => approvalTabBadgeCount(tabName, {
@@ -127,16 +140,16 @@ const process = async (row, action) => {
 }
 
 const markRead = async (id) => {
-  await api.markNotificationRead(id)
-  await load()
+  try {
+    await api.markNotificationRead(id)
+    await load()
+  } catch (e) {
+    ElMessage.error(e.message || '标记失败')
+  }
 }
 
 const openFlowGuide = (bizType, bizId) => {
   flowGuideDialog.value?.open(bizType, bizId)
-}
-
-function formatDate(value) {
-  return value ? String(value).replace('T', ' ').slice(0, 16) : '-'
 }
 
 onMounted(load)

@@ -11,7 +11,8 @@
     <el-tabs v-model="activeTab">
       <!-- 用户管理 Tab -->
       <el-tab-pane label="用户管理" name="users">
-        <el-table :data="users" border stripe style="width:100%">
+        <el-table v-loading="loading" :data="users" border stripe style="width:100%">
+          <template #empty><el-empty description="暂无数据" /></template>
           <el-table-column prop="id" label="ID" width="60" />
           <el-table-column prop="username" label="用户名" width="120" />
           <el-table-column prop="realName" label="姓名" width="100" />
@@ -35,7 +36,8 @@
 
       <!-- 部门管理 Tab -->
       <el-tab-pane label="部门管理" name="depts">
-        <el-table :data="depts" border stripe style="width:100%">
+        <el-table v-loading="loading" :data="depts" border stripe style="width:100%">
+          <template #empty><el-empty description="暂无数据" /></template>
           <el-table-column prop="id" label="ID" width="60" />
           <el-table-column prop="deptName" label="部门名称" width="200" />
           <el-table-column label="上级部门" width="200">
@@ -122,6 +124,7 @@ const users = ref([])
 const depts = ref([])
 const allRoles = ref([])
 const saving = ref(false)
+const loading = ref(false)
 
 function roleLabel(key) {
   return dictionaryStore.labelOf('role_key', key)
@@ -280,13 +283,31 @@ async function handleDeleteDept(dept) {
 
 // ---- Load data ----
 async function loadUsers() {
-  try { users.value = await api.adminUsers() } catch (e) { /* ignore */ }
+  loading.value = true
+  try {
+    users.value = await api.adminUsers()
+  } catch (e) {
+    ElMessage.error(e.message || '加载用户失败')
+  } finally {
+    loading.value = false
+  }
 }
 async function loadDepts() {
-  try { depts.value = await api.adminDepts() } catch (e) { /* ignore */ }
+  loading.value = true
+  try {
+    depts.value = await api.adminDepts()
+  } catch (e) {
+    ElMessage.error(e.message || '加载部门失败')
+  } finally {
+    loading.value = false
+  }
 }
 async function loadRoles() {
-  try { allRoles.value = await api.adminRoles() } catch (e) { /* ignore */ }
+  try {
+    allRoles.value = await api.adminRoles()
+  } catch (e) {
+    ElMessage.error(e.message || '加载角色失败')
+  }
 }
 
 onMounted(() => {

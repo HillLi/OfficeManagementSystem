@@ -12,6 +12,7 @@
           <h3>字典类型</h3>
         </div>
         <el-table
+          v-loading="loading"
           :data="paginatedTypes"
           border
           stripe
@@ -20,6 +21,7 @@
           :row-class-name="typeRowClassName"
           @row-click="selectTypeRow"
         >
+          <template #empty><el-empty description="暂无数据" /></template>
           <el-table-column prop="dictName" label="类型名称" min-width="150" />
           <el-table-column prop="dictType" label="类型代码" min-width="150" />
           <el-table-column label="状态" width="82">
@@ -50,7 +52,8 @@
           <el-button type="primary" :disabled="!selectedType" @click="openItem()">新增项目</el-button>
         </div>
         <el-empty v-if="!selectedType" description="请选择上方字典类型" />
-        <el-table v-else :data="items" border stripe>
+        <el-table v-else v-loading="loading" :data="items" border stripe>
+          <template #empty><el-empty description="暂无数据" /></template>
           <el-table-column prop="dictCode" label="代码" min-width="140" />
           <el-table-column prop="dictLabel" label="显示值" min-width="120" />
           <el-table-column prop="sortOrder" label="排序" width="70" />
@@ -110,6 +113,7 @@ const itemDialog = ref(false)
 const editingType = ref(null)
 const editingItem = ref(null)
 const saving = ref(false)
+const loading = ref(false)
 const typeForm = reactive({ dictType: '', dictName: '', enabled: true, remark: '' })
 const itemForm = reactive({ dictCode: '', dictLabel: '', sortOrder: 0, enabled: true, remark: '' })
 const selectedDictionaryType = computed(() => types.value.find((type) => type.dictType === selectedType.value))
@@ -123,15 +127,22 @@ const paginatedTypes = computed(() => {
 })
 
 async function loadTypes() {
-  types.value = await api.adminDictionaryTypes()
-  if (!types.value.some((type) => type.dictType === selectedType.value)) {
-    selectedType.value = types.value[0]?.dictType || ''
-  }
-  syncTypePageWithSelection()
-  if (selectedType.value) {
-    await loadItems()
-  } else {
-    items.value = []
+  loading.value = true
+  try {
+    types.value = await api.adminDictionaryTypes()
+    if (!types.value.some((type) => type.dictType === selectedType.value)) {
+      selectedType.value = types.value[0]?.dictType || ''
+    }
+    syncTypePageWithSelection()
+    if (selectedType.value) {
+      await loadItems()
+    } else {
+      items.value = []
+    }
+  } catch (e) {
+    ElMessage.error(e.message || '加载字典类型失败')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -149,7 +160,18 @@ async function changeTypePage(page) {
 }
 
 async function loadItems() {
-  items.value = selectedType.value ? await api.adminDictionaryItems(selectedType.value) : []
+  if (!selectedType.value) {
+    items.value = []
+    return
+  }
+  loading.value = true
+  try {
+    items.value = await api.adminDictionaryItems(selectedType.value)
+  } catch (e) {
+    ElMessage.error(e.message || '加载字典项目失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 async function selectType(dictType) {
@@ -185,6 +207,8 @@ async function saveType() {
     await loadTypes()
     await dictionaryStore.refresh(true)
     ElMessage.success('字典类型已保存')
+  } catch (e) {
+    ElMessage.error(e.message || '保存字典类型失败')
   } finally {
     saving.value = false
   }
@@ -208,6 +232,8 @@ async function saveItem() {
     await loadItems()
     await dictionaryStore.refresh(true)
     ElMessage.success('字典项目已保存')
+  } catch (e) {
+    ElMessage.error(e.message || '保存字典项目失败')
   } finally {
     saving.value = false
   }

@@ -10,7 +10,7 @@
       </div>
     </div>
 
-    <el-table :data="apps" border>
+    <el-table :data="apps" border v-loading="loading">
       <el-table-column prop="sealName" label="印章名称" min-width="178" />
       <el-table-column prop="purpose" label="用途" min-width="150" />
       <el-table-column prop="materialCount" label="材料" width="72">
@@ -31,11 +31,12 @@
           </div>
         </template>
       </el-table-column>
+      <template #empty><el-empty description="暂无数据" /></template>
     </el-table>
 
     <section v-if="canManage" class="section-block">
       <h3>移交记录</h3>
-      <el-table :data="transfers" border>
+      <el-table :data="transfers" border v-loading="loading">
         <el-table-column label="印章名称" min-width="170">
           <template #default="{ row }">{{ sealName(row.sealId) }}</template>
         </el-table-column>
@@ -43,6 +44,7 @@
         <el-table-column label="监督人" width="112"><template #default="{ row }">{{ userName(row.supervisorId) }}</template></el-table-column>
         <el-table-column prop="materialUrl" label="移交凭证" min-width="120" />
         <el-table-column prop="transferTime" label="移交时间" width="172" />
+        <template #empty><el-empty description="暂无数据" /></template>
       </el-table>
     </section>
 
@@ -125,7 +127,7 @@
       </div>
       <p v-if="canUpload" class="rule-note">支持 PDF、DOC、DOCX、JPG、JPEG、PNG，单个文件不超过 20 MB。</p>
       <el-checkbox v-if="canViewDeleted" v-model="includeDeleted" @change="loadMaterials">显示已删除材料</el-checkbox>
-      <el-table :data="materials" border class="material-table">
+      <el-table :data="materials" border class="material-table" v-loading="loading">
         <el-table-column prop="fileName" label="材料名称" min-width="190" />
         <el-table-column label="密级" width="82"><template #default="{ row }">{{ labelOf('secrecy_level', row.secrecyLevel) }}</template></el-table-column>
         <el-table-column label="大小" width="86"><template #default="{ row }">{{ fileSize(row.fileSize) }}</template></el-table-column>
@@ -140,6 +142,7 @@
             </div>
           </template>
         </el-table-column>
+        <template #empty><el-empty description="暂无数据" /></template>
       </el-table>
     </el-dialog>
 
@@ -172,6 +175,7 @@ const optionsOf = dictionaryStore.optionsOf
 const currentUser = readSessionUser(undefined, { id: 0, roleKeys: [] })
 const canManage = computed(() => currentUser.roleKeys?.some((role) => ['seal_keeper', 'office_admin', 'admin'].includes(role)))
 const canViewDeleted = computed(() => currentUser.roleKeys?.some((role) => ['office_admin', 'admin'].includes(role)))
+const loading = ref(false)
 const seals = ref([])
 const userOptions = ref([])
 const apps = ref([])
@@ -188,10 +192,10 @@ const selectedFile = ref(null)
 const uploadSecrecy = ref('内部')
 const flowGuideDialog = ref(null)
 const form = reactive({
-  sealId: 1,
-  applicantId: currentUser.id || 2,
-  purpose: '系统试运行通知材料用印',
-  copies: 2,
+  sealId: null,
+  applicantId: currentUser.id,
+  purpose: '',
+  copies: 1,
   takeOut: false,
   matterLevel: '常规事项',
   takeOutReason: '',
@@ -200,10 +204,10 @@ const form = reactive({
   expectedReturnTime: ''
 })
 const transferForm = reactive({
-  sealId: 1,
-  receiverId: 2,
-  supervisorId: currentUser.id || 2,
-  materialUrl: '/files/seal-transfer.pdf',
+  sealId: null,
+  receiverId: null,
+  supervisorId: null,
+  materialUrl: '',
   remark: ''
 })
 const editForm = reactive({ id: null, fileName: '', secrecyLevel: '内部' })
@@ -219,11 +223,16 @@ const canDelete = (row) => !row.deleted && (canUpload.value || canViewDeleted.va
 const fileSize = (bytes) => bytes == null ? '-' : bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`
 
 const load = async () => {
-  const [sealRows, appRows, optionRows] = await Promise.all([api.seals(), api.sealApps(), api.userOptions()])
-  seals.value = sealRows
-  apps.value = appRows
-  userOptions.value = optionRows
-  if (canManage.value) transfers.value = await api.sealTransfers()
+  loading.value = true
+  try {
+    const [sealRows, appRows, optionRows] = await Promise.all([api.seals(), api.sealApps(), api.userOptions()])
+    seals.value = sealRows
+    apps.value = appRows
+    userOptions.value = optionRows
+    if (canManage.value) transfers.value = await api.sealTransfers()
+  } finally {
+    loading.value = false
+  }
 }
 const saveDraft = async () => {
   try {
@@ -237,11 +246,15 @@ const saveDraft = async () => {
   }
 }
 const submitDraft = async (row) => {
-  await api.submitSealApp(row.id)
-  ElMessage.success('用印申请已提交审批')
-  await load()
-  if (currentApplication.value?.id === row.id) {
-    currentApplication.value = apps.value.find((application) => application.id === row.id)
+  try {
+    await api.submitSealApp(row.id)
+    ElMessage.success('用印申请已提交审批')
+    await load()
+    if (currentApplication.value?.id === row.id) {
+      currentApplication.value = apps.value.find((application) => application.id === row.id)
+    }
+  } catch (e) {
+    ElMessage.error(e.message || '提交审批失败')
   }
 }
 const openMaterials = async (application) => {
@@ -257,11 +270,15 @@ const openFlowGuide = (application) => {
 }
 const loadMaterials = async () => {
   if (!currentApplication.value) return
-  materials.value = await api.attachments({
-    bizType: 'seal',
-    bizId: currentApplication.value.id,
-    includeDeleted: includeDeleted.value
-  })
+  try {
+    materials.value = await api.attachments({
+      bizType: 'seal',
+      bizId: currentApplication.value.id,
+      includeDeleted: includeDeleted.value
+    })
+  } catch (e) {
+    ElMessage.error(e.message || '加载材料失败')
+  }
 }
 const chooseFile = (uploadFile, fileList) => {
   selectedFile.value = uploadFile.raw
@@ -272,25 +289,33 @@ const removeFile = () => {
   uploadFiles.value = []
 }
 const uploadMaterial = async () => {
-  const data = new FormData()
-  data.append('bizType', 'seal')
-  data.append('bizId', String(currentApplication.value.id))
-  data.append('secrecyLevel', uploadSecrecy.value)
-  data.append('file', selectedFile.value)
-  await api.uploadAttachment(data)
-  ElMessage.success('材料上传成功')
-  removeFile()
-  await loadMaterials()
-  await load()
-  currentApplication.value = apps.value.find((application) => application.id === currentApplication.value.id)
+  try {
+    const data = new FormData()
+    data.append('bizType', 'seal')
+    data.append('bizId', String(currentApplication.value.id))
+    data.append('secrecyLevel', uploadSecrecy.value)
+    data.append('file', selectedFile.value)
+    await api.uploadAttachment(data)
+    ElMessage.success('材料上传成功')
+    removeFile()
+    await loadMaterials()
+    await load()
+    currentApplication.value = apps.value.find((application) => application.id === currentApplication.value.id)
+  } catch (e) {
+    ElMessage.error(e.message || '材料上传失败')
+  }
 }
 const downloadMaterial = async (row) => {
-  const blob = await api.downloadAttachment(row.id)
-  const link = document.createElement('a')
-  link.href = URL.createObjectURL(blob)
-  link.download = row.originalName || row.fileName
-  link.click()
-  URL.revokeObjectURL(link.href)
+  try {
+    const blob = await api.downloadAttachment(row.id)
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = row.originalName || row.fileName
+    link.click()
+    URL.revokeObjectURL(link.href)
+  } catch (e) {
+    ElMessage.error(e.message || '下载材料失败')
+  }
 }
 const openEdit = (row) => {
   editForm.id = row.id
@@ -299,10 +324,14 @@ const openEdit = (row) => {
   editDialog.value = true
 }
 const saveEdit = async () => {
-  await api.updateAttachment(editForm.id, { fileName: editForm.fileName, secrecyLevel: editForm.secrecyLevel })
-  editDialog.value = false
-  ElMessage.success('材料信息已更新')
-  await loadMaterials()
+  try {
+    await api.updateAttachment(editForm.id, { fileName: editForm.fileName, secrecyLevel: editForm.secrecyLevel })
+    editDialog.value = false
+    ElMessage.success('材料信息已更新')
+    await loadMaterials()
+  } catch (e) {
+    ElMessage.error(e.message || '更新材料失败')
+  }
 }
 const removeMaterial = async (row) => {
   try {
@@ -321,20 +350,32 @@ const removeMaterial = async (row) => {
   }
 }
 const markUsed = async (id) => {
-  await api.markSealUsed(id, currentUser.id)
-  ElMessage.success('用印状态已登记')
-  await load()
+  try {
+    await api.markSealUsed(id, currentUser.id)
+    ElMessage.success('用印状态已登记')
+    await load()
+  } catch (e) {
+    ElMessage.error(e.message || '登记用印失败')
+  }
 }
 const markReturned = async (id) => {
-  await api.returnSeal(id, currentUser.id)
-  ElMessage.success('归还状态已确认')
-  await load()
+  try {
+    await api.returnSeal(id, currentUser.id)
+    ElMessage.success('归还状态已确认')
+    await load()
+  } catch (e) {
+    ElMessage.error(e.message || '确认归还失败')
+  }
 }
 const createTransfer = async () => {
-  await api.createSealTransfer(transferForm)
-  ElMessage.success('印章移交已登记')
-  transferDialog.value = false
-  await load()
+  try {
+    await api.createSealTransfer(transferForm)
+    ElMessage.success('印章移交已登记')
+    transferDialog.value = false
+    await load()
+  } catch (e) {
+    ElMessage.error(e.message || '登记移交失败')
+  }
 }
 
 onMounted(load)

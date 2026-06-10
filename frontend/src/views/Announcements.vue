@@ -37,7 +37,8 @@
       </el-tab-pane>
 
       <el-tab-pane v-if="canMaintain" label="公告维护" name="manage">
-        <el-table :data="allRows" border stripe>
+        <el-table :data="allRows" border stripe v-loading="loading">
+          <template #empty><el-empty description="暂无公告" /></template>
           <el-table-column label="标题" min-width="220">
             <template #default="{ row }">
               <button
@@ -130,6 +131,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../api'
 import { useUserStore } from '../stores/user'
+import { formatDate } from '../utils/format'
 
 const userStore = useUserStore()
 const activeTab = ref('published')
@@ -141,6 +143,7 @@ const selectedAnnouncement = ref(null)
 const dialogVisible = ref(false)
 const editing = ref(null)
 const saving = ref(false)
+const loading = ref(false)
 const form = reactive({
   title: '',
   content: '',
@@ -154,14 +157,18 @@ const canMaintain = computed(() => userStore.roleKeys.includes('admin') || userS
 const publishedRows = computed(() => rows.value)
 
 async function load() {
-  rows.value = await api.announcements()
-  if (canMaintain.value) {
-    const [draftRows, depts] = await Promise.all([
-      api.announcements({ includeDrafts: true }),
-      api.deptOptions()
-    ])
-    allRows.value = draftRows
-    deptOptions.value = depts
+  try {
+    rows.value = await api.announcements()
+    if (canMaintain.value) {
+      const [draftRows, depts] = await Promise.all([
+        api.announcements({ includeDrafts: true }),
+        api.deptOptions()
+      ])
+      allRows.value = draftRows
+      deptOptions.value = depts
+    }
+  } catch (e) {
+    ElMessage.error(e.message || '加载公告失败')
   }
 }
 
@@ -200,21 +207,31 @@ async function save() {
     dialogVisible.value = false
     await load()
     ElMessage.success('公告已保存')
+  } catch (e) {
+    ElMessage.error(e.message || '保存失败')
   } finally {
     saving.value = false
   }
 }
 
 async function publish(row) {
-  await api.publishAnnouncement(row.id)
-  await load()
-  ElMessage.success('公告已发布')
+  try {
+    await api.publishAnnouncement(row.id)
+    await load()
+    ElMessage.success('公告已发布')
+  } catch (e) {
+    ElMessage.error(e.message || '发布失败')
+  }
 }
 
 async function withdraw(row) {
-  await api.withdrawAnnouncement(row.id)
-  await load()
-  ElMessage.success('公告已撤回')
+  try {
+    await api.withdrawAnnouncement(row.id)
+    await load()
+    ElMessage.success('公告已撤回')
+  } catch (e) {
+    ElMessage.error(e.message || '撤回失败')
+  }
 }
 
 function statusText(status) {
@@ -235,10 +252,6 @@ function scopeText(row) {
 
 function deptName(deptId) {
   return deptOptions.value.find((dept) => dept.id === deptId)?.deptName
-}
-
-function formatDate(value) {
-  return value ? String(value).replace('T', ' ').slice(0, 16) : '-'
 }
 
 onMounted(load)

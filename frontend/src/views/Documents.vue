@@ -7,7 +7,7 @@
       <el-button type="primary" @click="draftDialog = true">公文起草</el-button>
     </div>
 
-    <el-table :data="rows" border>
+    <el-table :data="rows" border v-loading="loading">
       <el-table-column prop="title" label="标题" min-width="185" />
       <el-table-column prop="version" label="版本" width="65" />
       <el-table-column label="密级" width="74"><template #default="{ row }">{{ labelOf('secrecy_level', row.secrecyLevel) }}</template></el-table-column>
@@ -26,6 +26,7 @@
           </div>
         </template>
       </el-table-column>
+      <template #empty><el-empty description="暂无公文数据" /></template>
     </el-table>
 
     <el-dialog v-model="draftDialog" title="公文起草" width="620px" :close-on-click-modal="false">
@@ -71,6 +72,7 @@
             </div>
           </template>
         </el-table-column>
+        <template #empty><el-empty description="暂无公文数据" /></template>
       </el-table>
     </el-dialog>
 
@@ -87,6 +89,7 @@
         <el-table-column prop="fileName" label="文件名" />
         <el-table-column prop="fileUrl" label="地址" />
         <el-table-column label="密级" width="90"><template #default="{ row }">{{ labelOf('secrecy_level', row.secrecyLevel) }}</template></el-table-column>
+        <template #empty><el-empty description="暂无公文数据" /></template>
       </el-table>
     </el-dialog>
     <WorkflowGuideDialog ref="flowGuideDialog" />
@@ -107,6 +110,7 @@ const optionsOf = dictionaryStore.optionsOf
 const currentUser = readSessionUser(undefined, { id: 0, roleKeys: [] })
 const canManage = computed(() => currentUser.roleKeys?.some((role) => ['office_admin', 'admin'].includes(role)))
 const rows = ref([])
+const loading = ref(false)
 const userOptions = ref([])
 const attachments = ref([])
 const distributions = ref([])
@@ -116,11 +120,11 @@ const distributionDialog = ref(false)
 const currentDocument = ref(null)
 const flowGuideDialog = ref(null)
 const form = reactive({
-  title: '关于开展办公管理系统试运行的通知',
-  docType: '通知',
+  title: '',
+  docType: '',
   secrecyLevel: '公开',
-  content: '请各单位按工作安排开展系统试运行，并及时反馈使用情况。',
-  applicantId: currentUser.id || 2
+  content: '',
+  applicantId: currentUser.id
 })
 const attachmentForm = reactive({ fileName: '', fileUrl: '', secrecyLevel: '公开' })
 const distributionForm = reactive({ receiverId: 2, receiverDeptId: 1 })
@@ -128,7 +132,14 @@ const selectedReceiver = computed(() => userOptions.value.find((user) => user.id
 
 const canAi = (document) => ['公开', 'public'].includes(document.secrecyLevel)
 const hasDistribution = (document) => document.distributionStatus && document.distributionStatus !== 'not_distributed'
-const load = async () => { rows.value = await api.documents() }
+const load = async () => {
+  loading.value = true
+  try {
+    rows.value = await api.documents()
+  } finally {
+    loading.value = false
+  }
+}
 const userName = (id) => userOptions.value.find((user) => user.id === id)?.realName || `#${id}`
 const userDepartment = (id) => userOptions.value.find((user) => user.id === id)?.deptName || '-'
 const selectReceiver = () => {
@@ -136,81 +147,130 @@ const selectReceiver = () => {
 }
 
 const save = async () => {
-  await api.createDocument(form)
-  ElMessage.success('草稿已保存')
-  draftDialog.value = false
-  await load()
+  try {
+    await api.createDocument(form)
+    ElMessage.success('草稿已保存')
+    draftDialog.value = false
+    await load()
+  } catch (e) {
+    ElMessage.error(e.message || '操作失败')
+  }
 }
 const submitFlow = async (id) => {
-  await api.submitDocument(id)
-  ElMessage.success('已提交审批')
-  await load()
+  try {
+    await api.submitDocument(id)
+    ElMessage.success('已提交审批')
+    await load()
+  } catch (e) {
+    ElMessage.error(e.message || '操作失败')
+  }
 }
 const archive = async (id) => {
-  await api.archiveDocument(id)
-  ElMessage.success('公文已归档')
-  await load()
+  try {
+    await api.archiveDocument(id)
+    ElMessage.success('公文已归档')
+    await load()
+  } catch (e) {
+    ElMessage.error(e.message || '操作失败')
+  }
 }
 const draft = async () => {
   if (form.secrecyLevel !== '公开') return
-  form.content = await api.aiDraft({
-    docType: form.docType,
-    topic: '办公管理系统试运行',
-    keyPoints: '明确试运行范围、反馈方式和时间要求。'
-  })
+  try {
+    form.content = await api.aiDraft({
+      docType: form.docType,
+      topic: '办公管理系统试运行',
+      keyPoints: '明确试运行范围、反馈方式和时间要求。'
+    })
+    ElMessage.success('AI 起草完成')
+  } catch (e) {
+    ElMessage.error(e.message || '操作失败')
+  }
 }
 const review = async (id) => {
-  const result = await api.aiReview(id)
-  ElMessageBox.alert(result.issues.concat(result.suggestions).join('\n') || '审查通过', 'AI 审查结果')
+  try {
+    const result = await api.aiReview(id)
+    ElMessageBox.alert(result.issues.concat(result.suggestions).join('\n') || '审查通过', 'AI 审查结果')
+  } catch (e) {
+    ElMessage.error(e.message || '操作失败')
+  }
 }
 const openDistribution = async (document) => {
-  currentDocument.value = document
-  distributions.value = await api.documentDistributions(document.id)
-  distributionDialog.value = true
+  try {
+    currentDocument.value = document
+    distributions.value = await api.documentDistributions(document.id)
+    distributionDialog.value = true
+  } catch (e) {
+    ElMessage.error(e.message || '操作失败')
+  }
 }
 const distribute = async () => {
-  await api.distributeDocument(currentDocument.value.id, distributionForm)
-  ElMessage.success('公文已分发')
-  distributions.value = await api.documentDistributions(currentDocument.value.id)
-  await load()
+  try {
+    await api.distributeDocument(currentDocument.value.id, distributionForm)
+    ElMessage.success('公文已分发')
+    distributions.value = await api.documentDistributions(currentDocument.value.id)
+    await load()
+  } catch (e) {
+    ElMessage.error(e.message || '操作失败')
+  }
 }
 const receive = async (distributionId) => {
-  await api.receiveDocument(currentDocument.value.id, distributionId)
-  ElMessage.success('签收完成')
-  distributions.value = await api.documentDistributions(currentDocument.value.id)
-  await load()
+  try {
+    await api.receiveDocument(currentDocument.value.id, distributionId)
+    ElMessage.success('签收完成')
+    distributions.value = await api.documentDistributions(currentDocument.value.id)
+    await load()
+  } catch (e) {
+    ElMessage.error(e.message || '操作失败')
+  }
 }
 const remind = async (distributionId) => {
-  await api.remindDocument(currentDocument.value.id, distributionId)
-  ElMessage.success('已发送催办提醒')
-  distributions.value = await api.documentDistributions(currentDocument.value.id)
+  try {
+    await api.remindDocument(currentDocument.value.id, distributionId)
+    ElMessage.success('已发送催办提醒')
+    distributions.value = await api.documentDistributions(currentDocument.value.id)
+  } catch (e) {
+    ElMessage.error(e.message || '操作失败')
+  }
 }
 const openAttachment = async (document) => {
-  currentDocument.value = document
-  attachmentForm.fileName = ''
-  attachmentForm.fileUrl = ''
-  attachmentForm.secrecyLevel = document.secrecyLevel || '公开'
-  attachments.value = await api.attachments({ bizType: 'document', bizId: document.id })
-  attachmentDialog.value = true
+  try {
+    currentDocument.value = document
+    attachmentForm.fileName = ''
+    attachmentForm.fileUrl = ''
+    attachmentForm.secrecyLevel = document.secrecyLevel || '公开'
+    attachments.value = await api.attachments({ bizType: 'document', bizId: document.id })
+    attachmentDialog.value = true
+  } catch (e) {
+    ElMessage.error(e.message || '操作失败')
+  }
 }
 const openFlowGuide = (document) => {
   flowGuideDialog.value?.open('document', document.id)
 }
 const addAttachment = async () => {
-  await api.addAttachment({
-    bizType: 'document',
-    bizId: currentDocument.value.id,
-    fileName: attachmentForm.fileName,
-    fileUrl: attachmentForm.fileUrl,
-    secrecyLevel: attachmentForm.secrecyLevel
-  })
-  ElMessage.success('附件已保存')
-  attachments.value = await api.attachments({ bizType: 'document', bizId: currentDocument.value.id })
+  try {
+    await api.addAttachment({
+      bizType: 'document',
+      bizId: currentDocument.value.id,
+      fileName: attachmentForm.fileName,
+      fileUrl: attachmentForm.fileUrl,
+      secrecyLevel: attachmentForm.secrecyLevel
+    })
+    ElMessage.success('附件已保存')
+    attachments.value = await api.attachments({ bizType: 'document', bizId: currentDocument.value.id })
+  } catch (e) {
+    ElMessage.error(e.message || '操作失败')
+  }
 }
 
 onMounted(async () => {
-  userOptions.value = await api.userOptions()
-  selectReceiver()
-  await load()
+  try {
+    userOptions.value = await api.userOptions()
+    selectReceiver()
+    await load()
+  } catch (e) {
+    ElMessage.error(e.message || '初始化失败')
+  }
 })
 </script>

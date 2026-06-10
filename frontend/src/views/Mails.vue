@@ -170,6 +170,7 @@ import { ElMessage } from 'element-plus'
 import { api } from '../api'
 import { readSessionUser } from '../utils/sessionUser'
 import OrgUserTreeSelect from '../components/OrgUserTreeSelect.vue'
+import { formatDate } from '../utils/format'
 
 const activeTab = ref('inbox')
 const loading = ref(false)
@@ -367,11 +368,6 @@ function deliverySummaryType(recipients = []) {
 
 function userLabel(userId) {
   return userId ? `#${userId}` : '-'
-}
-
-function formatDate(value) {
-  if (!value) return '-'
-  return String(value).replace('T', ' ').slice(0, 16)
 }
 
 onMounted(loadInitial)
