@@ -6,7 +6,7 @@ import com.university.oms.dto.DocumentRequest;
 import com.university.oms.model.AiReviewResult;
 import com.university.oms.model.Document;
 import com.university.oms.model.User;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import com.university.oms.service.DocumentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,11 +22,11 @@ public class DocumentServiceProxy {
     private static final Logger log = LoggerFactory.getLogger(DocumentServiceProxy.class);
 
     private final DocumentService delegate;
-    private final InMemoryDatabase db;
+    private final OmsRepository repo;
 
-    public DocumentServiceProxy(DocumentService delegate, InMemoryDatabase db) {
+    public DocumentServiceProxy(DocumentService delegate, OmsRepository repo) {
         this.delegate = delegate;
-        this.db = db;
+        this.repo = repo;
     }
 
     public Document createWithPermissionCheck(DocumentRequest request, Long currentUserId) {
@@ -54,7 +54,7 @@ public class DocumentServiceProxy {
     }
 
     private void checkPermission(Long userId, String requiredRole) {
-        User user = db.users().get(userId);
+        User user = repo.findUserById(userId);
         if (user == null) {
             throw new BusinessException("用户不存在");
         }
@@ -64,11 +64,12 @@ public class DocumentServiceProxy {
     }
 
     private void checkOwnership(Long docId, Long userId) {
-        Document doc = db.documents().get(docId);
+        Document doc = repo.findDocumentById(docId);
         if (doc == null) {
             throw new BusinessException("公文不存在");
         }
-        if (!doc.getApplicantId().equals(userId) && !db.users().get(userId).getRoleKeys().contains("admin")) {
+        User owner = repo.findUserById(userId);
+        if (!doc.getApplicantId().equals(userId) && owner != null && !owner.getRoleKeys().contains("admin")) {
             throw new BusinessException("只能操作自己起草的公文");
         }
     }

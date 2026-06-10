@@ -4,8 +4,7 @@ import com.university.oms.common.BusinessException;
 import com.university.oms.design.*;
 import com.university.oms.dto.ApprovalRequest;
 import com.university.oms.model.*;
-import com.university.oms.repository.DataPersistence;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import com.university.oms.security.AuthContext;
 import org.springframework.stereotype.Service;
 
@@ -15,20 +14,18 @@ import java.util.stream.Collectors;
 
 @Service
 public class ApprovalService {
-    private final InMemoryDatabase db;
-    private final DataPersistence persistence;
+    private final OmsRepository repo;
     private final ApprovalFlowConfig flowConfig;
     private final StateFactory stateFactory;
     private final StatusChangeNotifier notifier;
     private final WorkflowService workflowService;
     private final BusinessAccessService accessService;
 
-    public ApprovalService(InMemoryDatabase db, DataPersistence persistence,
+    public ApprovalService(OmsRepository repo,
                            ApprovalFlowConfig flowConfig, StateFactory stateFactory,
                            StatusChangeNotifier notifier, WorkflowService workflowService,
                            BusinessAccessService accessService) {
-        this.db = db;
-        this.persistence = persistence;
+        this.repo = repo;
         this.flowConfig = flowConfig;
         this.stateFactory = stateFactory;
         this.notifier = notifier;
@@ -38,14 +35,13 @@ public class ApprovalService {
 
     public ApprovalRecord record(String bizType, Long bizId, Long operatorId, String action, String opinion) {
         ApprovalRecord record = new ApprovalRecord();
-        db.fill(record, db.nextId());
+        OmsRepository.fillEntity(record, repo.nextId());
         record.setBizType(bizType);
         record.setBizId(bizId);
         record.setOperatorId(operatorId);
         record.setAction(action);
         record.setOpinion(opinion);
-        db.approvals().add(record);
-        persistence.saveApproval(record);
+        repo.saveApproval(record);
         return record;
     }
 
@@ -53,7 +49,7 @@ public class ApprovalService {
         if (bizType != null && bizId != null) {
             accessService.requireBusinessRead(bizType, bizId);
         }
-        return db.approvals().stream()
+        return repo.findAllApprovals().stream()
                 .filter(r -> bizType == null || r.getBizType().equals(bizType))
                 .filter(r -> bizId == null || r.getBizId().equals(bizId))
                 .filter(r -> bizType != null && bizId != null || accessService.canReadBusiness(r.getBizType(), r.getBizId()))
@@ -62,7 +58,7 @@ public class ApprovalService {
 
     public Object approve(String bizType, Long bizId, ApprovalRequest request) {
         Long operatorId = AuthContext.currentUserIdOr(request.getOperatorId());
-        User operator = db.users().get(operatorId);
+        User operator = repo.findUserById(operatorId);
         if (operator == null) {
             throw new BusinessException("操作用户不存在");
         }
@@ -94,23 +90,23 @@ public class ApprovalService {
     private BaseEntity findEntity(String bizType, Long bizId) {
         switch (bizType) {
             case "document":
-                Document doc = db.documents().get(bizId);
+                Document doc = repo.findDocumentById(bizId);
                 if (doc == null) throw new BusinessException("公文不存在");
                 return doc;
             case "seal":
-                SealApplication app = db.sealApplications().get(bizId);
+                SealApplication app = repo.findSealApplicationById(bizId);
                 if (app == null) throw new BusinessException("用印申请不存在");
                 return app;
             case "meeting":
-                Meeting meeting = db.meetings().get(bizId);
+                Meeting meeting = repo.findMeetingById(bizId);
                 if (meeting == null) throw new BusinessException("会议不存在");
                 return meeting;
             case "travel":
-                Travel travel = db.travels().get(bizId);
+                Travel travel = repo.findTravelById(bizId);
                 if (travel == null) throw new BusinessException("差旅申请不存在");
                 return travel;
             case "report":
-                Report report = db.reports().get(bizId);
+                Report report = repo.findReportById(bizId);
                 if (report == null) throw new BusinessException("请示报告不存在");
                 return report;
             default:
@@ -126,7 +122,7 @@ public class ApprovalService {
         if ("seal".equals(bizType)) {
             SealApplication application = (SealApplication) entity;
             boolean major = "重大事项".equals(application.getMatterLevel());
-            Seal seal = db.seals().get(application.getSealId());
+            Seal seal = repo.findSealById(application.getSealId());
             boolean schoolSeal = seal != null && seal.getSealName().contains("北京大学");
             if (major && schoolSeal) {
                 return "seal_school_major";
@@ -163,27 +159,27 @@ public class ApprovalService {
             Document doc = (Document) entity;
             doc.setStatus(status);
             doc.setUpdatedAt(now);
-            persistence.saveDocument(doc);
+            repo.saveDocument(doc);
         } else if (entity instanceof SealApplication) {
             SealApplication app = (SealApplication) entity;
             app.setStatus(status);
             app.setUpdatedAt(now);
-            persistence.saveSealApplication(app);
+            repo.saveSealApplication(app);
         } else if (entity instanceof Meeting) {
             Meeting meeting = (Meeting) entity;
             meeting.setStatus(status);
             meeting.setUpdatedAt(now);
-            persistence.saveMeeting(meeting);
+            repo.saveMeeting(meeting);
         } else if (entity instanceof Travel) {
             Travel travel = (Travel) entity;
             travel.setStatus(status);
             travel.setUpdatedAt(now);
-            persistence.saveTravel(travel);
+            repo.saveTravel(travel);
         } else if (entity instanceof Report) {
             Report report = (Report) entity;
             report.setStatus(status);
             report.setUpdatedAt(now);
-            persistence.saveReport(report);
+            repo.saveReport(report);
         }
     }
 }

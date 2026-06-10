@@ -1,7 +1,7 @@
 package com.university.oms.design;
 
 import com.university.oms.model.*;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -15,10 +15,10 @@ import java.util.function.BiPredicate;
  */
 @Component
 public class DashboardFacade {
-    private final InMemoryDatabase db;
+    private final OmsRepository repo;
 
-    public DashboardFacade(InMemoryDatabase db) {
-        this.db = db;
+    public DashboardFacade(OmsRepository repo) {
+        this.repo = repo;
     }
 
     public DashboardStats aggregate() {
@@ -26,11 +26,11 @@ public class DashboardFacade {
     }
 
     public DashboardStats aggregate(BiPredicate<String, Long> canRead) {
-        List<Document> documents = visible("document", db.documents().values(), canRead);
-        List<SealApplication> sealApplications = visible("seal", db.sealApplications().values(), canRead);
-        List<Meeting> meetings = visible("meeting", db.meetings().values(), canRead);
-        List<Travel> travels = visible("travel", db.travels().values(), canRead);
-        List<Report> reports = visible("report", db.reports().values(), canRead);
+        List<Document> documents = visible("document", repo.findAllDocuments(), canRead);
+        List<SealApplication> sealApplications = visible("seal", repo.findAllSealApplications(), canRead);
+        List<Meeting> meetings = visible("meeting", repo.findAllMeetings(), canRead);
+        List<Travel> travels = visible("travel", repo.findAllTravels(), canRead);
+        List<Report> reports = visible("report", repo.findAllReports(), canRead);
         DashboardStats stats = new DashboardStats();
         stats.setDocumentCount(documents.size());
         stats.setPendingDocumentCount(documents.stream()
@@ -137,7 +137,7 @@ public class DashboardFacade {
         if (roomId == null) {
             return "";
         }
-        MeetingRoom room = db.rooms().get(roomId);
+        MeetingRoom room = repo.findRoomById(roomId);
         return room == null || room.getRoomName() == null ? "" : room.getRoomName();
     }
 }

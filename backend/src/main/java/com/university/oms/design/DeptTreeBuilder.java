@@ -1,25 +1,25 @@
 package com.university.oms.design;
 
 import com.university.oms.model.Department;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
 
 /**
- * Builds a department tree (Composite pattern) from InMemoryDatabase.
+ * Builds a department tree (Composite pattern) from OmsRepository.
  */
 @Component
 public class DeptTreeBuilder {
-    private final InMemoryDatabase db;
+    private final OmsRepository repo;
 
-    public DeptTreeBuilder(InMemoryDatabase db) {
-        this.db = db;
+    public DeptTreeBuilder(OmsRepository repo) {
+        this.repo = repo;
     }
 
     public DeptTreeNode buildTree() {
         Map<Long, DeptTreeNode> nodeMap = new LinkedHashMap<>();
-        for (Department dept : db.departments().values()) {
+        for (Department dept : repo.findAllDepartments()) {
             nodeMap.put(dept.getId(), new DeptTreeNode(dept));
         }
         DeptTreeNode root = null;

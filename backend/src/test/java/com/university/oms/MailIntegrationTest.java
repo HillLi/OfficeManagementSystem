@@ -3,10 +3,11 @@ package com.university.oms;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.university.oms.model.Department;
+import com.university.oms.model.MailMessage;
 import com.university.oms.model.MailRecipient;
 import com.university.oms.model.Notification;
 import com.university.oms.model.User;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import com.university.oms.service.EmailSenderService;
 import com.university.oms.service.WorkflowService;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
@@ -38,6 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = "oms.mail.external-enabled=true")
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 class MailIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
@@ -46,7 +50,10 @@ class MailIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private InMemoryDatabase db;
+    private OmsRepository repo;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @SpyBean
     private WorkflowService workflowService;
@@ -85,7 +92,7 @@ class MailIntegrationTest {
                 token);
         long id = created.get("data").get("id").asLong();
 
-        assertEquals("mailuser@example.com", db.users().get(id).getEmail());
+        assertEquals("mailuser@example.com", repo.findUserById(id).getEmail());
 
         mockMvc.perform(get("/api/admin/users/" + id).header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
@@ -124,7 +131,7 @@ class MailIntegrationTest {
                         .content("{\"realName\":\"普通办公人员\",\"deptId\":4,\"roleKeys\":\"office_user\",\"email\":\"new-user@example.com\"}"))
                 .andExpect(status().isOk());
 
-        assertEquals("new-user@example.com", db.users().get(2L).getEmail());
+        assertEquals("new-user@example.com", repo.findUserById(2L).getEmail());
     }
 
     @Test
@@ -149,9 +156,9 @@ class MailIntegrationTest {
             assertEquals(user.getId().longValue(), userNode.get("userId").asLong());
             assertEquals(user.getEmail(), userNode.get("email").asText());
         } finally {
-            db.users().remove(user.getId());
-            db.departments().remove(child.getId());
-            db.departments().remove(parent.getId());
+            jdbcTemplate.update("DELETE FROM sys_user_role WHERE user_id = 900003");
+            jdbcTemplate.update("DELETE FROM sys_user WHERE id = 900003");
+            jdbcTemplate.update("DELETE FROM sys_dept WHERE id IN (900002, 900001)");
         }
     }
 
@@ -178,11 +185,7 @@ class MailIntegrationTest {
             assertEquals(1, countNodes(tree, "dept-" + cycleB.getId()));
             assertEquals(1, countNodes(tree, "dept-" + cycleChild.getId()));
         } finally {
-            db.departments().remove(cycleChild.getId());
-            db.departments().remove(cycleB.getId());
-            db.departments().remove(cycleA.getId());
-            db.departments().remove(selfParent.getId());
-            db.departments().remove(missingParent.getId());
+            jdbcTemplate.update("DELETE FROM sys_dept WHERE id IN (900015, 900014, 900013, 900012, 900011)");
         }
     }
 
@@ -202,10 +205,9 @@ class MailIntegrationTest {
             assertBefore(tree, "dept-" + aDepartment.getId(), "dept-" + zDepartment.getId());
             assertBefore(aDepartmentNode.get("children"), "user-" + aUser.getId(), "user-" + zUser.getId());
         } finally {
-            db.users().remove(aUser.getId());
-            db.users().remove(zUser.getId());
-            db.departments().remove(aDepartment.getId());
-            db.departments().remove(zDepartment.getId());
+            jdbcTemplate.update("DELETE FROM sys_user_role WHERE user_id IN (900023, 900024)");
+            jdbcTemplate.update("DELETE FROM sys_user WHERE id IN (900023, 900024)");
+            jdbcTemplate.update("DELETE FROM sys_dept WHERE id IN (900022, 900021)");
         }
     }
 
@@ -241,8 +243,8 @@ class MailIntegrationTest {
         assertEquals(mailId, sentList.get(0).get("id").asLong());
         assertEquals("sender", senderCopy.get("currentUserRecipientType").asText());
         assertTrue(senderCopy.get("currentUserRead").asBoolean());
-        assertTrue(db.notifications().stream().anyMatch(n -> isMailNotification(n, 2L, mailId)));
-        assertTrue(db.notifications().stream().anyMatch(n -> isMailNotification(n, 3L, mailId)));
+        assertTrue(repo.findAllNotifications().stream().anyMatch(n -> isMailNotification(n, 2L, mailId)));
+        assertTrue(repo.findAllNotifications().stream().anyMatch(n -> isMailNotification(n, 3L, mailId)));
     }
 
     @Test
@@ -336,7 +338,7 @@ class MailIntegrationTest {
         long mailId = sendMail(adminToken, "Notification failure " + System.nanoTime(), "[2,3]", "[4]");
 
         assertEquals(3, mailRecipientsSnapshot().stream().filter(r -> r.getMailId().equals(mailId)).count());
-        assertNotNull(db.mailMessages().get(mailId));
+        assertNotNull(repo.findMailMessageById(mailId));
     }
 
     @Test
@@ -344,11 +346,11 @@ class MailIntegrationTest {
         String adminToken = login("admin");
         String userToken = login("user");
         long mailId = sendMail(adminToken, "Private statuses " + System.nanoTime(), "[2,3]", "[]");
-        MailRecipient otherRecipient = findRecipient(mailId, 3L);
-        otherRecipient.setReadStatus(true);
-        otherRecipient.setEmailStatus("failed");
-        otherRecipient.setEmailError("private delivery error");
-        otherRecipient.setEmailSentAt(LocalDateTime.now());
+        // Update other recipient's status directly in database
+        jdbcTemplate.update("UPDATE oa_mail_recipient SET read_status = 1, email_status = 'failed', " +
+                        "email_error = 'private delivery error', email_sent_at = CURRENT_TIMESTAMP " +
+                        "WHERE mail_id = ? AND user_id = 3",
+                mailId);
 
         JsonNode recipientDetail = getJson("/api/mails/" + mailId, userToken).get("data");
         JsonNode senderDetail = getJson("/api/mails/" + mailId, adminToken).get("data");
@@ -409,7 +411,7 @@ class MailIntegrationTest {
         long mailId = sendMail(adminToken, "External failure " + System.nanoTime(), "[2]", "[]");
 
         MailRecipient recipient = findRecipient(mailId, 2L);
-        assertNotNull(db.mailMessages().get(mailId));
+        assertNotNull(repo.findMailMessageById(mailId));
         assertNotNull(recipient);
         assertEquals("failed", recipient.getEmailStatus());
         assertTrue(recipient.getEmailError().contains("smtp down"));
@@ -419,9 +421,8 @@ class MailIntegrationTest {
     void senderCanRetryFailedOrSkippedEmail() throws Exception {
         String adminToken = login("admin");
         long mailId = sendMail(adminToken, "Retry sender " + System.nanoTime(), "[2]", "[]");
-        MailRecipient recipient = findRecipient(mailId, 2L);
-        recipient.setEmailStatus("failed");
-        recipient.setEmailError("smtp unavailable");
+        jdbcTemplate.update("UPDATE oa_mail_recipient SET email_status = 'failed', email_error = 'smtp unavailable' " +
+                "WHERE mail_id = ? AND user_id = 2", mailId);
 
         JsonNode retried = postJson("/api/mails/" + mailId + "/retry-email", "{}", adminToken).get("data");
 
@@ -445,9 +446,8 @@ class MailIntegrationTest {
         String userToken = login("user");
         String adminToken = login("admin");
         long mailId = sendMail(userToken, "Retry admin " + System.nanoTime(), "[3]", "[]");
-        MailRecipient recipient = findRecipient(mailId, 3L);
-        recipient.setEmailStatus("failed");
-        recipient.setEmailError("smtp unavailable");
+        jdbcTemplate.update("UPDATE oa_mail_recipient SET email_status = 'failed', email_error = 'smtp unavailable' " +
+                "WHERE mail_id = ? AND user_id = 3", mailId);
 
         JsonNode retried = postJson("/api/mails/" + mailId + "/retry-email", "{}", adminToken).get("data");
 
@@ -461,13 +461,10 @@ class MailIntegrationTest {
         String userToken = login("user");
         String adminToken = login("admin");
         long mailId = sendMail(userToken, "Retry admin privacy " + System.nanoTime(), "[3,4]", "[]");
-        MailRecipient first = findRecipient(mailId, 3L);
-        MailRecipient second = findRecipient(mailId, 4L);
-        first.setReadStatus(true);
-        first.setEmailStatus("failed");
-        first.setEmailError("private smtp error one");
-        second.setEmailStatus("failed");
-        second.setEmailError("private smtp error two");
+        jdbcTemplate.update("UPDATE oa_mail_recipient SET read_status = 1, email_status = 'failed', email_error = 'private smtp error one' " +
+                "WHERE mail_id = ? AND user_id = 3", mailId);
+        jdbcTemplate.update("UPDATE oa_mail_recipient SET email_status = 'failed', email_error = 'private smtp error two' " +
+                "WHERE mail_id = ? AND user_id = 4", mailId);
 
         JsonNode retried = postJson("/api/mails/" + mailId + "/retry-email", "{}", adminToken).get("data");
 
@@ -487,23 +484,21 @@ class MailIntegrationTest {
 
     private Department addDepartment(Long id, String name, Long parentId) {
         Department department = new Department();
-        db.fill(department, id);
+        OmsRepository.fillEntity(department, id);
         department.setDeptName(name);
         department.setParentId(parentId);
-        db.departments().put(id, department);
+        department.setUpdatedAt(LocalDateTime.now());
+        repo.saveDepartment(department);
         return department;
     }
 
     private User addUser(Long id, String username, String realName, Long deptId) {
-        User user = new User();
-        db.fill(user, id);
-        user.setUsername(username);
-        user.setRealName(realName);
-        user.setEmail(username + "@example.com");
-        user.setDeptId(deptId);
-        user.setDeptName(db.departments().get(deptId).getDeptName());
-        db.users().put(id, user);
-        return user;
+        String password = "pbkdf2$120000$T2ZmaWNlTWdtdFNhbHQwMQ==$Z3heUPjh43uuIEz+H3am6K517zg+3H0tEMInRgwsg1M=";
+        jdbcTemplate.update(
+                "INSERT INTO sys_user (id, username, password, real_name, dept_id, email) VALUES (?, ?, ?, ?, ?, ?)",
+                id, username, password, realName, deptId, username + "@example.com");
+        jdbcTemplate.update("INSERT INTO sys_user_role (user_id, role_id) VALUES (?, 2)", id);
+        return repo.findUserById(id);
     }
 
     private void assertRootNode(JsonNode tree, Department department) {
@@ -610,9 +605,7 @@ class MailIntegrationTest {
     }
 
     private List<MailRecipient> mailRecipientsSnapshot() {
-        synchronized (db.mailRecipients()) {
-            return new ArrayList<MailRecipient>(db.mailRecipients());
-        }
+        return new ArrayList<MailRecipient>(repo.findAllMailRecipients());
     }
 
     private boolean hasRecipientUser(JsonNode recipients, long userId) {
@@ -632,7 +625,7 @@ class MailIntegrationTest {
     }
 
     private Notification findMailNotification(long receiverId, long mailId) {
-        return db.notifications().stream()
+        return repo.findAllNotifications().stream()
                 .filter(notification -> isMailNotification(notification, receiverId, mailId))
                 .findFirst()
                 .orElse(null);

@@ -8,8 +8,7 @@ import com.university.oms.model.Attachment;
 import com.university.oms.model.Seal;
 import com.university.oms.model.SealApplication;
 import com.university.oms.model.SealTransfer;
-import com.university.oms.repository.DataPersistence;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import com.university.oms.model.User;
 import com.university.oms.security.AuthContext;
 import org.springframework.stereotype.Service;
@@ -20,28 +19,26 @@ import java.util.List;
 
 @Service
 public class SealService {
-    private final InMemoryDatabase db;
+    private final OmsRepository repo;
     private final ApprovalService approvalService;
-    private final DataPersistence persistence;
     private final WorkflowService workflowService;
     private final DictionaryService dictionaryService;
 
-    public SealService(InMemoryDatabase db, ApprovalService approvalService, DataPersistence persistence,
+    public SealService(OmsRepository repo, ApprovalService approvalService,
                        WorkflowService workflowService, DictionaryService dictionaryService) {
-        this.db = db;
+        this.repo = repo;
         this.approvalService = approvalService;
-        this.persistence = persistence;
         this.workflowService = workflowService;
         this.dictionaryService = dictionaryService;
     }
 
     public List<Seal> seals() {
-        return new ArrayList<Seal>(db.seals().values());
+        return repo.findAllSeals();
     }
 
     public List<SealApplication> applications() {
         User user = AuthContext.currentUser();
-        List<SealApplication> apps = new ArrayList<SealApplication>(db.sealApplications().values());
+        List<SealApplication> apps = repo.findAllSealApplications();
         if (user == null || user.getRoleKeys().contains("admin") || user.getRoleKeys().contains("office_admin")
                 || user.getRoleKeys().contains("school_leader") || user.getRoleKeys().contains("seal_keeper")) {
             enrichAll(apps);
@@ -49,7 +46,7 @@ public class SealService {
         }
         List<SealApplication> scoped = new ArrayList<SealApplication>();
         for (SealApplication app : apps) {
-            User applicant = db.users().get(app.getApplicantId());
+            User applicant = repo.findUserById(app.getApplicantId());
             if (app.getApplicantId().equals(user.getId())
                     || (user.getRoleKeys().contains("dept_head") && applicant != null && user.getDeptId().equals(applicant.getDeptId()))) {
                 scoped.add(app);
@@ -68,7 +65,7 @@ public class SealService {
             throw new BusinessException("外带用印必须填写原因、地点、监交人和预计归还时间");
         }
         SealApplication application = new SealApplication();
-        db.fill(application, db.nextId());
+        OmsRepository.fillEntity(application, repo.nextId());
         application.setRetentionUntil(application.getCreatedAt().plusYears(10));
         application.setSealId(request.getSealId());
         application.setApplicantId(applicantId);
@@ -83,8 +80,7 @@ public class SealService {
         if (request.isTakeOut()) {
             application.setReturnDeadline(request.getExpectedReturnTime());
         }
-        db.sealApplications().put(application.getId(), application);
-        persistence.saveSealApplication(application);
+        repo.saveSealApplication(application);
         return enrich(application);
     }
 
@@ -97,7 +93,7 @@ public class SealService {
         Seal seal = requireSeal(application.getSealId());
         application.setStatus(seal.getSealName().contains("北京大学") ? "pending_office" : "pending_dept");
         application.setUpdatedAt(LocalDateTime.now());
-        persistence.saveSealApplication(application);
+        repo.saveSealApplication(application);
         approvalService.record("seal", application.getId(), application.getApplicantId(), "submit", "提交用印申请");
         workflowService.startFlow("seal", application.getId(), application.getStatus(), application.getApplicantId());
         return enrich(application);
@@ -109,10 +105,10 @@ public class SealService {
         SealApplication app = find(id);
         app.setUseTime(LocalDateTime.now());
         app.setStatus("used");
-        Seal seal = db.seals().get(app.getSealId());
+        Seal seal = repo.findSealById(app.getSealId());
         seal.setStatus(app.isTakeOut() ? "lent" : "in_use");
-        persistence.saveSealApplication(app);
-        persistence.saveSeal(seal);
+        repo.saveSealApplication(app);
+        repo.saveSeal(seal);
         approvalService.record("seal", id, operatorId, "use", "用印登记");
         workflowService.audit("seal", "use", "seal", id, "用印登记");
         return app;
@@ -121,14 +117,14 @@ public class SealService {
     public SealTransfer transfer(SealTransferRequest request) {
         Long operatorId = AuthContext.currentUserIdOr(null);
         requireKeeper(operatorId);
-        if (!db.seals().containsKey(request.getSealId())) {
+        if (repo.findSealById(request.getSealId()) == null) {
             throw new BusinessException("印章不存在");
         }
-        if (!db.users().containsKey(request.getReceiverId()) || !db.users().containsKey(request.getSupervisorId())) {
+        if (repo.findUserById(request.getReceiverId()) == null || repo.findUserById(request.getSupervisorId()) == null) {
             throw new BusinessException("移交接收人或监交人不存在");
         }
         SealTransfer transfer = new SealTransfer();
-        db.fill(transfer, db.nextId());
+        OmsRepository.fillEntity(transfer, repo.nextId());
         transfer.setSealId(request.getSealId());
         transfer.setTransferorId(operatorId);
         transfer.setReceiverId(request.getReceiverId());
@@ -136,15 +132,14 @@ public class SealService {
         transfer.setMaterialUrl(request.getMaterialUrl());
         transfer.setRemark(request.getRemark());
         transfer.setTransferTime(LocalDateTime.now());
-        db.sealTransfers().put(transfer.getId(), transfer);
-        persistence.saveSealTransfer(transfer);
+        repo.saveSealTransfer(transfer);
         workflowService.audit("seal", "transfer", "seal", request.getSealId(), "移交记录#" + transfer.getId());
         return transfer;
     }
 
     public List<SealTransfer> transfers() {
         requireKeeper(AuthContext.currentUserIdOr(null));
-        return new ArrayList<SealTransfer>(db.sealTransfers().values());
+        return repo.findAllSealTransfers();
     }
 
     public SealApplication markReturned(Long id, Long keeperId) {
@@ -154,10 +149,10 @@ public class SealService {
         String oldStatus = app.getStatus();
         app.setReturnTime(LocalDateTime.now());
         app.setStatus("returned");
-        Seal seal = db.seals().get(app.getSealId());
+        Seal seal = repo.findSealById(app.getSealId());
         seal.setStatus("in_store");
-        persistence.saveSealApplication(app);
-        persistence.saveSeal(seal);
+        repo.saveSealApplication(app);
+        repo.saveSeal(seal);
         if (app.getReturnDeadline() != null && LocalDateTime.now().isAfter(app.getReturnDeadline())) {
             approvalService.record("seal", id, operatorId, "overdue_return", "逾期归还（截止" + app.getReturnDeadline() + "）");
         } else {
@@ -168,7 +163,7 @@ public class SealService {
     }
 
     private SealApplication find(Long id) {
-        SealApplication app = db.sealApplications().get(id);
+        SealApplication app = repo.findSealApplicationById(id);
         if (app == null) {
             throw new BusinessException("用印申请不存在");
         }
@@ -176,7 +171,7 @@ public class SealService {
     }
 
     private Seal requireSeal(Long id) {
-        Seal seal = db.seals().get(id);
+        Seal seal = repo.findSealById(id);
         if (seal == null) {
             throw new BusinessException("印章不存在");
         }
@@ -200,7 +195,7 @@ public class SealService {
     }
 
     private SealApplication enrich(SealApplication application) {
-        Seal seal = db.seals().get(application.getSealId());
+        Seal seal = repo.findSealById(application.getSealId());
         application.setSealName(seal == null ? "" : seal.getSealName());
         application.setMaterialCount(activeMaterialCount(application.getId()));
         return application;
@@ -208,9 +203,8 @@ public class SealService {
 
     private int activeMaterialCount(Long applicationId) {
         int count = 0;
-        for (Attachment attachment : db.attachments()) {
-            if ("seal".equals(attachment.getBizType()) && applicationId.equals(attachment.getBizId())
-                    && !attachment.isDeleted()) {
+        for (Attachment attachment : repo.findAttachmentsByBizTypeAndBizId("seal", applicationId)) {
+            if (!attachment.isDeleted()) {
                 count++;
             }
         }
@@ -218,7 +212,7 @@ public class SealService {
     }
 
     private void requireKeeper(Long userId) {
-        User user = db.users().get(userId);
+        User user = repo.findUserById(userId);
         if (user == null || !(user.getRoleKeys().contains("seal_keeper") || user.getRoleKeys().contains("office_admin")
                 || user.getRoleKeys().contains("admin"))) {
             throw new ForbiddenException("只有印章保管人或党办校办人员可以登记用印、归还和移交");

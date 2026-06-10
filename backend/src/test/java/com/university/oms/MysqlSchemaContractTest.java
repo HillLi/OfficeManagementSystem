@@ -14,10 +14,8 @@ class MysqlSchemaContractTest {
     void schemaProvidesTablesAndColumnsRequiredByWorkflowClosures() throws Exception {
         String schema = new String(Files.readAllBytes(Paths.get("sql", "schema.sql")), StandardCharsets.UTF_8);
         String data = new String(Files.readAllBytes(Paths.get("sql", "data.sql")), StandardCharsets.UTF_8);
-        String loader = new String(Files.readAllBytes(Paths.get("src", "main", "java", "com", "university", "oms",
-                "repository", "MysqlDataLoader.java")), StandardCharsets.UTF_8);
-        String inMemoryDatabase = new String(Files.readAllBytes(Paths.get("src", "main", "java", "com", "university",
-                "oms", "repository", "InMemoryDatabase.java")), StandardCharsets.UTF_8);
+        String repository = new String(Files.readAllBytes(Paths.get("src", "main", "java", "com", "university", "oms",
+                "repository", "OmsRepository.java")), StandardCharsets.UTF_8);
 
         assertTrue(schema.contains("CREATE TABLE IF NOT EXISTS oa_document_distribution"));
         assertTrue(schema.contains("CREATE TABLE IF NOT EXISTS oa_seal_transfer"));
@@ -54,9 +52,8 @@ class MysqlSchemaContractTest {
         assertTrue(data.contains("'meeting_type'"));
         assertTrue(data.contains("INSERT IGNORE INTO sys_dict_type"));
         assertTrue(data.contains("INSERT IGNORE INTO sys_dict_item"));
-        assertTrue(inMemoryDatabase.contains("dictionaryItems.put(dictionaryItemKey(type, code), item)"));
-        assertTrue(loader.contains("db.dictionaryItemKey(item.getDictType(), item.getDictCode())"));
-        assertTrue(loader.contains("item.setUpdatedAt(toLocalDateTime(rs, \"updated_at\"))"));
+        assertTrue(repository.contains("public static String dictionaryItemKey(String type, String code)"));
+        assertTrue(repository.contains("findDictionaryItemByTypeAndCode"));
     }
 
     @Test

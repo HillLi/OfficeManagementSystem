@@ -7,8 +7,7 @@ import com.university.oms.dto.DictionaryTypeRequest;
 import com.university.oms.model.AuditLog;
 import com.university.oms.model.DictionaryItem;
 import com.university.oms.model.DictionaryType;
-import com.university.oms.repository.DataPersistence;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import com.university.oms.security.AuthContext;
 import org.springframework.stereotype.Service;
 
@@ -29,12 +28,10 @@ public class DictionaryService {
             "flow_node", "role_key", "secrecy_level"
     ));
 
-    private final InMemoryDatabase db;
-    private final DataPersistence persistence;
+    private final OmsRepository repo;
 
-    public DictionaryService(InMemoryDatabase db, DataPersistence persistence) {
-        this.db = db;
-        this.persistence = persistence;
+    public DictionaryService(OmsRepository repo) {
+        this.repo = repo;
     }
 
     public DictionaryCatalogResponse catalog() {
@@ -50,48 +47,42 @@ public class DictionaryService {
 
     public String version() {
         LocalDateTime latest = null;
-        for (DictionaryType type : db.dictionaryTypes().values()) {
+        for (DictionaryType type : repo.findAllDictionaryTypes()) {
             latest = latest(latest, type.getUpdatedAt());
         }
-        for (DictionaryItem item : db.dictionaryItems().values()) {
+        for (DictionaryItem item : repo.findAllDictionaryItems()) {
             latest = latest(latest, item.getUpdatedAt());
         }
         return latest == null ? "" : latest.toString();
     }
 
     public List<DictionaryType> listTypes() {
-        List<DictionaryType> types = new ArrayList<DictionaryType>(db.dictionaryTypes().values());
+        List<DictionaryType> types = new ArrayList<DictionaryType>(repo.findAllDictionaryTypes());
         types.sort(Comparator.comparing(DictionaryType::getDictType));
         return types;
     }
 
     public List<DictionaryItem> listItems(String dictType) {
         requireType(dictType);
-        List<DictionaryItem> items = new ArrayList<DictionaryItem>();
-        for (DictionaryItem item : db.dictionaryItems().values()) {
-            if (dictType.equals(item.getDictType())) {
-                items.add(item);
-            }
-        }
+        List<DictionaryItem> items = new ArrayList<DictionaryItem>(repo.findDictionaryItemsByType(dictType));
         items.sort(Comparator.comparing(DictionaryItem::getSortOrder)
                 .thenComparing(DictionaryItem::getDictCode));
         return items;
     }
 
     public DictionaryType createType(DictionaryTypeRequest request) {
-        if (db.dictionaryTypes().containsKey(request.getDictType())) {
+        if (repo.findDictionaryTypeByType(request.getDictType()) != null) {
             throw new BusinessException("字典类型代码已存在");
         }
         DictionaryType type = new DictionaryType();
-        db.fill(type, db.nextId());
+        OmsRepository.fillEntity(type, repo.nextId());
         type.setDictType(request.getDictType());
         type.setDictName(request.getDictName());
         type.setSystemType(false);
         type.setEnabled(request.isEnabled());
         type.setRemark(request.getRemark());
         type.setUpdatedAt(LocalDateTime.now());
-        db.dictionaryTypes().put(type.getDictType(), type);
-        persistence.saveDictionaryType(type);
+        repo.saveDictionaryType(type);
         audit("create_type", type.getDictType(), type.getId());
         return type;
     }
@@ -108,7 +99,7 @@ public class DictionaryService {
         type.setEnabled(request.isEnabled());
         type.setRemark(request.getRemark());
         type.setUpdatedAt(LocalDateTime.now());
-        persistence.saveDictionaryType(type);
+        repo.saveDictionaryType(type);
         audit("update_type", dictType, type.getId());
         return type;
     }
@@ -118,12 +109,11 @@ public class DictionaryService {
         if (request.getDictCode() == null || request.getDictCode().trim().isEmpty()) {
             throw new BusinessException("字典项代码不能为空");
         }
-        String key = db.dictionaryItemKey(dictType, request.getDictCode());
-        if (db.dictionaryItems().get(key) != null) {
+        if (repo.findDictionaryItemByTypeAndCode(dictType, request.getDictCode()) != null) {
             throw new BusinessException("字典项代码已存在");
         }
         DictionaryItem item = new DictionaryItem();
-        db.fill(item, db.nextId());
+        OmsRepository.fillEntity(item, repo.nextId());
         item.setDictType(dictType);
         item.setDictCode(request.getDictCode());
         item.setDictLabel(request.getDictLabel());
@@ -132,15 +122,14 @@ public class DictionaryService {
         item.setSystemItem(false);
         item.setRemark(request.getRemark());
         item.setUpdatedAt(LocalDateTime.now());
-        db.dictionaryItems().put(key, item);
-        persistence.saveDictionaryItem(item);
+        repo.saveDictionaryItem(item);
         audit("create_item", dictType + "/" + item.getDictCode(), item.getId());
         return item;
     }
 
     public DictionaryItem updateItem(String dictType, String code, DictionaryItemRequest request) {
         requireType(dictType);
-        DictionaryItem item = db.dictionaryItems().get(db.dictionaryItemKey(dictType, code));
+        DictionaryItem item = repo.findDictionaryItemByTypeAndCode(dictType, code);
         if (item == null) {
             throw new BusinessException("字典项不存在");
         }
@@ -155,20 +144,20 @@ public class DictionaryService {
         item.setEnabled(request.isEnabled());
         item.setRemark(request.getRemark());
         item.setUpdatedAt(LocalDateTime.now());
-        persistence.saveDictionaryItem(item);
+        repo.saveDictionaryItem(item);
         audit("update_item", dictType + "/" + code, item.getId());
         return item;
     }
 
     public void requireEnabled(String dictType, String code, String fieldLabel) {
-        DictionaryItem item = db.dictionaryItems().get(db.dictionaryItemKey(dictType, code));
+        DictionaryItem item = repo.findDictionaryItemByTypeAndCode(dictType, code);
         if (item == null || !item.isEnabled()) {
             throw new BusinessException(fieldLabel + "不在可选字典范围内：" + code);
         }
     }
 
     private DictionaryType requireType(String dictType) {
-        DictionaryType type = db.dictionaryTypes().get(dictType);
+        DictionaryType type = repo.findDictionaryTypeByType(dictType);
         if (type == null) {
             throw new BusinessException("字典类型不存在");
         }
@@ -188,14 +177,13 @@ public class DictionaryService {
 
     private void audit(String action, String detail, Long bizId) {
         AuditLog log = new AuditLog();
-        db.fill(log, db.nextId());
+        OmsRepository.fillEntity(log, repo.nextId());
         log.setOperatorId(AuthContext.currentUserIdOr(0L));
         log.setModule("dictionary");
         log.setAction(action);
         log.setBizType("dictionary");
         log.setBizId(bizId);
         log.setDetail(detail);
-        db.auditLogs().add(log);
-        persistence.saveAuditLog(log);
+        repo.saveAuditLog(log);
     }
 }

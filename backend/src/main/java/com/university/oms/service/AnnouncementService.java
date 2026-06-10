@@ -6,8 +6,7 @@ import com.university.oms.dto.AnnouncementRequest;
 import com.university.oms.model.Announcement;
 import com.university.oms.model.Department;
 import com.university.oms.model.User;
-import com.university.oms.repository.DataPersistence;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import com.university.oms.security.AuthContext;
 import org.springframework.stereotype.Service;
 
@@ -18,20 +17,18 @@ import java.util.stream.Collectors;
 
 @Service
 public class AnnouncementService {
-    private final InMemoryDatabase db;
-    private final DataPersistence persistence;
+    private final OmsRepository repo;
     private final WorkflowService workflowService;
 
-    public AnnouncementService(InMemoryDatabase db, DataPersistence persistence, WorkflowService workflowService) {
-        this.db = db;
-        this.persistence = persistence;
+    public AnnouncementService(OmsRepository repo, WorkflowService workflowService) {
+        this.repo = repo;
         this.workflowService = workflowService;
     }
 
     public List<Announcement> list(boolean includeDrafts) {
         User user = AuthContext.requireUser();
         boolean maintainer = canMaintain(user);
-        return db.announcements().values().stream()
+        return repo.findAllAnnouncements().stream()
                 .filter(a -> includeDrafts && maintainer || canRead(user, a))
                 .sorted(announcementOrder())
                 .map(this::withTargetDeptName)
@@ -56,12 +53,11 @@ public class AnnouncementService {
         User user = AuthContext.requireUser();
         requireMaintainer(user);
         Announcement announcement = new Announcement();
-        db.fill(announcement, db.nextId());
+        OmsRepository.fillEntity(announcement, repo.nextId());
         apply(announcement, request);
         announcement.setStatus("draft");
         announcement.setPublisherId(user.getId());
-        db.announcements().put(announcement.getId(), announcement);
-        persistence.saveAnnouncement(announcement);
+        repo.saveAnnouncement(announcement);
         workflowService.audit("announcement", "create", "announcement", announcement.getId(), announcement.getTitle());
         return withTargetDeptName(announcement);
     }
@@ -71,7 +67,7 @@ public class AnnouncementService {
         Announcement announcement = require(id);
         apply(announcement, request);
         announcement.setUpdatedAt(LocalDateTime.now());
-        persistence.saveAnnouncement(announcement);
+        repo.saveAnnouncement(announcement);
         workflowService.audit("announcement", "update", "announcement", announcement.getId(), announcement.getTitle());
         return withTargetDeptName(announcement);
     }
@@ -84,7 +80,7 @@ public class AnnouncementService {
         announcement.setPublisherId(user.getId());
         announcement.setPublishedAt(LocalDateTime.now());
         announcement.setUpdatedAt(LocalDateTime.now());
-        persistence.saveAnnouncement(announcement);
+        repo.saveAnnouncement(announcement);
         workflowService.audit("announcement", "publish", "announcement", announcement.getId(), announcement.getTitle());
         return withTargetDeptName(announcement);
     }
@@ -94,7 +90,7 @@ public class AnnouncementService {
         Announcement announcement = require(id);
         announcement.setStatus("withdrawn");
         announcement.setUpdatedAt(LocalDateTime.now());
-        persistence.saveAnnouncement(announcement);
+        repo.saveAnnouncement(announcement);
         workflowService.audit("announcement", "withdraw", "announcement", announcement.getId(), announcement.getTitle());
         return withTargetDeptName(announcement);
     }
@@ -110,7 +106,7 @@ public class AnnouncementService {
         if ("dept".equals(targetType) && request.getTargetDeptId() == null) {
             throw new BusinessException("部门公告必须选择发布部门");
         }
-        if ("dept".equals(targetType) && !db.departments().containsKey(request.getTargetDeptId())) {
+        if ("dept".equals(targetType) && repo.findDepartmentById(request.getTargetDeptId()) == null) {
             throw new BusinessException("发布部门不存在");
         }
         announcement.setTargetType(targetType);
@@ -127,12 +123,12 @@ public class AnnouncementService {
     }
 
     private String resolveDeptName(Long deptId) {
-        Department dept = deptId == null ? null : db.departments().get(deptId);
+        Department dept = deptId == null ? null : repo.findDepartmentById(deptId);
         return dept == null ? null : dept.getDeptName();
     }
 
     private Announcement require(Long id) {
-        Announcement announcement = db.announcements().get(id);
+        Announcement announcement = repo.findAnnouncementById(id);
         if (announcement == null) {
             throw new BusinessException("公告不存在");
         }

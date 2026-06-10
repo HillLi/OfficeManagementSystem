@@ -1,8 +1,11 @@
 package com.university.oms.security;
 
 import com.university.oms.model.User;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
 
@@ -10,14 +13,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+@SpringBootTest
+@ActiveProfiles("test")
 class AuthTokenServiceTest {
+    @Autowired
+    private AuthTokenService service;
+
+    @Autowired
+    private OmsRepository repo;
+
     @Test
     void cleanupExpiredTokensRemovesExpiredRecords() {
-        InMemoryDatabase db = new InMemoryDatabase(new PasswordService());
-        User user = new User();
-        db.fill(user, 99L);
-        db.users().put(user.getId(), user);
-        AuthTokenService service = new AuthTokenService(db);
+        User user = repo.findUserById(99L);
+        // Use user id 2 from test data if 99 is not present
+        if (user == null) {
+            user = repo.findUserById(2L);
+        }
         String token = service.issue(user);
 
         assertNotNull(service.resolve(token));

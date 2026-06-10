@@ -2,13 +2,14 @@ package com.university.oms;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import com.university.oms.security.PasswordService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -18,6 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 class SecurityIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
@@ -26,7 +28,7 @@ class SecurityIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private InMemoryDatabase db;
+    private OmsRepository repo;
 
     @Autowired
     private PasswordService passwordService;
@@ -49,7 +51,7 @@ class SecurityIntegrationTest {
     @Test
     void seededUsersStoreHashedPasswords() {
         for (long id = 1L; id <= 8L; id++) {
-            String password = db.users().get(id).getPassword();
+            String password = repo.findUserById(id).getPassword();
             assertFalse("123456".equals(password));
             assertFalse(passwordService.needsUpgrade(password));
         }

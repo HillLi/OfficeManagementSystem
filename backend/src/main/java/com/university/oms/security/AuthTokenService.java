@@ -1,7 +1,7 @@
 package com.university.oms.security;
 
 import com.university.oms.model.User;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -15,10 +15,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AuthTokenService {
     private final Map<String, TokenRecord> tokens = new ConcurrentHashMap<String, TokenRecord>();
     private final SecureRandom random = new SecureRandom();
-    private final InMemoryDatabase db;
+    private final OmsRepository repo;
 
-    public AuthTokenService(InMemoryDatabase db) {
-        this.db = db;
+    public AuthTokenService(OmsRepository repo) {
+        this.repo = repo;
     }
 
     public String issue(User user) {
@@ -41,7 +41,7 @@ public class AuthTokenService {
             tokens.remove(token);
             return null;
         }
-        return db.users().get(record.userId);
+        return repo.findUserById(record.userId);
     }
 
     public void revoke(String token) {

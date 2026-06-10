@@ -6,8 +6,7 @@ import com.university.oms.dto.AttachmentDeleteRequest;
 import com.university.oms.dto.AttachmentRequest;
 import com.university.oms.dto.AttachmentUpdateRequest;
 import com.university.oms.model.*;
-import com.university.oms.repository.DataPersistence;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import com.university.oms.security.AuthContext;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -20,18 +19,16 @@ import java.util.stream.Collectors;
 
 @Service
 public class WorkflowService {
-    private final InMemoryDatabase db;
-    private final DataPersistence persistence;
+    private final OmsRepository repo;
     private final ApprovalFlowConfig flowConfig;
     private final BusinessAccessService accessService;
     private final AttachmentStorageService storageService;
     private final DictionaryService dictionaryService;
 
-    public WorkflowService(InMemoryDatabase db, DataPersistence persistence, ApprovalFlowConfig flowConfig,
+    public WorkflowService(OmsRepository repo, ApprovalFlowConfig flowConfig,
                            BusinessAccessService accessService, AttachmentStorageService storageService,
                            DictionaryService dictionaryService) {
-        this.db = db;
-        this.persistence = persistence;
+        this.repo = repo;
         this.flowConfig = flowConfig;
         this.accessService = accessService;
         this.storageService = storageService;
@@ -46,15 +43,14 @@ public class WorkflowService {
         accessService.requireBusinessRead(request.getBizType(), request.getBizId());
         dictionaryService.requireEnabled("secrecy_level", request.getSecrecyLevel(), "材料密级");
         Attachment attachment = new Attachment();
-        db.fill(attachment, db.nextId());
+        OmsRepository.fillEntity(attachment, repo.nextId());
         attachment.setBizType(request.getBizType());
         attachment.setBizId(request.getBizId());
         attachment.setFileName(request.getFileName());
         attachment.setFileUrl(request.getFileUrl());
         attachment.setSecrecyLevel(request.getSecrecyLevel());
         attachment.setUploaderId(user.getId());
-        db.attachments().add(attachment);
-        persistence.saveAttachment(attachment);
+        repo.saveAttachment(attachment);
         audit(request.getBizType(), "upload_attachment", request.getBizType(), request.getBizId(), request.getFileName());
         return attachment;
     }
@@ -70,7 +66,7 @@ public class WorkflowService {
         if (includeDeleted) {
             accessService.requireViewDeletedAttachments();
         }
-        return db.attachments().stream()
+        return repo.findAllAttachments().stream()
                 .filter(a -> bizType == null || a.getBizType().equals(bizType))
                 .filter(a -> bizId == null || a.getBizId().equals(bizId))
                 .filter(a -> includeDeleted || !a.isDeleted())
@@ -84,7 +80,7 @@ public class WorkflowService {
         String resolvedSecrecyLevel = secrecyLevel == null || secrecyLevel.trim().isEmpty() ? "内部" : secrecyLevel;
         dictionaryService.requireEnabled("secrecy_level", resolvedSecrecyLevel, "材料密级");
         Attachment attachment = new Attachment();
-        db.fill(attachment, db.nextId());
+        OmsRepository.fillEntity(attachment, repo.nextId());
         attachment.setBizType(bizType);
         attachment.setBizId(bizId);
         attachment.setOriginalName(file.getOriginalFilename());
@@ -95,19 +91,17 @@ public class WorkflowService {
         attachment.setUploaderId(user.getId());
         attachment.setStoragePath(storageService.store(attachment.getId(), file));
         attachment.setFileUrl("/api/workflow/attachments/" + attachment.getId() + "/download");
-        db.attachments().add(attachment);
-        persistence.saveAttachment(attachment);
+        repo.saveAttachment(attachment);
         audit(bizType, "upload_attachment", bizType, bizId, attachment.getFileName());
         return attachment;
     }
 
     public Attachment attachment(Long id) {
-        for (Attachment attachment : db.attachments()) {
-            if (attachment.getId().equals(id)) {
-                return attachment;
-            }
+        Attachment attachment = repo.findAttachmentById(id);
+        if (attachment == null) {
+            throw new BusinessException("材料不存在");
         }
-        throw new BusinessException("材料不存在");
+        return attachment;
     }
 
     public Resource downloadAttachment(Long id) {
@@ -128,7 +122,7 @@ public class WorkflowService {
         attachment.setFileName(request.getFileName());
         attachment.setSecrecyLevel(request.getSecrecyLevel());
         attachment.setUpdatedAt(LocalDateTime.now());
-        persistence.saveAttachment(attachment);
+        repo.saveAttachment(attachment);
         audit(attachment.getBizType(), "update_attachment", attachment.getBizType(), attachment.getBizId(),
                 attachment.getFileName());
         return attachment;
@@ -142,7 +136,7 @@ public class WorkflowService {
         attachment.setDeletedAt(LocalDateTime.now());
         attachment.setDeleteReason(request.getReason());
         attachment.setUpdatedAt(LocalDateTime.now());
-        persistence.saveAttachment(attachment);
+        repo.saveAttachment(attachment);
         audit(attachment.getBizType(), "delete_attachment", attachment.getBizType(), attachment.getBizId(),
                 request.getReason());
         return attachment;
@@ -159,56 +153,53 @@ public class WorkflowService {
     public AuditLog audit(String module, String action, String bizType, Long bizId, String detail) {
         Long operatorId = AuthContext.currentUserIdOr(0L);
         AuditLog log = new AuditLog();
-        db.fill(log, db.nextId());
+        OmsRepository.fillEntity(log, repo.nextId());
         log.setOperatorId(operatorId);
         log.setModule(module);
         log.setAction(action);
         log.setBizType(bizType);
         log.setBizId(bizId);
         log.setDetail(detail);
-        db.auditLogs().add(log);
-        persistence.saveAuditLog(log);
+        repo.saveAuditLog(log);
         return log;
     }
 
     public List<AuditLog> auditLogs(String bizType, Long bizId) {
-        return db.auditLogs().stream()
+        return repo.findAllAuditLogs().stream()
                 .filter(l -> bizType == null || bizType.equals(l.getBizType()))
                 .filter(l -> bizId == null || bizId.equals(l.getBizId()))
                 .collect(Collectors.toList());
     }
 
     public Notification notifyUser(Long receiverId, String title, String content, String bizType, Long bizId) {
-        if (receiverId == null || !db.users().containsKey(receiverId)) {
+        if (receiverId == null || repo.findUserById(receiverId) == null) {
             return null;
         }
         Notification notification = new Notification();
-        db.fill(notification, db.nextId());
+        OmsRepository.fillEntity(notification, repo.nextId());
         notification.setReceiverId(receiverId);
         notification.setTitle(title);
         notification.setContent(content);
         notification.setBizType(bizType);
         notification.setBizId(bizId);
-        db.notifications().add(notification);
-        persistence.saveNotification(notification);
+        repo.saveNotification(notification);
         return notification;
     }
 
     public List<Notification> notifications(boolean unreadOnly) {
         User user = AuthContext.requireUser();
-        return db.notifications().stream()
-                .filter(n -> user.getId().equals(n.getReceiverId()))
+        return repo.findNotificationsByReceiverId(user.getId()).stream()
                 .filter(n -> !unreadOnly || !n.isReadStatus())
                 .collect(Collectors.toList());
     }
 
     public Notification markRead(Long id) {
         User user = AuthContext.requireUser();
-        for (Notification notification : db.notifications()) {
+        for (Notification notification : repo.findAllNotifications()) {
             if (notification.getId().equals(id) && notification.getReceiverId().equals(user.getId())) {
                 notification.setReadStatus(true);
                 notification.setUpdatedAt(LocalDateTime.now());
-                persistence.saveNotification(notification);
+                repo.saveNotification(notification);
                 return notification;
             }
         }
@@ -216,19 +207,18 @@ public class WorkflowService {
     }
 
     public FlowInstance startFlow(String bizType, Long bizId, String initialStatus, Long starterId) {
-        FlowInstance instance = db.flowInstances().get(key(bizType, bizId));
+        FlowInstance instance = repo.findFlowInstanceByBizTypeAndBizId(bizType, bizId);
         if (instance == null) {
             instance = new FlowInstance();
-            db.fill(instance, db.nextId());
+            OmsRepository.fillEntity(instance, repo.nextId());
             instance.setBizType(bizType);
             instance.setBizId(bizId);
             instance.setStarterId(starterId);
-            db.flowInstances().put(key(bizType, bizId), instance);
         }
         instance.setCurrentNodeKey(initialStatus);
         instance.setStatus("running");
         instance.setUpdatedAt(LocalDateTime.now());
-        persistence.saveFlowInstance(instance);
+        repo.saveFlowInstance(instance);
         createPendingTask(instance, initialStatus);
         audit(bizType, "start_flow", bizType, bizId, "流程进入" + initialStatus);
         notifyNextApprovers(bizType, bizId, initialStatus);
@@ -236,7 +226,7 @@ public class WorkflowService {
     }
 
     public void advanceFlow(String bizType, Long bizId, String oldStatus, String newStatus, Long applicantId) {
-        FlowInstance instance = db.flowInstances().get(key(bizType, bizId));
+        FlowInstance instance = repo.findFlowInstanceByBizTypeAndBizId(bizType, bizId);
         if (instance == null) {
             instance = startFlow(bizType, bizId, oldStatus, applicantId);
         }
@@ -244,7 +234,7 @@ public class WorkflowService {
         instance.setCurrentNodeKey(newStatus);
         instance.setStatus(terminal(newStatus) ? newStatus : "running");
         instance.setUpdatedAt(LocalDateTime.now());
-        persistence.saveFlowInstance(instance);
+        repo.saveFlowInstance(instance);
         if (newStatus != null && newStatus.startsWith("pending_")) {
             createPendingTask(instance, newStatus);
             notifyNextApprovers(bizType, bizId, newStatus);
@@ -256,21 +246,21 @@ public class WorkflowService {
 
     public List<FlowInstance> flowInstances() {
         User user = AuthContext.requireUser();
-        return db.flowInstances().values().stream()
+        return repo.findAllFlowInstances().stream()
                 .filter(i -> canViewInstance(user, i))
                 .collect(Collectors.toList());
     }
 
     public List<FlowTask> tasks(boolean onlyMine) {
         User user = AuthContext.requireUser();
-        return db.flowTasks().stream()
+        return repo.findAllFlowTasks().stream()
                 .filter(t -> !"pending".equals(t.getStatus()) || canHandle(user, t))
                 .filter(t -> !onlyMine || "pending".equals(t.getStatus()))
                 .collect(Collectors.toList());
     }
 
     private void createPendingTask(FlowInstance instance, String nodeKey) {
-        for (FlowTask existing : db.flowTasks()) {
+        for (FlowTask existing : repo.findAllFlowTasks()) {
             if (existing.getInstanceId().equals(instance.getId()) && nodeKey.equals(existing.getNodeKey())
                     && "pending".equals(existing.getStatus())) {
                 return;
@@ -278,7 +268,7 @@ public class WorkflowService {
         }
         String role = flowConfig.getRequiredRole(nodeKey);
         FlowTask task = new FlowTask();
-        db.fill(task, db.nextId());
+        OmsRepository.fillEntity(task, repo.nextId());
         task.setInstanceId(instance.getId());
         task.setBizType(instance.getBizType());
         task.setBizId(instance.getBizId());
@@ -286,17 +276,16 @@ public class WorkflowService {
         task.setApproverRole(role);
         task.setStatus("pending");
         task.setDueTime(LocalDateTime.now().plusDays(3));
-        db.flowTasks().add(task);
-        persistence.saveFlowTask(task);
+        repo.saveFlowTask(task);
     }
 
     private void closeOpenTasks(Long instanceId, String status) {
-        for (FlowTask task : db.flowTasks()) {
+        for (FlowTask task : repo.findAllFlowTasks()) {
             if (task.getInstanceId().equals(instanceId) && "pending".equals(task.getStatus())) {
                 task.setStatus(status);
                 task.setApproverId(AuthContext.currentUserIdOr(null));
                 task.setUpdatedAt(LocalDateTime.now());
-                persistence.saveFlowTask(task);
+                repo.saveFlowTask(task);
             }
         }
     }
@@ -306,7 +295,7 @@ public class WorkflowService {
         if (role == null) {
             return;
         }
-        for (User user : db.users().values()) {
+        for (User user : repo.findAllUsers()) {
             if (accessService.canHandleApproval(user, bizType, bizId, nodeKey, role)) {
                 notifyUser(user.getId(), "新的待办审批", bizType + "#" + bizId + " 等待您处理：" + nodeKey, bizType, bizId);
             }
@@ -328,7 +317,7 @@ public class WorkflowService {
         if (user.getId().equals(instance.getStarterId())) {
             return true;
         }
-        for (FlowTask task : db.flowTasks()) {
+        for (FlowTask task : repo.findAllFlowTasks()) {
             if (task.getInstanceId().equals(instance.getId()) && canHandle(user, task)) {
                 return true;
             }
@@ -341,7 +330,4 @@ public class WorkflowService {
                 || "returned".equals(status) || "completed".equals(status);
     }
 
-    private String key(String bizType, Long bizId) {
-        return bizType + ":" + bizId;
-    }
 }

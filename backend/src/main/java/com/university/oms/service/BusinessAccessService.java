@@ -8,16 +8,16 @@ import com.university.oms.model.Report;
 import com.university.oms.model.SealApplication;
 import com.university.oms.model.Travel;
 import com.university.oms.model.User;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import com.university.oms.security.AuthContext;
 import org.springframework.stereotype.Service;
 
 @Service
 public class BusinessAccessService {
-    private final InMemoryDatabase db;
+    private final OmsRepository repo;
 
-    public BusinessAccessService(InMemoryDatabase db) {
-        this.db = db;
+    public BusinessAccessService(OmsRepository repo) {
+        this.repo = repo;
     }
 
     public void requireDocumentSubmit(Document document) {
@@ -147,28 +147,28 @@ public class BusinessAccessService {
             return true;
         }
         if ("document".equals(bizType)) {
-            Document document = db.documents().get(bizId);
+            Document document = repo.findDocumentById(bizId);
             return document != null && canReadForApplicant(user, document.getApplicantId(), document.getDeptId(),
                     hasRole(user, "office_admin") || hasRole(user, "school_leader"))
                     || isDocumentReceiver(user, bizId);
         }
         if ("meeting".equals(bizType)) {
-            Meeting meeting = db.meetings().get(bizId);
+            Meeting meeting = repo.findMeetingById(bizId);
             return meeting != null && canReadForApplicant(user, meeting.getOrganizerId(), departmentOf(meeting.getOrganizerId()),
                     hasRole(user, "office_admin") || hasRole(user, "school_leader") || hasRole(user, "security_staff"));
         }
         if ("seal".equals(bizType)) {
-            SealApplication application = db.sealApplications().get(bizId);
+            SealApplication application = repo.findSealApplicationById(bizId);
             return application != null && canReadForApplicant(user, application.getApplicantId(), departmentOf(application.getApplicantId()),
                     hasRole(user, "office_admin") || hasRole(user, "seal_keeper"));
         }
         if ("travel".equals(bizType)) {
-            Travel travel = db.travels().get(bizId);
+            Travel travel = repo.findTravelById(bizId);
             return travel != null && canReadForApplicant(user, travel.getApplicantId(), departmentOf(travel.getApplicantId()),
                     hasRole(user, "finance_staff") || hasRole(user, "school_leader"));
         }
         if ("report".equals(bizType)) {
-            Report report = db.reports().get(bizId);
+            Report report = repo.findReportById(bizId);
             return report != null && canReadForApplicant(user, report.getApplicantId(), report.getDeptId(),
                     hasRole(user, "office_admin") || hasRole(user, "school_leader"));
         }
@@ -200,36 +200,36 @@ public class BusinessAccessService {
 
     private Long businessDepartment(String bizType, Long bizId) {
         if ("document".equals(bizType)) {
-            Document document = db.documents().get(bizId);
+            Document document = repo.findDocumentById(bizId);
             return document == null ? null : document.getDeptId();
         }
         if ("meeting".equals(bizType)) {
-            Meeting meeting = db.meetings().get(bizId);
+            Meeting meeting = repo.findMeetingById(bizId);
             return meeting == null ? null : departmentOf(meeting.getOrganizerId());
         }
         if ("seal".equals(bizType)) {
-            SealApplication application = db.sealApplications().get(bizId);
+            SealApplication application = repo.findSealApplicationById(bizId);
             return application == null ? null : departmentOf(application.getApplicantId());
         }
         if ("travel".equals(bizType)) {
-            Travel travel = db.travels().get(bizId);
+            Travel travel = repo.findTravelById(bizId);
             return travel == null ? null : departmentOf(travel.getApplicantId());
         }
         if ("report".equals(bizType)) {
-            Report report = db.reports().get(bizId);
+            Report report = repo.findReportById(bizId);
             return report == null ? null : report.getDeptId();
         }
         return null;
     }
 
     private Long departmentOf(Long userId) {
-        User user = db.users().get(userId);
+        User user = repo.findUserById(userId);
         return user == null ? null : user.getDeptId();
     }
 
     private boolean isDocumentReceiver(User user, Long documentId) {
-        for (DocumentDistribution distribution : db.documentDistributions().values()) {
-            if (documentId.equals(distribution.getDocumentId()) && user.getId().equals(distribution.getReceiverId())) {
+        for (DocumentDistribution distribution : repo.findDocumentDistributionsByDocumentId(documentId)) {
+            if (user.getId().equals(distribution.getReceiverId())) {
                 return true;
             }
         }
@@ -244,7 +244,7 @@ public class BusinessAccessService {
     }
 
     private SealApplication requireSealApplication(Long bizId) {
-        SealApplication application = db.sealApplications().get(bizId);
+        SealApplication application = repo.findSealApplicationById(bizId);
         if (application == null) {
             deny("用印申请不存在");
         }

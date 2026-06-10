@@ -2,26 +2,27 @@ package com.university.oms.design;
 
 import com.university.oms.model.Department;
 import com.university.oms.model.User;
-import com.university.oms.repository.InMemoryDatabase;
-import org.junit.jupiter.api.BeforeEach;
+import com.university.oms.repository.OmsRepository;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@SpringBootTest
+@ActiveProfiles("test")
 class CompositePatternTest {
-    private InMemoryDatabase db;
+    @Autowired
+    private DeptTreeBuilder builder;
 
-    @BeforeEach
-    void setUp() {
-        db = new InMemoryDatabase();
-        db.init();
-    }
+    @Autowired
+    private OmsRepository repo;
 
     @Test
     void treeBuildFromDepartments() {
-        DeptTreeBuilder builder = new DeptTreeBuilder(db);
         DeptTreeNode root = builder.buildTree();
 
         assertNotNull(root);
@@ -30,16 +31,15 @@ class CompositePatternTest {
 
     @Test
     void countAllUsersInTree() {
-        DeptTreeBuilder builder = new DeptTreeBuilder(db);
         DeptTreeNode root = builder.buildTree();
+        List<User> allUsers = repo.findAllUsers();
 
-        int total = root.countAllUsers(db);
+        int total = root.countAllUsers(allUsers);
         assertEquals(8, total, "应统计所有8个用户");
     }
 
     @Test
     void flattenReturnsAllDepartments() {
-        DeptTreeBuilder builder = new DeptTreeBuilder(db);
         DeptTreeNode root = builder.buildTree();
 
         List<Department> all = root.flatten();

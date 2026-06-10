@@ -9,8 +9,7 @@ import com.university.oms.model.AiReviewResult;
 import com.university.oms.model.Document;
 import com.university.oms.model.DocumentDistribution;
 import com.university.oms.model.User;
-import com.university.oms.repository.DataPersistence;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import com.university.oms.security.AuthContext;
 import org.springframework.stereotype.Service;
 
@@ -21,26 +20,24 @@ import java.util.List;
 
 @Service
 public class DocumentService {
-    private final InMemoryDatabase db;
+    private final OmsRepository repo;
     private final ApprovalService approvalService;
     private final AiProviderAdapter aiProvider;
     private final List<DocumentReviewStrategy> strategies;
-    private final DataPersistence persistence;
     private final DocumentFactory factory = new DocumentFactory();
     private final DocumentProcessor processor;
     private final WorkflowService workflowService;
     private final BusinessAccessService accessService;
     private final DictionaryService dictionaryService;
 
-    public DocumentService(InMemoryDatabase db, ApprovalService approvalService,
+    public DocumentService(OmsRepository repo, ApprovalService approvalService,
                            AiProviderAdapter aiProvider, List<DocumentReviewStrategy> strategies,
-                           DataPersistence persistence, DocumentProcessor processor, WorkflowService workflowService,
+                           DocumentProcessor processor, WorkflowService workflowService,
                            BusinessAccessService accessService, DictionaryService dictionaryService) {
-        this.db = db;
+        this.repo = repo;
         this.approvalService = approvalService;
         this.aiProvider = aiProvider;
         this.strategies = strategies;
-        this.persistence = persistence;
         this.processor = processor;
         this.workflowService = workflowService;
         this.accessService = accessService;
@@ -49,7 +46,7 @@ public class DocumentService {
 
     public List<Document> list() {
         User user = AuthContext.currentUser();
-        List<Document> documents = new ArrayList<Document>(db.documents().values());
+        List<Document> documents = repo.findAllDocuments();
         if (user == null || canViewAll(user)) {
             return documents;
         }
@@ -66,14 +63,13 @@ public class DocumentService {
         dictionaryService.requireEnabled("document_type", request.getDocType(), "公文文种");
         dictionaryService.requireEnabled("secrecy_level", request.getSecrecyLevel(), "密级");
         Long applicantId = AuthContext.currentUserIdOr(request.getApplicantId());
-        User applicant = db.users().get(applicantId);
+        User applicant = repo.findUserById(applicantId);
         if (applicant == null) {
             throw new BusinessException("用户不存在");
         }
-        Document document = factory.create(db.nextId(), request, applicant);
-        db.fill(document, document.getId());
-        db.documents().put(document.getId(), document);
-        persistence.saveDocument(document);
+        Document document = factory.create(repo.nextId(), request, applicant);
+        OmsRepository.fillEntity(document, document.getId());
+        repo.saveDocument(document);
         approvalService.record("document", document.getId(), applicant.getId(), "create", "起草公文");
         workflowService.audit("document", "create", "document", document.getId(), document.getTitle());
         return document;
@@ -87,7 +83,7 @@ public class DocumentService {
         }
         document.setStatus("pending_dept");
         document.setUpdatedAt(LocalDateTime.now());
-        persistence.saveDocument(document);
+        repo.saveDocument(document);
         approvalService.record("document", id, document.getApplicantId(), "submit", "提交审批");
         workflowService.startFlow("document", id, document.getStatus(), document.getApplicantId());
         return document;
@@ -101,7 +97,7 @@ public class DocumentService {
         }
         document.setStatus("archived");
         document.setUpdatedAt(LocalDateTime.now());
-        persistence.saveDocument(document);
+        repo.saveDocument(document);
         approvalService.record("document", id, AuthContext.currentUserIdOr(document.getApplicantId()), "archive", "公文归档");
         workflowService.advanceFlow("document", id, "approved", "archived", document.getApplicantId());
         return document;
@@ -112,7 +108,7 @@ public class DocumentService {
         AiReviewResult result = processor.process(document);
         document.setAiReviewResult(result);
         document.setUpdatedAt(LocalDateTime.now());
-        persistence.saveDocument(document);
+        repo.saveDocument(document);
         workflowService.audit("document", "ai_review", "document", id,
                 "密级：" + document.getSecrecyLevel() + "，结果：" + (result.isPassed() ? "通过" : "阻断或待修正"));
         return result;
@@ -124,22 +120,21 @@ public class DocumentService {
         if (!"approved".equals(document.getStatus()) && !"archived".equals(document.getStatus())) {
             throw new BusinessException("只有审批通过或已归档的公文可以分发");
         }
-        User receiver = db.users().get(request.getReceiverId());
+        User receiver = repo.findUserById(request.getReceiverId());
         if (receiver == null || !request.getReceiverDeptId().equals(receiver.getDeptId())) {
             throw new BusinessException("接收人或接收部门无效");
         }
         DocumentDistribution distribution = new DocumentDistribution();
-        db.fill(distribution, db.nextId());
+        OmsRepository.fillEntity(distribution, repo.nextId());
         distribution.setDocumentId(id);
         distribution.setReceiverId(request.getReceiverId());
         distribution.setReceiverDeptId(request.getReceiverDeptId());
         distribution.setStatus("distributed");
         distribution.setDistributedAt(LocalDateTime.now());
-        db.documentDistributions().put(distribution.getId(), distribution);
         document.setDistributionStatus("distributed");
         document.setUpdatedAt(LocalDateTime.now());
-        persistence.saveDocumentDistribution(distribution);
-        persistence.saveDocument(document);
+        repo.saveDocumentDistribution(distribution);
+        repo.saveDocument(document);
         workflowService.notifyUser(distribution.getReceiverId(), "公文待签收",
                 document.getTitle() + " 已分发，请及时签收", "document", id);
         workflowService.audit("document", "distribute", "document", id, "分发至用户#" + distribution.getReceiverId());
@@ -149,12 +144,7 @@ public class DocumentService {
     public List<DocumentDistribution> distributions(Long id) {
         find(id);
         accessService.requireBusinessRead("document", id);
-        List<DocumentDistribution> rows = new ArrayList<DocumentDistribution>();
-        for (DocumentDistribution distribution : db.documentDistributions().values()) {
-            if (id.equals(distribution.getDocumentId())) {
-                rows.add(distribution);
-            }
-        }
+        List<DocumentDistribution> rows = new ArrayList<DocumentDistribution>(repo.findDocumentDistributionsByDocumentId(id));
         rows.sort(Comparator.comparing(DocumentDistribution::getCreatedAt));
         return rows;
     }
@@ -168,8 +158,8 @@ public class DocumentService {
         distribution.setUpdatedAt(LocalDateTime.now());
         document.setDistributionStatus(allReceived(id) ? "received" : "partially_received");
         document.setUpdatedAt(LocalDateTime.now());
-        persistence.saveDocumentDistribution(distribution);
-        persistence.saveDocument(document);
+        repo.saveDocumentDistribution(distribution);
+        repo.saveDocument(document);
         workflowService.audit("document", "receipt", "document", id, "签收记录#" + distributionId);
         return distribution;
     }
@@ -183,7 +173,7 @@ public class DocumentService {
         }
         distribution.setRemindedAt(LocalDateTime.now());
         distribution.setUpdatedAt(LocalDateTime.now());
-        persistence.saveDocumentDistribution(distribution);
+        repo.saveDocumentDistribution(distribution);
         workflowService.notifyUser(distribution.getReceiverId(), "公文签收催办",
                 document.getTitle() + " 尚未签收，请及时办理", "document", id);
         workflowService.audit("document", "remind_receipt", "document", id, "催办记录#" + distributionId);
@@ -195,7 +185,7 @@ public class DocumentService {
     }
 
     private Document find(Long id) {
-        Document document = db.documents().get(id);
+        Document document = repo.findDocumentById(id);
         if (document == null) {
             throw new BusinessException("公文不存在");
         }
@@ -203,7 +193,7 @@ public class DocumentService {
     }
 
     private DocumentDistribution findDistribution(Long documentId, Long distributionId) {
-        DocumentDistribution distribution = db.documentDistributions().get(distributionId);
+        DocumentDistribution distribution = repo.findDocumentDistributionById(distributionId);
         if (distribution == null || !documentId.equals(distribution.getDocumentId())) {
             throw new BusinessException("公文分发记录不存在");
         }
@@ -212,12 +202,10 @@ public class DocumentService {
 
     private boolean allReceived(Long documentId) {
         boolean found = false;
-        for (DocumentDistribution distribution : db.documentDistributions().values()) {
-            if (documentId.equals(distribution.getDocumentId())) {
-                found = true;
-                if (!"received".equals(distribution.getStatus())) {
-                    return false;
-                }
+        for (DocumentDistribution distribution : repo.findDocumentDistributionsByDocumentId(documentId)) {
+            found = true;
+            if (!"received".equals(distribution.getStatus())) {
+                return false;
             }
         }
         return found;

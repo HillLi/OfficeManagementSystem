@@ -5,8 +5,7 @@ import com.university.oms.dto.ReportRequest;
 import com.university.oms.dto.ReportReplyRequest;
 import com.university.oms.model.Report;
 import com.university.oms.model.User;
-import com.university.oms.repository.DataPersistence;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import com.university.oms.security.AuthContext;
 import org.springframework.stereotype.Service;
 
@@ -15,19 +14,17 @@ import java.util.List;
 
 @Service
 public class ReportService {
-    private final InMemoryDatabase db;
+    private final OmsRepository repo;
     private final ApprovalService approvalService;
-    private final DataPersistence persistence;
     private final WorkflowService workflowService;
     private final BusinessAccessService accessService;
     private final DictionaryService dictionaryService;
 
-    public ReportService(InMemoryDatabase db, ApprovalService approvalService, DataPersistence persistence,
+    public ReportService(OmsRepository repo, ApprovalService approvalService,
                          WorkflowService workflowService, BusinessAccessService accessService,
                          DictionaryService dictionaryService) {
-        this.db = db;
+        this.repo = repo;
         this.approvalService = approvalService;
-        this.persistence = persistence;
         this.workflowService = workflowService;
         this.accessService = accessService;
         this.dictionaryService = dictionaryService;
@@ -35,7 +32,7 @@ public class ReportService {
 
     public List<Report> list() {
         User user = AuthContext.currentUser();
-        List<Report> reports = new ArrayList<Report>(db.reports().values());
+        List<Report> reports = repo.findAllReports();
         if (user == null || user.getRoleKeys().contains("admin") || user.getRoleKeys().contains("office_admin")
                 || user.getRoleKeys().contains("school_leader")) {
             return reports;
@@ -54,12 +51,12 @@ public class ReportService {
         dictionaryService.requireEnabled("report_type", request.getType(), "请示报告类型");
         dictionaryService.requireEnabled("secrecy_level", request.getSecrecyLevel(), "密级");
         Long applicantId = AuthContext.currentUserIdOr(request.getApplicantId());
-        User applicant = db.users().get(applicantId);
+        User applicant = repo.findUserById(applicantId);
         if (applicant == null) {
             throw new BusinessException("用户不存在");
         }
         Report report = new Report();
-        db.fill(report, db.nextId());
+        OmsRepository.fillEntity(report, repo.nextId());
         report.setTitle(request.getTitle());
         report.setType(request.getType());
         report.setSecrecyLevel(request.getSecrecyLevel());
@@ -67,15 +64,14 @@ public class ReportService {
         report.setApplicantId(applicantId);
         report.setDeptId(applicant.getDeptId());
         report.setStatus("pending_secret_review");
-        db.reports().put(report.getId(), report);
-        persistence.saveReport(report);
+        repo.saveReport(report);
         approvalService.record("report", report.getId(), applicantId, "submit", "提交请示报告");
         workflowService.startFlow("report", report.getId(), report.getStatus(), applicantId);
         return report;
     }
 
     public Report reply(Long id, ReportReplyRequest request) {
-        Report report = db.reports().get(id);
+        Report report = repo.findReportById(id);
         if (report == null) {
             throw new BusinessException("请示报告不存在");
         }
@@ -86,7 +82,7 @@ public class ReportService {
         report.setReply(request.getReply());
         report.setStatus("archived");
         report.setUpdatedAt(java.time.LocalDateTime.now());
-        persistence.saveReport(report);
+        repo.saveReport(report);
         approvalService.record("report", id, AuthContext.currentUserIdOr(report.getApplicantId()), "reply", "批复归档");
         workflowService.advanceFlow("report", id, "approved", "archived", report.getApplicantId());
         return report;

@@ -6,8 +6,7 @@ import com.university.oms.dto.LoginResult;
 import com.university.oms.dto.UserOption;
 import com.university.oms.model.Department;
 import com.university.oms.model.User;
-import com.university.oms.repository.DataPersistence;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import com.university.oms.security.AuthTokenService;
 import com.university.oms.security.PasswordService;
 import org.springframework.stereotype.Service;
@@ -22,29 +21,26 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AuthService {
     private static final int MAX_FAILURES = 5;
     private static final long LOCK_MINUTES = 10;
-    private final InMemoryDatabase db;
+    private final OmsRepository repo;
     private final AuthTokenService tokenService;
     private final PasswordService passwordService;
-    private final DataPersistence persistence;
     private final Map<String, LoginFailure> loginFailures = new ConcurrentHashMap<String, LoginFailure>();
 
-    public AuthService(InMemoryDatabase db, AuthTokenService tokenService, PasswordService passwordService,
-                       DataPersistence persistence) {
-        this.db = db;
+    public AuthService(OmsRepository repo, AuthTokenService tokenService, PasswordService passwordService) {
+        this.repo = repo;
         this.tokenService = tokenService;
         this.passwordService = passwordService;
-        this.persistence = persistence;
     }
 
     public LoginResult login(LoginRequest request) {
         String username = request.getUsername() == null ? "" : request.getUsername().trim().toLowerCase();
         assertLoginAllowed(username);
-        for (User user : db.users().values()) {
+        for (User user : repo.findAllUsers()) {
             if (user.getUsername().equals(request.getUsername()) && passwordService.matches(request.getPassword(), user.getPassword())) {
                 loginFailures.remove(username);
                 if (passwordService.needsUpgrade(user.getPassword())) {
                     user.setPassword(passwordService.hash(request.getPassword()));
-                    persistence.saveUser(user);
+                    repo.saveUser(user);
                 }
                 return new LoginResult(tokenService.issue(user), user);
             }
@@ -54,19 +50,19 @@ public class AuthService {
     }
 
     public List<User> users() {
-        return new ArrayList<User>(db.users().values());
+        return repo.findAllUsers();
     }
 
     public List<UserOption> userOptions() {
         List<UserOption> options = new ArrayList<UserOption>();
-        for (User user : db.users().values()) {
+        for (User user : repo.findAllUsers()) {
             options.add(new UserOption(user.getId(), user.getRealName(), user.getDeptId(), user.getDeptName()));
         }
         return options;
     }
 
     public List<Department> deptOptions() {
-        return new ArrayList<Department>(db.departments().values());
+        return repo.findAllDepartments();
     }
 
     public void logout(String authorization) {

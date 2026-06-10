@@ -3,7 +3,7 @@ package com.university.oms.service;
 import com.university.oms.common.BusinessException;
 import com.university.oms.dto.WorkflowGuideResponse;
 import com.university.oms.model.*;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -11,11 +11,11 @@ import java.util.List;
 
 @Service
 public class WorkflowGuideService {
-    private final InMemoryDatabase db;
+    private final OmsRepository repo;
     private final BusinessAccessService accessService;
 
-    public WorkflowGuideService(InMemoryDatabase db, BusinessAccessService accessService) {
-        this.db = db;
+    public WorkflowGuideService(OmsRepository repo, BusinessAccessService accessService) {
+        this.repo = repo;
         this.accessService = accessService;
     }
 
@@ -42,7 +42,7 @@ public class WorkflowGuideService {
     // --- Document guide ---
 
     private WorkflowGuideResponse documentGuide(Long id) {
-        Document document = db.documents().get(id);
+        Document document = repo.findDocumentById(id);
         if (document == null) {
             throw new BusinessException("公文不存在");
         }
@@ -69,7 +69,7 @@ public class WorkflowGuideService {
 
     private WorkflowGuideResponse.Step documentDistributionStep(Long id) {
         WorkflowGuideResponse.Step step = step("distribute", "公文分发", "business", "waiting");
-        for (DocumentDistribution distribution : db.documentDistributions().values()) {
+        for (DocumentDistribution distribution : repo.findDocumentDistributionsByDocumentId(id)) {
             if (id.equals(distribution.getDocumentId())) {
                 step.setStatus("done");
                 step.setTime(distribution.getDistributedAt());
@@ -84,7 +84,7 @@ public class WorkflowGuideService {
         WorkflowGuideResponse.Step step = step("receipt", "接收人签收", "business", "waiting");
         boolean found = false;
         boolean allReceived = true;
-        for (DocumentDistribution distribution : db.documentDistributions().values()) {
+        for (DocumentDistribution distribution : repo.findDocumentDistributionsByDocumentId(id)) {
             if (id.equals(distribution.getDocumentId())) {
                 found = true;
                 if (!"received".equals(distribution.getStatus())) {
@@ -104,7 +104,7 @@ public class WorkflowGuideService {
     // --- Seal guide ---
 
     private WorkflowGuideResponse sealGuide(Long id) {
-        SealApplication app = db.sealApplications().get(id);
+        SealApplication app = repo.findSealApplicationById(id);
         if (app == null) throw new BusinessException("用印申请不存在");
         WorkflowGuideResponse guide = base("seal", id, "用印申请 #" + id, app.getStatus());
         List<WorkflowGuideResponse.Step> steps = new ArrayList<WorkflowGuideResponse.Step>();
@@ -124,7 +124,7 @@ public class WorkflowGuideService {
 
     private List<WorkflowGuideResponse.Step> sealApprovalSteps(SealApplication app) {
         List<WorkflowGuideResponse.Step> steps = new ArrayList<WorkflowGuideResponse.Step>();
-        Seal seal = db.seals().get(app.getSealId());
+        Seal seal = repo.findSealById(app.getSealId());
         boolean schoolSeal = seal != null && seal.getSealName().contains("北京大学");
         boolean major = "重大事项".equals(app.getMatterLevel());
         if (!schoolSeal) {
@@ -142,7 +142,7 @@ public class WorkflowGuideService {
     // --- Meeting guide ---
 
     private WorkflowGuideResponse meetingGuide(Long id) {
-        Meeting meeting = db.meetings().get(id);
+        Meeting meeting = repo.findMeetingById(id);
         if (meeting == null) throw new BusinessException("会议不存在");
         WorkflowGuideResponse guide = base("meeting", id, meeting.getTitle(), meeting.getStatus());
         List<WorkflowGuideResponse.Step> steps = new ArrayList<WorkflowGuideResponse.Step>();
@@ -171,7 +171,7 @@ public class WorkflowGuideService {
     // --- Report guide ---
 
     private WorkflowGuideResponse reportGuide(Long id) {
-        Report report = db.reports().get(id);
+        Report report = repo.findReportById(id);
         if (report == null) throw new BusinessException("请示报告不存在");
         WorkflowGuideResponse guide = base("report", id, report.getTitle(), report.getStatus());
         List<WorkflowGuideResponse.Step> steps = new ArrayList<WorkflowGuideResponse.Step>();
@@ -195,7 +195,7 @@ public class WorkflowGuideService {
     // --- Travel guide ---
 
     private WorkflowGuideResponse travelGuide(Long id) {
-        Travel travel = db.travels().get(id);
+        Travel travel = repo.findTravelById(id);
         if (travel == null) throw new BusinessException("差旅申请不存在");
         WorkflowGuideResponse guide = base("travel", id, "差旅申请 #" + id, travel.getStatus());
         List<WorkflowGuideResponse.Step> steps = new ArrayList<WorkflowGuideResponse.Step>();
@@ -246,9 +246,8 @@ public class WorkflowGuideService {
     private WorkflowGuideResponse.Step recordedBusinessStep(String bizType, Long id,
                                                              String key, String label, String action) {
         WorkflowGuideResponse.Step step = step(key, label, "business", "waiting");
-        for (ApprovalRecord record : db.approvals()) {
-            if (bizType.equals(record.getBizType()) && id.equals(record.getBizId())
-                    && action.equals(record.getAction())) {
+        for (ApprovalRecord record : repo.findApprovalsByBizTypeAndBizId(bizType, id)) {
+            if (action.equals(record.getAction())) {
                 step.setStatus("done");
                 step.setOperatorId(record.getOperatorId());
                 step.setOperatorName(userName(record.getOperatorId()));
@@ -261,9 +260,8 @@ public class WorkflowGuideService {
 
     private WorkflowGuideResponse.Step approvalStep(String bizType, Long id, String key, String label) {
         WorkflowGuideResponse.Step step = step(key, label, "approval", "waiting");
-        for (ApprovalRecord record : db.approvals()) {
-            if (bizType.equals(record.getBizType()) && id.equals(record.getBizId())
-                    && ("approve".equals(record.getAction()) || "reject".equals(record.getAction()))) {
+        for (ApprovalRecord record : repo.findApprovalsByBizTypeAndBizId(bizType, id)) {
+            if ("approve".equals(record.getAction()) || "reject".equals(record.getAction())) {
                 if (matchesApprovalIndex(bizType, id, key, record)) {
                     step.setOperatorId(record.getOperatorId());
                     step.setOperatorName(userName(record.getOperatorId()));
@@ -280,10 +278,9 @@ public class WorkflowGuideService {
     private boolean matchesApprovalIndex(String bizType, Long id, String key, ApprovalRecord target) {
         List<String> keys = approvalKeys(bizType, id);
         int approvalIndex = 0;
-        for (ApprovalRecord record : db.approvals()) {
-            if (bizType.equals(record.getBizType()) && id.equals(record.getBizId())
-                    && ("approve".equals(record.getAction()) || "reject".equals(record.getAction()))) {
-                if (record == target) {
+        for (ApprovalRecord record : repo.findApprovalsByBizTypeAndBizId(bizType, id)) {
+            if ("approve".equals(record.getAction()) || "reject".equals(record.getAction())) {
+                if (record.getId().equals(target.getId())) {
                     return approvalIndex < keys.size() && key.equals(keys.get(approvalIndex));
                 }
                 approvalIndex++;
@@ -306,7 +303,7 @@ public class WorkflowGuideService {
             keys.add("pending_dept");
             keys.add("pending_leader");
         } else if ("meeting".equals(bizType)) {
-            Meeting meeting = db.meetings().get(id);
+            Meeting meeting = repo.findMeetingById(id);
             if (meeting != null && meeting.isLargeActivity()) {
                 keys.add("pending_security");
             }
@@ -315,9 +312,9 @@ public class WorkflowGuideService {
                 keys.add("pending_leader");
             }
         } else if ("seal".equals(bizType)) {
-            SealApplication app = db.sealApplications().get(id);
+            SealApplication app = repo.findSealApplicationById(id);
             if (app != null) {
-                Seal seal = db.seals().get(app.getSealId());
+                Seal seal = repo.findSealById(app.getSealId());
                 boolean schoolSeal = seal != null && seal.getSealName().contains("北京大学");
                 boolean major = "重大事项".equals(app.getMatterLevel());
                 if (!schoolSeal) {
@@ -337,8 +334,8 @@ public class WorkflowGuideService {
     private WorkflowGuideResponse.Step auditStep(String bizType, Long id, String key, String label,
                                                   String type, String action, String emptyStatus) {
         WorkflowGuideResponse.Step step = step(key, label, type, emptyStatus);
-        for (AuditLog log : db.auditLogs()) {
-            if (bizType.equals(log.getBizType()) && id.equals(log.getBizId()) && action.equals(log.getAction())) {
+        for (AuditLog log : repo.findAuditLogsByBizTypeAndBizId(bizType, id)) {
+            if (action.equals(log.getAction())) {
                 step.setStatus("done");
                 step.setOperatorId(log.getOperatorId());
                 step.setOperatorName(userName(log.getOperatorId()));
@@ -350,9 +347,8 @@ public class WorkflowGuideService {
     }
 
     private void applyRecord(WorkflowGuideResponse.Step step, String bizType, Long id, String action) {
-        for (ApprovalRecord record : db.approvals()) {
-            if (bizType.equals(record.getBizType()) && id.equals(record.getBizId())
-                    && action.equals(record.getAction())) {
+        for (ApprovalRecord record : repo.findApprovalsByBizTypeAndBizId(bizType, id)) {
+            if (action.equals(record.getAction())) {
                 step.setOperatorId(record.getOperatorId());
                 step.setOperatorName(userName(record.getOperatorId()));
                 step.setOpinion(record.getOpinion());
@@ -362,9 +358,8 @@ public class WorkflowGuideService {
     }
 
     private void applyTaskDetails(WorkflowGuideResponse.Step step, String bizType, Long bizId) {
-        for (FlowTask task : db.flowTasks()) {
-            if (bizType.equals(task.getBizType()) && bizId.equals(task.getBizId())
-                    && step.getKey().equals(task.getNodeKey())) {
+        for (FlowTask task : repo.findFlowTasksByBizTypeAndBizId(bizType, bizId)) {
+            if (step.getKey().equals(task.getNodeKey())) {
                 step.setRoleKey(task.getApproverRole());
                 step.setRoleLabel(roleLabel(task.getApproverRole()));
                 step.setDueTime(task.getDueTime());
@@ -392,9 +387,8 @@ public class WorkflowGuideService {
 
     private int activeMaterialCount(String bizType, Long bizId) {
         int count = 0;
-        for (Attachment attachment : db.attachments()) {
-            if (bizType.equals(attachment.getBizType()) && bizId.equals(attachment.getBizId())
-                    && !attachment.isDeleted()) {
+        for (Attachment attachment : repo.findAttachmentsByBizTypeAndBizId(bizType, bizId)) {
+            if (!attachment.isDeleted()) {
                 count++;
             }
         }
@@ -486,9 +480,8 @@ public class WorkflowGuideService {
             return;
         }
         ApprovalRecord latestFinanceApproval = null;
-        for (ApprovalRecord record : db.approvals()) {
-            if ("travel".equals(record.getBizType()) && id.equals(record.getBizId())
-                    && ("approve".equals(record.getAction()) || "reject".equals(record.getAction()))) {
+        for (ApprovalRecord record : repo.findApprovalsByBizTypeAndBizId("travel", id)) {
+            if ("approve".equals(record.getAction()) || "reject".equals(record.getAction())) {
                 latestFinanceApproval = record;
             }
         }
@@ -502,9 +495,10 @@ public class WorkflowGuideService {
     }
 
     private String userName(Long userId) {
-        if (userId == null || db.users().get(userId) == null) {
+        if (userId == null) {
             return null;
         }
-        return db.users().get(userId).getRealName();
+        User user = repo.findUserById(userId);
+        return user == null ? null : user.getRealName();
     }
 }

@@ -2,13 +2,13 @@ package com.university.oms;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.university.oms.model.User;
-import com.university.oms.repository.InMemoryDatabase;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 class AuthorizationRegressionTest {
     @Autowired
     private MockMvc mockMvc;
@@ -26,7 +27,7 @@ class AuthorizationRegressionTest {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private InMemoryDatabase db;
+    private JdbcTemplate jdbcTemplate;
 
     @Test
     void financeCannotSubmitAnotherUsersDocument() throws Exception {
@@ -103,18 +104,17 @@ class AuthorizationRegressionTest {
     }
 
     private void ensureOtherDepartmentHead() {
-        if (db.users().containsKey(991L)) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM sys_user WHERE id = 991", Integer.class);
+        if (count != null && count > 0) {
             return;
         }
-        User user = new User();
-        db.fill(user, 991L);
-        user.setUsername("financeHead");
-        user.setPassword("123456");
-        user.setRealName("财务部门负责人");
-        user.setDeptId(2L);
-        user.setDeptName(db.departments().get(2L).getDeptName());
-        user.getRoleKeys().add("dept_head");
-        db.users().put(user.getId(), user);
+        String password = "pbkdf2$120000$T2ZmaWNlTWdtdFNhbHQwMQ==$Z3heUPjh43uuIEz+H3am6K517zg+3H0tEMInRgwsg1M=";
+        jdbcTemplate.update(
+                "INSERT INTO sys_user (id, username, password, real_name, dept_id, email) VALUES (991, 'financeHead', ?, '财务部门负责人', 2, 'financehead@example.com')",
+                password);
+        jdbcTemplate.update(
+                "INSERT INTO sys_user_role (user_id, role_id) VALUES (991, 3)");
     }
 
     private boolean contains(JsonNode rows, String key1, String value1, String key2, long value2) {

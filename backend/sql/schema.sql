@@ -358,6 +358,10 @@ CREATE TABLE IF NOT EXISTS oa_meeting_fee_standard (
   UNIQUE KEY uk_meeting_fee_standard (meeting_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS oms_sequence (
+  next_id BIGINT NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 DROP PROCEDURE IF EXISTS add_column_if_missing;
 DELIMITER //
 CREATE PROCEDURE add_column_if_missing(

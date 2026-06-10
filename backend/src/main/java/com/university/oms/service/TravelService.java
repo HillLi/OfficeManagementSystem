@@ -6,8 +6,7 @@ import com.university.oms.dto.TravelReimburseRequest;
 import com.university.oms.dto.TravelRequest;
 import com.university.oms.model.Travel;
 import com.university.oms.model.User;
-import com.university.oms.repository.DataPersistence;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import com.university.oms.security.AuthContext;
 import org.springframework.stereotype.Service;
 
@@ -19,10 +18,9 @@ import java.util.Map;
 
 @Service
 public class TravelService {
-    private final InMemoryDatabase db;
+    private final OmsRepository repo;
     private final ApprovalService approvalService;
     private final TravelExpenseStrategy expenseStrategy;
-    private final DataPersistence persistence;
     private final WorkflowService workflowService;
     private final BusinessAccessService accessService;
     private final DictionaryService dictionaryService;
@@ -45,13 +43,12 @@ public class TravelService {
         OTHER_BUSINESS_TRANSPORT.put("level3", OTHER_BUSINESS_TRANSPORT.get("三类"));
     }
 
-    public TravelService(InMemoryDatabase db, ApprovalService approvalService, TravelExpenseStrategy expenseStrategy,
-                         DataPersistence persistence, WorkflowService workflowService, BusinessAccessService accessService,
+    public TravelService(OmsRepository repo, ApprovalService approvalService, TravelExpenseStrategy expenseStrategy,
+                         WorkflowService workflowService, BusinessAccessService accessService,
                          DictionaryService dictionaryService) {
-        this.db = db;
+        this.repo = repo;
         this.approvalService = approvalService;
         this.expenseStrategy = expenseStrategy;
-        this.persistence = persistence;
         this.workflowService = workflowService;
         this.accessService = accessService;
         this.dictionaryService = dictionaryService;
@@ -59,14 +56,14 @@ public class TravelService {
 
     public List<Travel> list() {
         User user = AuthContext.currentUser();
-        List<Travel> travels = new ArrayList<Travel>(db.travels().values());
+        List<Travel> travels = repo.findAllTravels();
         if (user == null || user.getRoleKeys().contains("admin") || user.getRoleKeys().contains("finance_staff")
                 || user.getRoleKeys().contains("school_leader")) {
             return travels;
         }
         List<Travel> scoped = new ArrayList<Travel>();
         for (Travel travel : travels) {
-            User applicant = db.users().get(travel.getApplicantId());
+            User applicant = repo.findUserById(travel.getApplicantId());
             if (travel.getApplicantId().equals(user.getId())
                     || (user.getRoleKeys().contains("dept_head") && applicant != null && user.getDeptId().equals(applicant.getDeptId()))) {
                 scoped.add(travel);
@@ -80,11 +77,11 @@ public class TravelService {
         dictionaryService.requireEnabled("travel_type", request.getTravelType(), "出差类型");
         dictionaryService.requireEnabled("transport_type", request.getTransport(), "交通工具");
         Long applicantId = AuthContext.currentUserIdOr(request.getApplicantId());
-        if (!db.users().containsKey(applicantId)) {
+        if (repo.findUserById(applicantId) == null) {
             throw new BusinessException("用户不存在");
         }
         Travel travel = new Travel();
-        db.fill(travel, db.nextId());
+        OmsRepository.fillEntity(travel, repo.nextId());
         travel.setApplicantId(applicantId);
         travel.setDestination(request.getDestination());
         travel.setStartDate(request.getStartDate());
@@ -98,15 +95,14 @@ public class TravelService {
         travel.setStatus("pending_dept");
         validateTransport(travel);
         travel.setCheckResult(expenseStrategy.check(travel));
-        db.travels().put(travel.getId(), travel);
-        persistence.saveTravel(travel);
+        repo.saveTravel(travel);
         approvalService.record("travel", travel.getId(), applicantId, "submit", "提交差旅申请");
         workflowService.startFlow("travel", travel.getId(), travel.getStatus(), applicantId);
         return travel;
     }
 
     public Travel reimburse(Long id, TravelReimburseRequest request) {
-        Travel travel = db.travels().get(id);
+        Travel travel = repo.findTravelById(id);
         if (travel == null) {
             throw new BusinessException("差旅申请不存在");
         }
@@ -130,7 +126,7 @@ public class TravelService {
         travel.setReimbursementSubmitted(true);
         travel.setStatus("pending_finance");
         travel.setUpdatedAt(java.time.LocalDateTime.now());
-        persistence.saveTravel(travel);
+        repo.saveTravel(travel);
         com.university.oms.dto.AttachmentRequest attachment = new com.university.oms.dto.AttachmentRequest();
         attachment.setBizType("travel");
         attachment.setBizId(id);

@@ -2,7 +2,6 @@ package com.university.oms.design;
 
 import com.university.oms.model.Department;
 import com.university.oms.model.User;
-import com.university.oms.repository.InMemoryDatabase;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,15 +30,15 @@ public class DeptTreeNode {
         return children;
     }
 
-    public int countAllUsers(InMemoryDatabase db) {
+    public int countAllUsers(List<User> allUsers) {
         int count = 0;
-        for (User user : db.users().values()) {
+        for (User user : allUsers) {
             if (department.getId().equals(user.getDeptId())) {
                 count++;
             }
         }
         for (DeptTreeNode child : children) {
-            count += child.countAllUsers(db);
+            count += child.countAllUsers(allUsers);
         }
         return count;
     }

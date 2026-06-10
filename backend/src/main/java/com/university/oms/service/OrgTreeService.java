@@ -3,7 +3,7 @@ package com.university.oms.service;
 import com.university.oms.dto.OrgTreeNode;
 import com.university.oms.model.Department;
 import com.university.oms.model.User;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -23,14 +23,14 @@ public class OrgTreeService {
             .comparing(User::getRealName, Comparator.nullsFirst(Comparator.naturalOrder()))
             .thenComparing(User::getId, Comparator.nullsFirst(Comparator.naturalOrder()));
 
-    private final InMemoryDatabase db;
+    private final OmsRepository repo;
 
-    public OrgTreeService(InMemoryDatabase db) {
-        this.db = db;
+    public OrgTreeService(OmsRepository repo) {
+        this.repo = repo;
     }
 
     public List<OrgTreeNode> buildTree() {
-        List<Department> sortedDepartments = new ArrayList<Department>(db.departments().values());
+        List<Department> sortedDepartments = new ArrayList<Department>(repo.findAllDepartments());
         sortedDepartments.sort(DEPARTMENT_ORDER);
 
         Map<Long, Department> departmentModels = new LinkedHashMap<Long, Department>();
@@ -53,7 +53,7 @@ public class OrgTreeService {
             }
         }
 
-        List<User> sortedUsers = new ArrayList<User>(db.users().values());
+        List<User> sortedUsers = new ArrayList<User>(repo.findAllUsers());
         sortedUsers.sort(USER_ORDER);
         for (User user : sortedUsers) {
             OrgTreeNode node = userNode(user);

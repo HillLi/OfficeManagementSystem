@@ -11,8 +11,7 @@ import com.university.oms.model.Meeting;
 import com.university.oms.model.MeetingParticipant;
 import com.university.oms.model.MeetingRoom;
 import com.university.oms.model.User;
-import com.university.oms.repository.DataPersistence;
-import com.university.oms.repository.InMemoryDatabase;
+import com.university.oms.repository.OmsRepository;
 import com.university.oms.security.AuthContext;
 import org.springframework.stereotype.Service;
 
@@ -31,40 +30,38 @@ import java.util.stream.Collectors;
 
 @Service
 public class MeetingService {
-    private final InMemoryDatabase db;
+    private final OmsRepository repo;
     private final ApprovalService approvalService;
-    private final DataPersistence persistence;
     private final Map<String, BigDecimal> meetingFeeStandards;
     private final WorkflowService workflowService;
     private final BusinessAccessService accessService;
     private final DictionaryService dictionaryService;
 
-    public MeetingService(InMemoryDatabase db, ApprovalService approvalService, DataPersistence persistence,
+    public MeetingService(OmsRepository repo, ApprovalService approvalService,
                           WorkflowService workflowService, BusinessAccessService accessService,
                           DictionaryService dictionaryService) {
-        this.db = db;
+        this.repo = repo;
         this.approvalService = approvalService;
-        this.persistence = persistence;
         this.workflowService = workflowService;
         this.accessService = accessService;
         this.dictionaryService = dictionaryService;
-        this.meetingFeeStandards = db.meetingFeeStandards();
+        this.meetingFeeStandards = repo.findMeetingFeeStandards();
     }
 
     public List<MeetingRoom> rooms() {
-        return new ArrayList<MeetingRoom>(db.rooms().values());
+        return repo.findAllRooms();
     }
 
     public List<Meeting> meetings() {
         User user = AuthContext.currentUser();
-        List<Meeting> meetings = new ArrayList<Meeting>(db.meetings().values());
+        List<Meeting> meetings = repo.findAllMeetings();
         if (user == null || user.getRoleKeys().contains("admin") || user.getRoleKeys().contains("office_admin")
                 || user.getRoleKeys().contains("school_leader") || user.getRoleKeys().contains("security_staff")) {
             return meetings;
         }
         List<Meeting> scoped = new ArrayList<Meeting>();
         for (Meeting meeting : meetings) {
-            User organizer = db.users().get(meeting.getOrganizerId());
+            User organizer = repo.findUserById(meeting.getOrganizerId());
             if (meeting.getOrganizerId().equals(user.getId())
                     || (user.getRoleKeys().contains("dept_head") && organizer != null && user.getDeptId().equals(organizer.getDeptId()))
                     || isParticipant(meeting.getId(), user.getId())) {
@@ -75,7 +72,7 @@ public class MeetingService {
     }
 
     public List<MeetingRoom> recommend(RecommendRoomRequest request) {
-        return db.rooms().values().stream()
+        return repo.findAllRooms().stream()
                 .filter(MeetingRoom::isEnabled)
                 .filter(room -> room.getCapacity() >= safeCount(request.getExpectedCount()))
                 .filter(room -> request.getEquipment() == null || room.getEquipment().contains(request.getEquipment()))
@@ -103,7 +100,7 @@ public class MeetingService {
             throw new BusinessException("记录员必须在参会人员中");
         }
         for (Long participantId : participantIds) {
-            if (!db.users().containsKey(participantId)) {
+            if (repo.findUserById(participantId) == null) {
                 throw new BusinessException("参会人员不存在：" + participantId);
             }
         }
@@ -112,7 +109,7 @@ public class MeetingService {
                 : Math.max(participantIds.size(), request.getExpectedCount());
         request.setExpectedCount(participantIds.size());
 
-        MeetingRoom room = db.rooms().get(request.getRoomId());
+        MeetingRoom room = repo.findRoomById(request.getRoomId());
         if (room == null || !room.isEnabled()) {
             throw new BusinessException("会议室不可用");
         }
@@ -151,28 +148,26 @@ public class MeetingService {
         meeting.setOtherFee(request.getOtherFee());
         meeting.setRecorderId(request.getRecorderId());
 
-        db.fill(meeting, db.nextId());
+        OmsRepository.fillEntity(meeting, repo.nextId());
         meeting.setLargeActivity(large);
         meeting.setStatus(large ? "pending_security" : "pending_dept");
-        db.meetings().put(meeting.getId(), meeting);
-        persistence.saveMeeting(meeting);
+        repo.saveMeeting(meeting);
         approvalService.record("meeting", meeting.getId(), organizerId, "submit", "提交会议申请");
         workflowService.startFlow("meeting", meeting.getId(), meeting.getStatus(), organizerId);
         // 保存参会人
         for (Long userId : participantIds) {
             MeetingParticipant participant = new MeetingParticipant();
-            db.fill(participant, db.nextId());
+            OmsRepository.fillEntity(participant, repo.nextId());
             participant.setMeetingId(meeting.getId());
             participant.setUserId(userId);
             participant.setRecorder(userId.equals(request.getRecorderId()));
-            db.participants().put(participant.getId(), participant);
-            persistence.saveMeetingParticipant(participant);
+            repo.saveMeetingParticipant(participant);
         }
         return meeting;
     }
 
     public Meeting archiveMinutes(Long id, MeetingMinutesRequest request) {
-        Meeting meeting = db.meetings().get(id);
+        Meeting meeting = repo.findMeetingById(id);
         if (meeting == null) {
             throw new BusinessException("会议不存在");
         }
@@ -187,7 +182,7 @@ public class MeetingService {
         meeting.setSignInCount(request.getSignInCount() == null ? 0 : request.getSignInCount());
         meeting.setStatus("minutes_pending");
         meeting.setUpdatedAt(LocalDateTime.now());
-        persistence.saveMeeting(meeting);
+        repo.saveMeeting(meeting);
         approvalService.record("meeting", id, currentUserId, "archive_minutes", "记录员填写会议纪要");
         workflowService.advanceFlow("meeting", id, "approved", "minutes_pending", meeting.getOrganizerId());
         // 通知所有参会人确认纪要
@@ -201,28 +196,20 @@ public class MeetingService {
     }
 
     public List<MeetingParticipant> getMeetingParticipants(Long meetingId) {
-        List<MeetingParticipant> result = new ArrayList<MeetingParticipant>();
-        for (MeetingParticipant p : db.participants().values()) {
-            if (p.getMeetingId().equals(meetingId)) {
-                result.add(p);
-            }
-        }
-        return result;
+        return repo.findParticipantsByMeetingId(meetingId);
     }
 
     public List<MeetingParticipationResponse> participatedMeetings() {
         User user = AuthContext.requireUser();
         List<MeetingParticipationResponse> result = new ArrayList<MeetingParticipationResponse>();
         Set<Long> meetingIds = new HashSet<Long>();
-        for (MeetingParticipant p : db.participants().values()) {
-            if (p.getUserId().equals(user.getId())) {
-                if (!meetingIds.add(p.getMeetingId())) {
-                    continue;
-                }
-                Meeting meeting = db.meetings().get(p.getMeetingId());
-                if (meeting != null) {
-                    result.add(toParticipationResponse(meeting, p));
-                }
+        for (MeetingParticipant p : repo.findParticipantsByUserId(user.getId())) {
+            if (!meetingIds.add(p.getMeetingId())) {
+                continue;
+            }
+            Meeting meeting = repo.findMeetingById(p.getMeetingId());
+            if (meeting != null) {
+                result.add(toParticipationResponse(meeting, p));
             }
         }
         return result;
@@ -247,20 +234,14 @@ public class MeetingService {
 
     public Meeting confirmMinutes(Long meetingId) {
         User user = AuthContext.requireUser();
-        Meeting meeting = db.meetings().get(meetingId);
+        Meeting meeting = repo.findMeetingById(meetingId);
         if (meeting == null) {
             throw new BusinessException("会议不存在");
         }
         if (!"minutes_pending".equals(meeting.getStatus())) {
             throw new BusinessException("当前状态无法确认纪要");
         }
-        MeetingParticipant target = null;
-        for (MeetingParticipant p : db.participants().values()) {
-            if (p.getMeetingId().equals(meetingId) && p.getUserId().equals(user.getId())) {
-                target = p;
-                break;
-            }
-        }
+        MeetingParticipant target = repo.findParticipantByMeetingIdAndUserId(meetingId, user.getId());
         if (target == null) {
             throw new BusinessException("您不是该会议的参会人员");
         }
@@ -270,7 +251,7 @@ public class MeetingService {
         target.setMinutesConfirmed(true);
         target.setConfirmedAt(LocalDateTime.now());
         target.setUpdatedAt(LocalDateTime.now());
-        persistence.saveMeetingParticipant(target);
+        repo.saveMeetingParticipant(target);
         approvalService.record("meeting", meetingId, user.getId(), "confirm_minutes", "参会人确认纪要");
 
         // 检查是否全员确认
@@ -284,7 +265,7 @@ public class MeetingService {
         if (allConfirmed) {
             meeting.setStatus("minutes_confirmed");
             meeting.setUpdatedAt(LocalDateTime.now());
-            persistence.saveMeeting(meeting);
+            repo.saveMeeting(meeting);
             workflowService.advanceFlow("meeting", meetingId, "minutes_pending", "minutes_confirmed", meeting.getOrganizerId());
             workflowService.notifyUser(meeting.getOrganizerId(), "会议纪要全员确认完成",
                     "会议《" + meeting.getTitle() + "》的纪要已由所有参会人确认，请决定是否公示。", "meeting", meetingId);
@@ -294,7 +275,7 @@ public class MeetingService {
 
     public Meeting publishMeeting(Long meetingId) {
         User user = AuthContext.requireUser();
-        Meeting meeting = db.meetings().get(meetingId);
+        Meeting meeting = repo.findMeetingById(meetingId);
         if (meeting == null) {
             throw new BusinessException("会议不存在");
         }
@@ -306,7 +287,7 @@ public class MeetingService {
         }
         // 创建通知公告
         Announcement announcement = new Announcement();
-        db.fill(announcement, db.nextId());
+        OmsRepository.fillEntity(announcement, repo.nextId());
         announcement.setTitle("会议纪要公示：" + meeting.getTitle());
         announcement.setContent(meeting.getMinutes() != null ? meeting.getMinutes() : "");
         announcement.setCategory("会议纪要");
@@ -314,12 +295,11 @@ public class MeetingService {
         announcement.setPublisherId(user.getId());
         announcement.setStatus("published");
         announcement.setPublishedAt(LocalDateTime.now());
-        db.announcements().put(announcement.getId(), announcement);
-        persistence.saveAnnouncement(announcement);
+        repo.saveAnnouncement(announcement);
 
         meeting.setStatus("archived");
         meeting.setUpdatedAt(LocalDateTime.now());
-        persistence.saveMeeting(meeting);
+        repo.saveMeeting(meeting);
         approvalService.record("meeting", meetingId, user.getId(), "publish", "发布为公告");
         workflowService.advanceFlow("meeting", meetingId, "minutes_confirmed", "archived", meeting.getOrganizerId());
         return meeting;
@@ -327,7 +307,7 @@ public class MeetingService {
 
     public Meeting archiveDirectly(Long meetingId) {
         User user = AuthContext.requireUser();
-        Meeting meeting = db.meetings().get(meetingId);
+        Meeting meeting = repo.findMeetingById(meetingId);
         if (meeting == null) {
             throw new BusinessException("会议不存在");
         }
@@ -339,7 +319,7 @@ public class MeetingService {
         }
         meeting.setStatus("archived");
         meeting.setUpdatedAt(LocalDateTime.now());
-        persistence.saveMeeting(meeting);
+        repo.saveMeeting(meeting);
         approvalService.record("meeting", meetingId, user.getId(), "archive", "直接归档");
         workflowService.advanceFlow("meeting", meetingId, "minutes_confirmed", "archived", meeting.getOrganizerId());
         return meeting;
@@ -347,7 +327,7 @@ public class MeetingService {
 
     public void remindParticipant(Long meetingId, Long userId) {
         User currentUser = AuthContext.requireUser();
-        Meeting meeting = db.meetings().get(meetingId);
+        Meeting meeting = repo.findMeetingById(meetingId);
         if (meeting == null) {
             throw new BusinessException("会议不存在");
         }
@@ -355,13 +335,7 @@ public class MeetingService {
             throw new BusinessException("只有组织者可以催办");
         }
         // 验证被催办人是参会人且未确认
-        MeetingParticipant target = null;
-        for (MeetingParticipant p : db.participants().values()) {
-            if (p.getMeetingId().equals(meetingId) && p.getUserId().equals(userId)) {
-                target = p;
-                break;
-            }
-        }
+        MeetingParticipant target = repo.findParticipantByMeetingIdAndUserId(meetingId, userId);
         if (target == null) {
             throw new BusinessException("该用户不是参会人员");
         }
@@ -373,12 +347,7 @@ public class MeetingService {
     }
 
     private boolean isParticipant(Long meetingId, Long userId) {
-        for (MeetingParticipant p : db.participants().values()) {
-            if (p.getMeetingId().equals(meetingId) && p.getUserId().equals(userId)) {
-                return true;
-            }
-        }
-        return false;
+        return repo.findParticipantByMeetingIdAndUserId(meetingId, userId) != null;
     }
 
     private void validateMeetingFee(MeetingRequest request) {
@@ -418,7 +387,7 @@ public class MeetingService {
         if (start == null || end == null) {
             return false;
         }
-        for (Meeting meeting : db.meetings().values()) {
+        for (Meeting meeting : repo.findAllMeetings()) {
             if (meeting.getRoomId().equals(roomId)
                     && !"rejected".equals(meeting.getStatus())
                     && start.isBefore(meeting.getEndTime())
