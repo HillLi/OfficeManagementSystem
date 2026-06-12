@@ -123,4 +123,10 @@ CREATE TABLE IF NOT EXISTS oa_meeting_fee_standard (
   CONSTRAINT uk_meeting_fee_standard UNIQUE(meeting_type)
 );
 
+-- Ensure meeting minutes status dictionary entries exist
+INSERT IGNORE INTO sys_dict_item (id, dict_type, dict_code, dict_label, sort_order, enabled, system_item)
+VALUES
+  (289, 'business_status', 'minutes_pending', '纪要待确认', 156, 1, 1),
+  (290, 'business_status', 'minutes_confirmed', '纪要已确认', 157, 1, 1);
+
 DROP PROCEDURE IF EXISTS add_column_if_missing;
