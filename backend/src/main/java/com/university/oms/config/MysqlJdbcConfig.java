@@ -3,10 +3,13 @@ package com.university.oms.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
 import javax.sql.DataSource;
+import java.sql.Connection;
 import java.util.List;
 import java.util.Map;
 
@@ -93,9 +96,28 @@ public class MysqlJdbcConfig {
                 + "node_key VARCHAR(50) NOT NULL, approver_role VARCHAR(50), approver_id BIGINT, status VARCHAR(20) NOT NULL, "
                 + "due_time DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
 
-        // Ensure meeting minutes status dictionary entries exist
-        ensureDictItem(jdbc, 289, "business_status", "minutes_pending", "纪要待确认", 156);
-        ensureDictItem(jdbc, 290, "business_status", "minutes_confirmed", "纪要已确认", 157);
+        // Execute seed data (dictionary types, dictionary items, etc.)
+        // Uses INSERT IGNORE so it's safe to run on every startup.
+        // To add new dictionary items, just edit seed-data.sql — no Java change needed.
+        executeSeedData(dataSource);
+    }
+
+    /**
+     * Execute seed-data.sql from classpath.
+     * All statements use INSERT IGNORE, so this is idempotent and safe on every startup.
+     */
+    private void executeSeedData(DataSource dataSource) {
+        try {
+            ClassPathResource resource = new ClassPathResource("seed-data.sql");
+            if (resource.exists()) {
+                ResourceDatabasePopulator populator = new ResourceDatabasePopulator();
+                populator.setSqlScriptEncoding("UTF-8");
+                populator.addScript(resource);
+                populator.execute(dataSource);
+            }
+        } catch (Exception e) {
+            System.err.println("Seed data warning: " + e.getMessage());
+        }
     }
 
     private void addColumnIfMissing(JdbcTemplate jdbc, String table, String column, String definition) {
@@ -108,24 +130,6 @@ public class MysqlJdbcConfig {
             }
         } catch (Exception e) {
             System.err.println("Migration " + table + "." + column + ": " + e.getMessage());
-        }
-    }
-
-    /**
-     * Ensure a dictionary item exists (insert if missing).
-     */
-    private void ensureDictItem(JdbcTemplate jdbc, long id, String dictType, String dictCode, String dictLabel, int sortOrder) {
-        try {
-            List<Map<String, Object>> rows = jdbc.queryForList(
-                    "SELECT id FROM sys_dict_item WHERE dict_type = ? AND dict_code = ?",
-                    dictType, dictCode);
-            if (rows.isEmpty()) {
-                jdbc.update(
-                        "INSERT INTO sys_dict_item (id, dict_type, dict_code, dict_label, sort_order, enabled, system_item) VALUES (?, ?, ?, ?, ?, 1, 1)",
-                        id, dictType, dictCode, dictLabel, sortOrder);
-            }
-        } catch (Exception e) {
-            System.err.println("Ensure dict item " + dictType + "." + dictCode + ": " + e.getMessage());
         }
     }
 
