@@ -11,6 +11,9 @@ import javax.mail.MessagingException;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 
+/**
+ * 邮件发送服务，封装SMTP外部邮件发送功能
+ */
 @Service
 public class EmailSenderService {
     private final JavaMailSender javaMailSender;
@@ -34,10 +37,12 @@ public class EmailSenderService {
         this.fromName = fromName;
     }
 
+    /** 判断外部邮件发送功能是否可用 */
     public boolean isEnabled() {
         return enabled && hasText(host) && hasText(username) && hasText(password);
     }
 
+    /** 返回邮件功能不可用的原因说明 */
     public String disabledReason() {
         if (!enabled) {
             return "external mail disabled";
@@ -49,6 +54,7 @@ public class EmailSenderService {
         return fromName;
     }
 
+    /** 发送邮件到指定收件人 */
     public void sendMail(String toEmail, String subject, String content) {
         try {
             MimeMessage message = javaMailSender.createMimeMessage();

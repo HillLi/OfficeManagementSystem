@@ -165,6 +165,7 @@
 </template>
 
 <script setup>
+// 邮件中心页面：提供邮件收发、查看详情、外部邮件投递状态跟踪和重试功能
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../api'
@@ -196,12 +197,16 @@ const rules = {
   content: [{ required: true, message: '请输入正文', trigger: 'blur' }]
 }
 
+/** 当前登录用户 */
 const currentUser = readSessionUser(undefined, { id: 0 })
+/** 是否显示收件人状态列（仅发件人可见） */
 const showRecipientStates = computed(() => detail.value && detail.value.senderId === currentUser.id)
+/** 是否显示当前用户的阅读状态 */
 const showCurrentReadState = computed(() =>
   ['to', 'cc'].includes(detail.value?.currentUserRecipientType)
 )
 
+/** 初始化加载组织树、收件箱和已发送邮件数据 */
 async function loadInitial() {
   loading.value = true
   try {
@@ -220,10 +225,12 @@ async function loadInitial() {
   }
 }
 
+/** 刷新所有邮件数据 */
 async function refreshAll() {
   await loadInitial()
 }
 
+/** 打开写邮件弹窗并重置表单 */
 function openCompose() {
   Object.assign(form, {
     subject: '',
@@ -234,6 +241,7 @@ function openCompose() {
   composeVisible.value = true
 }
 
+/** 发送邮件 */
 async function send() {
   try {
     await formRef.value.validate()
@@ -257,6 +265,7 @@ async function send() {
   }
 }
 
+/** 打开邮件详情弹窗，未读邮件自动标记为已读 */
 async function openDetail(row) {
   try {
     detail.value = await api.mailDetail(row.id)
@@ -271,6 +280,7 @@ async function openDetail(row) {
   }
 }
 
+/** 重试发送失败的外部邮件 */
 async function retryEmail(row) {
   retryingId.value = row.id
   try {
@@ -287,6 +297,7 @@ async function retryEmail(row) {
   }
 }
 
+/** 获取收件人类型的中文显示文本 */
 function recipientTypeText(type) {
   if (type === 'to') return '收件'
   if (type === 'cc') return '抄送'
@@ -295,14 +306,17 @@ function recipientTypeText(type) {
   return '-'
 }
 
+/** 获取已读/未读状态的中文显示文本 */
 function readStateText(read) {
   return read ? '已读' : '未读'
 }
 
+/** 获取已读/未读状态对应的标签类型 */
 function readStateType(read) {
   return read ? 'info' : 'danger'
 }
 
+/** 获取外部邮件投递状态的中文显示文本 */
 function emailStatusText(status) {
   const map = {
     pending: '待发送',
@@ -313,6 +327,7 @@ function emailStatusText(status) {
   return map[status] || '未知'
 }
 
+/** 获取外部邮件投递状态对应的标签类型 */
 function emailStatusType(status) {
   const map = {
     pending: 'warning',
@@ -323,6 +338,7 @@ function emailStatusType(status) {
   return map[status] || 'info'
 }
 
+/** 获取外部邮件错误信息的中文显示文本 */
 function externalErrorText(error) {
   if (!error) return '-'
   const map = {
@@ -331,6 +347,7 @@ function externalErrorText(error) {
   return map[error] || error
 }
 
+/** 汇总收件人列表为简短的显示文本 */
 function recipientSummary(recipients = []) {
   if (!recipients.length) return '-'
   const names = recipients.map((recipient) => recipient.realName || userLabel(recipient.userId))
@@ -338,6 +355,7 @@ function recipientSummary(recipients = []) {
   return `${names.slice(0, 3).join('、')} 等 ${names.length} 人`
 }
 
+/** 统计各投递状态的人数 */
 function deliverySummary(recipients = []) {
   const counts = recipients.reduce((result, recipient) => {
     const status = recipient.emailStatus || 'pending'
@@ -347,6 +365,7 @@ function deliverySummary(recipients = []) {
   return Object.entries(counts).map(([status, count]) => ({ status, count }))
 }
 
+/** 获取投递状态汇总的中文显示文本 */
 function deliverySummaryText(recipients = []) {
   const summary = deliverySummary(recipients)
   if (!summary.length) return '-'
@@ -354,6 +373,7 @@ function deliverySummaryText(recipients = []) {
   return summary.map((item) => `${emailStatusText(item.status)} ${item.count}人`).join('、')
 }
 
+/** 获取投递状态汇总对应的标签类型 */
 function deliverySummaryType(recipients = []) {
   const summary = deliverySummary(recipients)
   if (!summary.length) return 'info'
@@ -363,6 +383,7 @@ function deliverySummaryType(recipients = []) {
   return emailStatusType(summary[0].status)
 }
 
+/** 根据用户ID生成显示标签 */
 function userLabel(userId) {
   return userId ? `#${userId}` : '-'
 }

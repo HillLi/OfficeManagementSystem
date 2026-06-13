@@ -2,13 +2,22 @@ package com.university.oms.model;
 
 import java.time.LocalDateTime;
 
+/**
+ * 站内信收件人实体，记录每封邮件的接收人及阅读状态
+ */
 public class MailRecipient extends BaseEntity {
+    /** 关联的邮件ID */
     private Long mailId;
+    /** 收件人用户ID */
     private Long userId;
+    /** 收件人类型（to / cc） */
     private String recipientType;
+    /** 是否已读 */
     private boolean readStatus;
     private LocalDateTime readAt;
+    /** 邮件发送状态（pending / sent / failed） */
     private String emailStatus = "pending";
+    /** 发送失败时的错误信息 */
     private String emailError;
     private LocalDateTime emailSentAt;
 

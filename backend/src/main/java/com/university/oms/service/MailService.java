@@ -22,6 +22,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * 邮件服务，处理站内邮件的发送、收件箱、已发送和外部邮件投递
+ */
 @Service
 public class MailService {
     private static final Logger log = LoggerFactory.getLogger(MailService.class);
@@ -40,6 +43,7 @@ public class MailService {
         this.emailSenderService = emailSenderService;
     }
 
+    /** 发送邮件，包含收件人和抄送人 */
     public MailDetailResponse send(MailSendRequest request) {
         User sender = AuthContext.requireUser();
         String subject = trimRequired(request.getSubject(), "邮件主题不能为空");
@@ -65,6 +69,7 @@ public class MailService {
         return response(message, sender.getId(), false);
     }
 
+    /** 获取当前用户的收件箱列表 */
     public List<MailDetailResponse> inbox() {
         Long userId = AuthContext.requireUser().getId();
         return repo.findMailRecipientsByUserId(userId).stream()
@@ -75,6 +80,7 @@ public class MailService {
                 .collect(Collectors.toList());
     }
 
+    /** 获取当前用户的已发送邮件列表 */
     public List<MailDetailResponse> sent() {
         Long userId = AuthContext.requireUser().getId();
         return repo.findAllMailMessages().stream()
@@ -84,6 +90,7 @@ public class MailService {
                 .collect(Collectors.toList());
     }
 
+    /** 获取邮件详情 */
     public MailDetailResponse detail(Long id) {
         User user = AuthContext.requireUser();
         MailMessage message = requireMessage(id);
@@ -93,6 +100,7 @@ public class MailService {
         return response(message, user.getId(), false);
     }
 
+    /** 标记邮件为已读 */
     public MailDetailResponse markRead(Long id) {
         User user = AuthContext.requireUser();
         MailMessage message = requireMessage(id);
@@ -110,6 +118,7 @@ public class MailService {
         return response(message, user.getId(), true);
     }
 
+    /** 重试发送失败的外部邮件 */
     public MailDetailResponse retryEmail(Long id) {
         User user = AuthContext.requireUser();
         MailMessage message = requireMessage(id);
@@ -127,6 +136,7 @@ public class MailService {
         return response(message, user.getId(), false, sender, sender);
     }
 
+    /** 保存收件人记录，发送站内通知和外部邮件 */
     private void saveRecipients(MailMessage message, Set<Long> userIds, String recipientType) {
         for (Long userId : userIds) {
             MailRecipient recipient = new MailRecipient();
@@ -149,6 +159,7 @@ public class MailService {
         return response(message, currentUserId, recipientContext, false, true);
     }
 
+    /** 构建邮件详情响应对象 */
     private MailDetailResponse response(MailMessage message, Long currentUserId, boolean recipientContext,
                                         boolean includeAllRecipients, boolean includeContent) {
         MailDetailResponse response = new MailDetailResponse();
@@ -177,6 +188,7 @@ public class MailService {
         return response;
     }
 
+    /** 投递外部邮件，失败时记录错误状态 */
     private void deliverExternalEmail(MailMessage message, MailRecipient recipient, User sender, User receiver) {
         try {
             if (!emailSenderService.isEnabled()) {
@@ -206,6 +218,7 @@ public class MailService {
         }
     }
 
+    /** 标记外部邮件为跳过状态 */
     private void markEmailSkipped(MailRecipient recipient, String reason) {
         LocalDateTime now = LocalDateTime.now();
         recipient.setEmailStatus("skipped");
@@ -265,6 +278,7 @@ public class MailService {
         return userIds == null ? new LinkedHashSet<Long>() : new LinkedHashSet<Long>(userIds);
     }
 
+    /** 校验所有指定的用户ID是否存在 */
     private void requireUsersExist(Set<Long> userIds) {
         List<Long> unknownIds = new ArrayList<Long>();
         for (Long userId : userIds) {

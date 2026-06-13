@@ -4,6 +4,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import javax.validation.constraints.*;
 
+/**
+ * 出差申请请求参数
+ */
 public class TravelRequest {
     @NotNull(message = "申请人不能为空")
     private Long applicantId;
@@ -14,14 +17,19 @@ public class TravelRequest {
     private LocalDate startDate;
     @NotNull(message = "返回日期不能为空")
     private LocalDate endDate;
+    /** 出差事由 */
     @NotBlank(message = "出差事由不能为空")
     @Size(max = 500, message = "出差事由不能超过500字")
     private String reason;
+    /** 人员级别，默认"三类" */
     private String staffLevel = "三类";
+    /** 出差类型，默认"教学科研业务" */
     private String travelType = "教学科研业务";
+    /** 交通工具，默认"高铁二等座" */
     private String transport = "高铁二等座";
     @DecimalMin(value = "0", message = "预算不能为负数")
     private BigDecimal budget = BigDecimal.ZERO;
+    /** 实际费用（报销时填写） */
     private BigDecimal actualExpense = BigDecimal.ZERO;
 
     public Long getApplicantId() { return applicantId; }

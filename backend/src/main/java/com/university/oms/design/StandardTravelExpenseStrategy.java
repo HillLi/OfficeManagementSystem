@@ -10,8 +10,10 @@ import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 
+// 策略模式：标准差旅费用校验策略，按人员级别和地区类型核算费用标准
 @Component
 public class StandardTravelExpenseStrategy implements TravelExpenseStrategy {
+    // 差旅费用标准表：按人员级别、业务类型、地区类型分类
     private static final Map<String, TravelStandard> STANDARDS = new HashMap<String, TravelStandard>();
 
     static {
@@ -29,6 +31,7 @@ public class StandardTravelExpenseStrategy implements TravelExpenseStrategy {
         add("三类", "其他业务", "特殊地区", "500", "120", "80");
     }
 
+    // 根据差旅信息校验预算是否符合标准
     @Override
     public TravelCheckResult check(Travel travel) {
         if (travel.getEndDate().isBefore(travel.getStartDate())) {
@@ -50,6 +53,7 @@ public class StandardTravelExpenseStrategy implements TravelExpenseStrategy {
         return result;
     }
 
+    // 根据差旅信息解析对应的费用标准
     private TravelStandard resolveStandard(Travel travel) {
         String cityLevel = isSpecialArea(travel.getDestination()) ? "特殊地区" : "普通地区";
         String travelType = "教学科研业务".equals(travel.getTravelType()) ? "教学科研业务" : "其他业务";
@@ -60,6 +64,7 @@ public class StandardTravelExpenseStrategy implements TravelExpenseStrategy {
         return standard;
     }
 
+    // 判断目的地是否属于特殊地区（西藏、青海、新疆）
     private boolean isSpecialArea(String destination) {
         return destination != null && (destination.contains("西藏") || destination.contains("青海") || destination.contains("新疆"));
     }
@@ -75,10 +80,11 @@ public class StandardTravelExpenseStrategy implements TravelExpenseStrategy {
         return staffLevel + "|" + travelType + "|" + cityLevel;
     }
 
+    // 差旅费用标准内部类
     private static class TravelStandard {
-        private final BigDecimal hotelLimit;
-        private final BigDecimal mealSubsidy;
-        private final BigDecimal localTransportSubsidy;
+        private final BigDecimal hotelLimit; // 住宿标准上限
+        private final BigDecimal mealSubsidy; // 伙食补助
+        private final BigDecimal localTransportSubsidy; // 市内交通补助
 
         private TravelStandard(BigDecimal hotelLimit, BigDecimal mealSubsidy, BigDecimal localTransportSubsidy) {
             this.hotelLimit = hotelLimit;

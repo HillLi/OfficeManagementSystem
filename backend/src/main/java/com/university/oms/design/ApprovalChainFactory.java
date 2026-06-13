@@ -2,9 +2,7 @@ package com.university.oms.design;
 
 import org.springframework.stereotype.Component;
 
-/**
- * Factory that builds approval chains per business type (Chain of Responsibility).
- */
+// 工厂模式：根据业务类型构建对应的审批责任链
 @Component
 public class ApprovalChainFactory {
     private final DeptHeadHandler deptHead;
@@ -25,6 +23,7 @@ public class ApprovalChainFactory {
         this.secretReview = secretReview;
     }
 
+    // 根据业务类型组装并返回审批责任链
     public ApprovalHandler getChain(String bizType) {
         switch (bizType) {
             case "document":

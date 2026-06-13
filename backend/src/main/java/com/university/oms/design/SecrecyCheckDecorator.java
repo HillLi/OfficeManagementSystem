@@ -3,16 +3,16 @@ package com.university.oms.design;
 import com.university.oms.model.AiReviewResult;
 import com.university.oms.model.Document;
 
-/**
- * Decorator — blocks AI review for secret/confidential documents.
- */
+// 装饰器模式：保密检查装饰器，涉密公文禁止调用外部AI服务
 public class SecrecyCheckDecorator implements DocumentProcessor {
-    private final DocumentProcessor wrapped;
+    private final DocumentProcessor wrapped; // 被装饰的内部处理器
 
+    // 注入被装饰的处理器
     public SecrecyCheckDecorator(DocumentProcessor wrapped) {
         this.wrapped = wrapped;
     }
 
+    // 检查密级，涉密公文直接拦截并返回警告，非密公文交由内部处理器处理
     @Override
     public AiReviewResult process(Document document) {
         String level = document.getSecrecyLevel();
@@ -26,6 +26,7 @@ public class SecrecyCheckDecorator implements DocumentProcessor {
         return wrapped.process(document);
     }
 
+    // 判断密级是否属于受限制级别（内部/秘密/机密/绝密）
     private boolean restrictedLevel(String level) {
         if (level == null) {
             return false;

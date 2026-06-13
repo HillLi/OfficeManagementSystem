@@ -2,14 +2,24 @@ package com.university.oms.model;
 
 import java.time.LocalDateTime;
 
+/**
+ * 审批流程任务实体，对应流程实例中的单个审批节点任务
+ */
 public class FlowTask extends BaseEntity {
+    /** 所属流程实例ID */
     private Long instanceId;
+    /** 关联的业务类型 */
     private String bizType;
+    /** 关联的业务ID */
     private Long bizId;
+    /** 流程节点标识 */
     private String nodeKey;
+    /** 审批人角色 */
     private String approverRole;
+    /** 审批人ID */
     private Long approverId;
     private String status;
+    /** 任务截止时间 */
     private LocalDateTime dueTime;
 
     public Long getInstanceId() { return instanceId; }

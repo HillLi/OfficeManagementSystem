@@ -196,6 +196,7 @@
 </template>
 
 <script setup>
+// 会议管理页面：提供会议申请、纪要归档、纪要确认、发布为公告及参会人员管理等功能
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
@@ -208,6 +209,7 @@ import { formatDate } from '../utils/format'
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
 const optionsOf = dictionaryStore.optionsOf
+/** 当前登录用户 */
 const currentUser = readSessionUser(undefined, { id: 2 })
 
 const activeTab = ref('list')
@@ -262,24 +264,29 @@ const rules = {
   participants: [{ required: true, type: 'array', message: '请选择参会人员', trigger: 'change' }]
 }
 
+/** 判断是否属于大型活动（室内>500人或室外>100人） */
 const isLarge = computed(() =>
   (form.venueType === '室内' && form.participants.length > 500) ||
   (form.venueType === '室外' && form.participants.length > 100)
 )
 
+/** 根据用户ID获取用户姓名 */
 function userName(uid) {
   const user = userOptions.value.find(u => u.id === uid || u.id === Number(uid))
   return user ? (user.realName || user.username || uid) : uid
 }
 
+/** 判断当前用户是否为该会议的记录员 */
 function isRecorder(row) {
   return row.recorderId === currentUser.id
 }
 
+/** 判断当前用户是否为该会议的组织者 */
 function isOrganizer(row) {
   return row.organizerId === currentUser.id
 }
 
+/** 加载会议室、会议列表、我参与的会议、组织树和用户列表数据 */
 const load = async () => {
   loading.value = true
   try {
@@ -302,11 +309,13 @@ const load = async () => {
   }
 }
 
+/** 打开会议申请弹窗并重置表单 */
 const openApplicationDialog = () => {
   Object.assign(form, resetForm())
   applicationDialog.value = true
 }
 
+/** 提交会议申请 */
 const submit = async () => {
   try {
     await formRef.value.validate()
@@ -323,6 +332,7 @@ const submit = async () => {
   }
 }
 
+/** 填写并归档会议纪要 */
 const archiveMinutes = async (meeting) => {
   const { value } = await ElMessageBox.prompt('请输入会议纪要', '纪要归档', {
     inputType: 'textarea',
@@ -333,6 +343,7 @@ const archiveMinutes = async (meeting) => {
   await load()
 }
 
+/** 参会人确认会议纪要 */
 const confirmMinutes = async (row) => {
   await ElMessageBox.confirm('确认会议纪要内容无误？', '确认纪要', { type: 'info' })
   await api.confirmMeetingMinutes(row.id)
@@ -340,6 +351,7 @@ const confirmMinutes = async (row) => {
   await load()
 }
 
+/** 将会议发布为公告 */
 const publishMeeting = async (row) => {
   await ElMessageBox.confirm('确定将该会议发布为公告？', '发布确认', { type: 'warning' })
   await api.publishMeeting(row.id)
@@ -347,6 +359,7 @@ const publishMeeting = async (row) => {
   await load()
 }
 
+/** 直接归档会议（不发布为公告） */
 const archiveDirectly = async (row) => {
   await ElMessageBox.confirm('确定直接归档该会议？', '归档确认', { type: 'warning' })
   await api.archiveMeeting(row.id)
@@ -354,6 +367,7 @@ const archiveDirectly = async (row) => {
   await load()
 }
 
+/** 查看会议参会人员列表 */
 const showParticipants = async (row) => {
   participantDialogMode.value = 'view'
   participantDialogTitle.value = `参会人员 — ${row.title}`
@@ -369,6 +383,7 @@ const showParticipants = async (row) => {
   }
 }
 
+/** 查看参会人员的纪要确认进度 */
 const showConfirmProgress = async (row) => {
   participantDialogMode.value = 'progress'
   participantDialogTitle.value = `确认进度 — ${row.title}`
@@ -384,6 +399,7 @@ const showConfirmProgress = async (row) => {
   }
 }
 
+/** 向未确认纪要的参会人发送提醒 */
 const remindParticipant = async (participant) => {
   try {
     const meetingId = participantList.value.length > 0 ? participant.meetingId : null
@@ -395,11 +411,13 @@ const remindParticipant = async (participant) => {
   }
 }
 
+/** 查看会议纪要内容 */
 const viewMinutes = (row) => {
   minutesViewContent.value = row.minutes || '暂无纪要内容'
   minutesViewDialog.value = true
 }
 
+/** 打开流程导览弹窗 */
 const openFlowGuide = (meeting) => {
   flowGuideDialog.value?.open('meeting', meeting.id)
 }

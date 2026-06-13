@@ -10,9 +10,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.BiPredicate;
 
-/**
- * Facade pattern — aggregates statistics from all business modules.
- */
+// 外观模式：仪表盘统计外观类，聚合所有业务模块的统计数据
 @Component
 public class DashboardFacade {
     private final OmsRepository repo;
@@ -21,10 +19,12 @@ public class DashboardFacade {
         this.repo = repo;
     }
 
+    // 聚合所有业务的统计数据（无权限过滤）
     public DashboardStats aggregate() {
         return aggregate((bizType, bizId) -> true);
     }
 
+    // 聚合所有业务的统计数据，按权限过滤可见数据
     public DashboardStats aggregate(BiPredicate<String, Long> canRead) {
         List<Document> documents = visible("document", repo.findAllDocuments(), canRead);
         List<SealApplication> sealApplications = visible("seal", repo.findAllSealApplications(), canRead);
@@ -74,6 +74,7 @@ public class DashboardFacade {
         return stats;
     }
 
+    // 根据权限过滤可见的业务实体列表
     private <T extends BaseEntity> List<T> visible(String bizType, Collection<T> entities,
                                                     BiPredicate<String, Long> canRead) {
         List<T> result = new ArrayList<T>();
@@ -85,6 +86,7 @@ public class DashboardFacade {
         return result;
     }
 
+    // 按月份统计业务数量
     private void countByMonth(Map<String, Long> monthly, Collection<? extends BaseEntity> entities,
                               DateTimeFormatter fmt) {
         for (BaseEntity e : entities) {
@@ -97,6 +99,7 @@ public class DashboardFacade {
         }
     }
 
+    // 获取当月会议日程列表
     private List<DashboardScheduleItem> monthlyScheduleItems(Collection<Meeting> meetings, LocalDateTime now) {
         LocalDateTime monthStart = now.withDayOfMonth(1).toLocalDate().atStartOfDay();
         LocalDateTime nextMonthStart = monthStart.plusMonths(1);
@@ -110,6 +113,7 @@ public class DashboardFacade {
         return items;
     }
 
+    // 判断会议时间是否在当月范围内
     private boolean isCurrentMonthSchedule(Meeting meeting, LocalDateTime monthStart,
                                            LocalDateTime nextMonthStart) {
         return meeting.getStartTime() != null
@@ -119,6 +123,7 @@ public class DashboardFacade {
                 && meeting.getEndTime().isAfter(monthStart);
     }
 
+    // 将会议对象转换为日程展示项
     private DashboardScheduleItem toScheduleItem(Meeting meeting) {
         DashboardScheduleItem item = new DashboardScheduleItem();
         item.setId(meeting.getId());
@@ -133,6 +138,7 @@ public class DashboardFacade {
         return item;
     }
 
+    // 根据会议室ID查询会议室名称
     private String roomName(Long roomId) {
         if (roomId == null) {
             return "";

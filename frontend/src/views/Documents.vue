@@ -117,6 +117,7 @@
 </template>
 
 <script setup>
+// 公文管理页面：提供公文起草、审批、归档、分发签收、AI起草/审查等全生命周期管理功能
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
@@ -127,7 +128,9 @@ import WorkflowGuideDialog from '../components/WorkflowGuideDialog.vue'
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
 const optionsOf = dictionaryStore.optionsOf
+/** 当前登录用户信息 */
 const currentUser = readSessionUser(undefined, { id: 0, roleKeys: [] })
+/** 是否具有公文管理权限（办公室管理员或系统管理员） */
 const canManage = computed(() => currentUser.roleKeys?.some((role) => ['office_admin', 'admin'].includes(role)))
 const rows = ref([])
 const loading = ref(false)
@@ -169,8 +172,11 @@ const attachmentRules = {
   fileUrl: [{ required: true, message: '请输入文件地址', trigger: 'blur' }]
 }
 
+/** 判断公文是否允许使用AI（仅公开密级可用） */
 const canAi = (document) => ['公开', 'public'].includes(document.secrecyLevel)
+/** 判断公文是否已有分发记录 */
 const hasDistribution = (document) => document.distributionStatus && document.distributionStatus !== 'not_distributed'
+/** 加载公文列表数据 */
 const load = async () => {
   loading.value = true
   try {
@@ -179,12 +185,16 @@ const load = async () => {
     loading.value = false
   }
 }
+/** 根据用户ID获取用户姓名 */
 const userName = (id) => userOptions.value.find((user) => user.id === id)?.realName || `#${id}`
+/** 根据用户ID获取所属部门名称 */
 const userDepartment = (id) => userOptions.value.find((user) => user.id === id)?.deptName || '-'
+/** 选择接收人时同步其部门ID */
 const selectReceiver = () => {
   distributionForm.receiverDeptId = selectedReceiver.value?.deptId || null
 }
 
+/** 保存公文草稿 */
 const save = async () => {
   try {
     await formRef.value.validate()
@@ -198,6 +208,7 @@ const save = async () => {
     }
   }
 }
+/** 打开编辑公文弹窗，填充现有数据 */
 const openEdit = (row) => {
   editingDoc.value = row
   editForm.title = row.title
@@ -208,6 +219,7 @@ const openEdit = (row) => {
   editForm.content = row.content || ''
   editDialog.value = true
 }
+/** 保存编辑后的公文内容 */
 const saveEdit = async () => {
   try {
     await editFormRef.value.validate()
@@ -221,6 +233,7 @@ const saveEdit = async () => {
     }
   }
 }
+/** 调用AI起草公文正文（编辑模式） */
 const editAiDraft = async () => {
   if (editForm.secrecyLevel !== '公开') return
   try {
@@ -234,6 +247,7 @@ const editAiDraft = async () => {
     ElMessage.error(e.message || '操作失败')
   }
 }
+/** 提交公文进入审批流程 */
 const submitFlow = async (id) => {
   try {
     await api.submitDocument(id)
@@ -243,6 +257,7 @@ const submitFlow = async (id) => {
     ElMessage.error(e.message || '操作失败')
   }
 }
+/** 归档已审批通过的公文 */
 const archive = async (id) => {
   try {
     await api.archiveDocument(id)
@@ -252,6 +267,7 @@ const archive = async (id) => {
     ElMessage.error(e.message || '操作失败')
   }
 }
+/** 调用AI起草公文正文（新建模式） */
 const draft = async () => {
   if (form.secrecyLevel !== '公开') return
   try {
@@ -265,6 +281,7 @@ const draft = async () => {
     ElMessage.error(e.message || '操作失败')
   }
 }
+/** AI审查公文，返回问题和建议 */
 const review = async (id) => {
   try {
     const result = await api.aiReview(id)
@@ -273,6 +290,7 @@ const review = async (id) => {
     ElMessage.error(e.message || '操作失败')
   }
 }
+/** 打开公文分发与签收弹窗 */
 const openDistribution = async (document) => {
   try {
     currentDocument.value = document
@@ -282,6 +300,7 @@ const openDistribution = async (document) => {
     ElMessage.error(e.message || '操作失败')
   }
 }
+/** 发起公文分发 */
 const distribute = async () => {
   try {
     await distributionFormRef.value.validate()
@@ -295,6 +314,7 @@ const distribute = async () => {
     }
   }
 }
+/** 签收公文 */
 const receive = async (distributionId) => {
   try {
     await api.receiveDocument(currentDocument.value.id, distributionId)
@@ -305,6 +325,7 @@ const receive = async (distributionId) => {
     ElMessage.error(e.message || '操作失败')
   }
 }
+/** 对未签收的公文发送催办提醒 */
 const remind = async (distributionId) => {
   try {
     await api.remindDocument(currentDocument.value.id, distributionId)
@@ -314,6 +335,7 @@ const remind = async (distributionId) => {
     ElMessage.error(e.message || '操作失败')
   }
 }
+/** 打开附件管理弹窗 */
 const openAttachment = async (document) => {
   try {
     currentDocument.value = document
@@ -326,9 +348,11 @@ const openAttachment = async (document) => {
     ElMessage.error(e.message || '操作失败')
   }
 }
+/** 打开流程导览弹窗 */
 const openFlowGuide = (document) => {
   flowGuideDialog.value?.open('document', document.id)
 }
+/** 添加公文附件 */
 const addAttachment = async () => {
   try {
     await attachmentFormRef.value.validate()

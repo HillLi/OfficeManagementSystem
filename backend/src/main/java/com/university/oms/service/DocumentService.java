@@ -18,6 +18,9 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+/**
+ * 公文管理服务，处理公文的起草、提交、审批、AI校验、分发和签收
+ */
 @Service
 public class DocumentService {
     private final OmsRepository repo;
@@ -44,6 +47,7 @@ public class DocumentService {
         this.dictionaryService = dictionaryService;
     }
 
+    /** 获取当前用户可见的公文列表（根据角色和权限过滤） */
     public List<Document> list() {
         User user = AuthContext.currentUser();
         List<Document> documents = repo.findAllDocuments();
@@ -59,6 +63,7 @@ public class DocumentService {
         return scoped;
     }
 
+    /** 创建新公文（草稿状态） */
     public Document create(DocumentRequest request) {
         dictionaryService.requireEnabled("document_type", request.getDocType(), "公文文种");
         dictionaryService.requireEnabled("secrecy_level", request.getSecrecyLevel(), "密级");
@@ -75,6 +80,7 @@ public class DocumentService {
         return document;
     }
 
+    /** 修改公文（仅草稿或已驳回状态可修改） */
     public Document update(Long id, DocumentRequest request) {
         Document document = find(id);
         if (!"draft".equals(document.getStatus()) && !"rejected".equals(document.getStatus())) {
@@ -95,6 +101,7 @@ public class DocumentService {
         return document;
     }
 
+    /** 提交公文进入审批流，驳回后重新提交时自动递增版本号 */
     public Document submit(Long id) {
         Document document = find(id);
         accessService.requireDocumentSubmit(document);
@@ -109,6 +116,7 @@ public class DocumentService {
         return document;
     }
 
+    /** 归档公文（仅已审批通过的公文可归档） */
     public Document archive(Long id) {
         Document document = find(id);
         accessService.requireDocumentArchive(document);
@@ -123,6 +131,7 @@ public class DocumentService {
         return document;
     }
 
+    /** AI格式校验公文，返回校验结果 */
     public AiReviewResult review(Long id) {
         Document document = find(id);
         AiReviewResult result = processor.process(document);
@@ -134,6 +143,7 @@ public class DocumentService {
         return result;
     }
 
+    /** 分发公文给指定接收人 */
     public DocumentDistribution distribute(Long id, DocumentDistributionRequest request) {
         Document document = find(id);
         accessService.requireDocumentDistribute(document);
@@ -161,6 +171,7 @@ public class DocumentService {
         return distribution;
     }
 
+    /** 获取公文的分发记录列表 */
     public List<DocumentDistribution> distributions(Long id) {
         find(id);
         accessService.requireBusinessRead("document", id);
@@ -169,6 +180,7 @@ public class DocumentService {
         return rows;
     }
 
+    /** 签收公文分发 */
     public DocumentDistribution receipt(Long id, Long distributionId) {
         Document document = find(id);
         DocumentDistribution distribution = findDistribution(id, distributionId);
@@ -176,6 +188,7 @@ public class DocumentService {
         distribution.setStatus("received");
         distribution.setReceivedAt(LocalDateTime.now());
         distribution.setUpdatedAt(LocalDateTime.now());
+        // 根据全员签收情况更新公文的分发状态
         document.setDistributionStatus(allReceived(id) ? "received" : "partially_received");
         document.setUpdatedAt(LocalDateTime.now());
         repo.saveDocumentDistribution(distribution);
@@ -184,6 +197,7 @@ public class DocumentService {
         return distribution;
     }
 
+    /** 催办公文签收 */
     public DocumentDistribution remind(Long id, Long distributionId) {
         Document document = find(id);
         accessService.requireDocumentRemind(document);
@@ -200,10 +214,12 @@ public class DocumentService {
         return distribution;
     }
 
+    /** AI智能起草公文 */
     public String draft(AiDraftRequest request) {
         return aiProvider.draft(request.getDocType(), request.getTopic(), request.getKeyPoints());
     }
 
+    /** 根据ID查找公文，不存在则抛异常 */
     private Document find(Long id) {
         Document document = repo.findDocumentById(id);
         if (document == null) {
@@ -212,6 +228,7 @@ public class DocumentService {
         return document;
     }
 
+    /** 查找公文的分发记录，不存在则抛异常 */
     private DocumentDistribution findDistribution(Long documentId, Long distributionId) {
         DocumentDistribution distribution = repo.findDocumentDistributionById(distributionId);
         if (distribution == null || !documentId.equals(distribution.getDocumentId())) {
@@ -220,6 +237,7 @@ public class DocumentService {
         return distribution;
     }
 
+    /** 判断公文的所有分发记录是否都已签收 */
     private boolean allReceived(Long documentId) {
         boolean found = false;
         for (DocumentDistribution distribution : repo.findDocumentDistributionsByDocumentId(documentId)) {
@@ -231,6 +249,7 @@ public class DocumentService {
         return found;
     }
 
+    /** 判断用户是否可查看所有公文（管理员、党办校办、校级领导） */
     private boolean canViewAll(User user) {
         return user.getRoleKeys().contains("admin")
                 || user.getRoleKeys().contains("office_admin")

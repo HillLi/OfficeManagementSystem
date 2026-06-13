@@ -1,11 +1,20 @@
 package com.university.oms.model;
 
+/**
+ * 审计日志实体，记录系统操作行为
+ */
 public class AuditLog extends BaseEntity {
+    /** 操作人ID */
     private Long operatorId;
+    /** 所属模块 */
     private String module;
+    /** 操作动作 */
     private String action;
+    /** 关联的业务类型 */
     private String bizType;
+    /** 关联的业务ID */
     private Long bizId;
+    /** 操作详情 */
     private String detail;
 
     public Long getOperatorId() { return operatorId; }

@@ -17,6 +17,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 印章管理服务，处理用印申请、用印登记、归还确认和印章移交
+ */
 @Service
 public class SealService {
     private final OmsRepository repo;
@@ -32,10 +35,12 @@ public class SealService {
         this.dictionaryService = dictionaryService;
     }
 
+    /** 获取所有印章列表 */
     public List<Seal> seals() {
         return repo.findAllSeals();
     }
 
+    /** 获取当前用户可见的用印申请列表（根据角色过滤） */
     public List<SealApplication> applications() {
         User user = AuthContext.currentUser();
         List<SealApplication> apps = repo.findAllSealApplications();
@@ -56,10 +61,12 @@ public class SealService {
         return scoped;
     }
 
+    /** 创建用印申请（草稿状态），外带用印需额外校验 */
     public SealApplication apply(SealApplyRequest request) {
         dictionaryService.requireEnabled("matter_level", request.getMatterLevel(), "事项等级");
         Long applicantId = AuthContext.currentUserIdOr(request.getApplicantId());
         requireSeal(request.getSealId());
+        // 外带用印必须填写完整的外带信息
         if (request.isTakeOut() && (blank(request.getTakeOutReason()) || blank(request.getTakeOutLocation())
                 || request.getSupervisorId() == null || request.getExpectedReturnTime() == null)) {
             throw new BusinessException("外带用印必须填写原因、地点、监交人和预计归还时间");
@@ -84,6 +91,7 @@ public class SealService {
         return enrich(application);
     }
 
+    /** 提交用印申请进入审批流，校级印章走党办校办审批 */
     public SealApplication submit(Long id) {
         SealApplication application = find(id);
         requireCurrentApplicantOrAdmin(application);
@@ -99,6 +107,7 @@ public class SealService {
         return enrich(application);
     }
 
+    /** 用印登记，由印章保管人操作 */
     public SealApplication markUsed(Long id, Long keeperId) {
         Long operatorId = AuthContext.currentUserIdOr(keeperId);
         requireKeeper(operatorId);
@@ -114,6 +123,7 @@ public class SealService {
         return app;
     }
 
+    /** 印章移交登记，记录移交信息 */
     public SealTransfer transfer(SealTransferRequest request) {
         Long operatorId = AuthContext.currentUserIdOr(null);
         requireKeeper(operatorId);
@@ -137,11 +147,13 @@ public class SealService {
         return transfer;
     }
 
+    /** 获取所有印章移交记录 */
     public List<SealTransfer> transfers() {
         requireKeeper(AuthContext.currentUserIdOr(null));
         return repo.findAllSealTransfers();
     }
 
+    /** 归还确认，检测逾期归还并记录 */
     public SealApplication markReturned(Long id, Long keeperId) {
         Long operatorId = AuthContext.currentUserIdOr(keeperId);
         requireKeeper(operatorId);
@@ -153,6 +165,7 @@ public class SealService {
         seal.setStatus("in_store");
         repo.saveSealApplication(app);
         repo.saveSeal(seal);
+        // 逾期归还时记录特别日志
         if (app.getReturnDeadline() != null && LocalDateTime.now().isAfter(app.getReturnDeadline())) {
             approvalService.record("seal", id, operatorId, "overdue_return", "逾期归还（截止" + app.getReturnDeadline() + "）");
         } else {
@@ -178,6 +191,7 @@ public class SealService {
         return seal;
     }
 
+    /** 校验当前用户是否为申请人或管理员，且申请处于草稿状态 */
     private void requireCurrentApplicantOrAdmin(SealApplication application) {
         User user = AuthContext.requireUser();
         if (!application.getApplicantId().equals(user.getId()) && !user.getRoleKeys().contains("admin")) {
@@ -194,6 +208,7 @@ public class SealService {
         }
     }
 
+    /** 补充用印申请的印章名称和材料数量 */
     private SealApplication enrich(SealApplication application) {
         Seal seal = repo.findSealById(application.getSealId());
         application.setSealName(seal == null ? "" : seal.getSealName());
@@ -201,6 +216,7 @@ public class SealService {
         return application;
     }
 
+    /** 统计有效（未删除）的附件数量 */
     private int activeMaterialCount(Long applicationId) {
         int count = 0;
         for (Attachment attachment : repo.findAttachmentsByBizTypeAndBizId("seal", applicationId)) {
@@ -211,6 +227,7 @@ public class SealService {
         return count;
     }
 
+    /** 校验用户是否为印章保管人或管理员 */
     private void requireKeeper(Long userId) {
         User user = repo.findUserById(userId);
         if (user == null || !(user.getRoleKeys().contains("seal_keeper") || user.getRoleKeys().contains("office_admin")

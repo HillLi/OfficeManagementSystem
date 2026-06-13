@@ -1,20 +1,25 @@
+// API 接口模块：封装所有与后端通信的 HTTP 请求
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
+// 创建 axios 实例，统一配置基础路径和超时时间
 const http = axios.create({
   baseURL: '/api',
   timeout: 10000
 })
 
+// 登录过期处理标志，防止重复提示
 let authExpiredHandling = false
 const AUTH_EXPIRED_MESSAGE = '用户未登录或登录已失效'
 
+/** 判断错误是否为登录过期（401 或特定提示信息） */
 export function isAuthExpiredError(error) {
   const status = error?.response?.status
   const message = error?.response?.data?.message || error?.message || ''
   return status === 401 || message.includes(AUTH_EXPIRED_MESSAGE)
 }
 
+/** 处理登录过期：清除会话信息并跳转到登录页 */
 export function handleAuthExpired({
   sessionStorage = globalThis.window?.sessionStorage || globalThis.sessionStorage,
   location = globalThis.window?.location || globalThis.location,
@@ -32,6 +37,7 @@ export function handleAuthExpired({
   }
 }
 
+// 请求拦截器：在每个请求头中附加 Bearer Token
 http.interceptors.request.use((config) => {
   const token = sessionStorage.getItem('oms_token')
   if (token) {
@@ -40,7 +46,9 @@ http.interceptors.request.use((config) => {
   return config
 })
 
+// 响应拦截器：统一处理业务错误和登录过期
 http.interceptors.response.use((response) => {
+  // Blob 类型直接返回原始数据（用于文件下载等场景）
   if (response.config.responseType === 'blob') {
     return response.data
   }
@@ -53,6 +61,7 @@ http.interceptors.response.use((response) => {
     }
     return Promise.reject(error)
   }
+  // 非GET请求成功后触发全局业务操作事件，用于刷新通知等
   if (response.config.method && response.config.method.toLowerCase() !== 'get') {
     globalThis.window?.dispatchEvent?.(new CustomEvent('oms:business-action'))
   }
@@ -67,21 +76,28 @@ http.interceptors.response.use((response) => {
   return Promise.reject(error)
 })
 
+// 所有后端 API 接口的统一入口
 export const api = {
+  // 登录与登出
   login: (data) => http.post('/auth/login', data),
   logout: () => http.post('/auth/logout'),
+  // 仪表盘数据
   dashboard: () => http.get('/dashboard'),
+  // 公告管理
   announcements: (params) => http.get('/announcements', { params }),
   latestAnnouncements: (params) => http.get('/announcements/latest', { params }),
   createAnnouncement: (data) => http.post('/announcements', data),
   updateAnnouncement: (id, data) => http.put(`/announcements/${id}`, data),
   publishAnnouncement: (id) => http.post(`/announcements/${id}/publish`),
   withdrawAnnouncement: (id) => http.post(`/announcements/${id}/withdraw`),
+  // 统计与导出
   statistics: () => http.get('/statistics'),
   exportStatistics: () => http.get('/statistics/export', { responseType: 'blob' }),
+  // 用户与组织
   users: () => http.get('/auth/users'),
   userOptions: () => http.get('/auth/user-options'),
   orgTree: () => http.get('/org/tree'),
+  // 获取部门选项列表（兼容多种接口降级策略）
   deptOptions: () => http.get('/auth/dept-options').catch((error) => {
     if (error?.response?.status !== 404) {
       return Promise.reject(error)
@@ -101,9 +117,11 @@ export const api = {
       })
     })
   }),
+  // 字典数据
   dictionaries: () => http.get('/dictionaries'),
   dictionaryVersion: () => http.get('/dictionaries/version'),
 
+  // 公文管理
   documents: () => http.get('/documents'),
   createDocument: (data) => http.post('/documents', data),
   updateDocument: (id, data) => http.put(`/documents/${id}`, data),
@@ -113,9 +131,11 @@ export const api = {
   distributeDocument: (id, data) => http.post(`/documents/${id}/distributions`, data),
   receiveDocument: (id, distributionId) => http.post(`/documents/${id}/distributions/${distributionId}/receipt`),
   remindDocument: (id, distributionId) => http.post(`/documents/${id}/distributions/${distributionId}/remind`),
+  // AI 智能起草与审核
   aiDraft: (data) => http.post('/documents/ai-draft', data),
   aiReview: (id) => http.post(`/documents/${id}/ai-review`),
 
+  // 印章管理
   seals: () => http.get('/seals'),
   sealApps: () => http.get('/seals/applications'),
   createSealApp: (data) => http.post('/seals/applications', data),
@@ -125,6 +145,7 @@ export const api = {
   sealTransfers: () => http.get('/seals/transfers'),
   createSealTransfer: (data) => http.post('/seals/transfers', data),
 
+  // 会议管理
   rooms: () => http.get('/meetings/rooms'),
   meetings: () => http.get('/meetings'),
   createMeeting: (data) => http.post('/meetings', data),
@@ -136,6 +157,7 @@ export const api = {
   archiveMeeting: (id) => http.post(`/meetings/${id}/archive`),
   remindParticipant: (meetingId, userId) => http.post(`/meetings/${meetingId}/remind-participant/${userId}`),
 
+  // 邮件管理
   sendMail: (data) => http.post('/mails', data),
   mailInbox: (params) => http.get('/mails/inbox', { params }),
   mailSent: (params) => http.get('/mails/sent', { params }),
@@ -143,14 +165,17 @@ export const api = {
   markMailRead: (id) => http.post(`/mails/${id}/read`),
   retryMailEmail: (id) => http.post(`/mails/${id}/retry-email`),
 
+  // 出差管理
   travels: () => http.get('/travels'),
   createTravel: (data) => http.post('/travels', data),
   reimburseTravel: (id, data) => http.post(`/travels/${id}/reimburse`, data),
 
+  // 工作汇报
   reports: () => http.get('/reports'),
   createReport: (data) => http.post('/reports', data),
   replyReport: (id, data) => http.post(`/reports/${id}/reply`, data),
 
+  // 审批与工作流
   approvals: (params) => http.get('/approvals', { params }),
   approve: (bizType, bizId, data) => http.post(`/approvals/${bizType}/${bizId}`, data),
   addAttachment: (data) => http.post('/workflow/attachments', data),
@@ -166,6 +191,7 @@ export const api = {
   flowTasks: (params) => http.get('/workflow/tasks', { params }),
   workflowGuide: (params) => http.get('/workflow/guide', { params }),
 
+  // 后台管理：用户、角色、部门、字典
   adminUsers: () => http.get('/admin/users'),
   adminUser: (id) => http.get(`/admin/users/${id}`),
   adminCreateUser: (data) => http.post('/admin/users', data),

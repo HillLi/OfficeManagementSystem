@@ -1,12 +1,20 @@
 package com.university.oms.model;
 
+/**
+ * 工作报告实体
+ */
 public class Report extends BaseEntity {
     private String title;
+    /** 报告类型 */
     private String type;
+    /** 密级 */
     private String secrecyLevel;
     private String content;
+    /** 批复内容 */
     private String reply;
+    /** 申请人ID */
     private Long applicantId;
+    /** 所属部门ID */
     private Long deptId;
     private String status;
 

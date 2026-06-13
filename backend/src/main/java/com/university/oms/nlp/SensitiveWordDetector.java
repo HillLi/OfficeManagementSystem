@@ -9,11 +9,12 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Detects sensitive words in document text using an in-memory dictionary.
- * Categories: secrecy-related, political, financial, personal-privacy.
+ * 敏感词检测器，基于内存词典检测文档中的敏感词
+ * 分类包括：涉密、政治、财务、隐私
  */
 public class SensitiveWordDetector {
 
+    /** 敏感词词典：分类 -> 词列表 */
     private static final Map<String, List<String>> SENSITIVE_WORDS = new LinkedHashMap<String, List<String>>();
 
     static {
@@ -35,9 +36,9 @@ public class SensitiveWordDetector {
     }
 
     /**
-     * Detect sensitive words in the given text.
+     * 检测文本中的敏感词
      *
-     * @return list of matches, each entry is "word(category)"
+     * @return 匹配结果列表，每项格式为"词(分类)"
      */
     public static List<String> detect(String text) {
         List<String> matches = new ArrayList<String>();
@@ -56,9 +57,7 @@ public class SensitiveWordDetector {
         return matches;
     }
 
-    /**
-     * Get all categories of detected sensitive words.
-     */
+    /** 获取文本中命中的敏感词分类集合 */
     public static Set<String> detectCategories(String text) {
         Set<String> categories = new LinkedHashSet<String>();
         if (text == null || text.trim().isEmpty()) {

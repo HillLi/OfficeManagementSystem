@@ -44,6 +44,7 @@
 </template>
 
 <script setup>
+// 请示报告页面：提供请示报告的提交、批复归档和流程导览功能
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
@@ -69,6 +70,7 @@ const rules = {
   title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
   content: [{ required: true, message: '请输入内容', trigger: 'blur' }]
 }
+/** 加载请示报告列表数据 */
 const load = async () => {
   loading.value = true
   try {
@@ -79,6 +81,7 @@ const load = async () => {
     loading.value = false
   }
 }
+/** 提交请示报告 */
 const submit = async () => {
   try {
     await formRef.value.validate()
@@ -92,6 +95,7 @@ const submit = async () => {
     }
   }
 }
+/** 对已审批通过的请示报告进行批复归档 */
 const reply = async (row) => {
   try {
     const { value } = await ElMessageBox.prompt('请输入批复意见', '批复归档', {
@@ -107,6 +111,7 @@ const reply = async (row) => {
     }
   }
 }
+/** 打开流程导览弹窗 */
 const openFlowGuide = (row) => {
   flowGuideDialog.value?.open('report', row.id)
 }

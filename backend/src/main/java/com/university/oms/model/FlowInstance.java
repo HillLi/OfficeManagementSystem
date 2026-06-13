@@ -1,10 +1,17 @@
 package com.university.oms.model;
 
+/**
+ * 审批流程实例实体
+ */
 public class FlowInstance extends BaseEntity {
+    /** 关联的业务类型 */
     private String bizType;
+    /** 关联的业务ID */
     private Long bizId;
+    /** 当前所在流程节点标识 */
     private String currentNodeKey;
     private String status;
+    /** 流程发起人ID */
     private Long starterId;
 
     public String getBizType() { return bizType; }

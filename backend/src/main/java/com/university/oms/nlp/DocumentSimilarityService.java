@@ -10,8 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Finds the most similar document using TF-IDF and cosine similarity.
- * Caches TF-IDF vectors to avoid repeated computation.
+ * 文档相似度检测服务，基于TF-IDF和余弦相似度查找最相似的文档
  */
 @Service
 public class DocumentSimilarityService {
@@ -25,11 +24,12 @@ public class DocumentSimilarityService {
     }
 
     /**
-     * Find the most similar document to the given content.
+     * 查找与指定内容最相似的文档
+     * 使用TF-IDF向量化后计算余弦相似度
      *
-     * @param content   the content to compare
-     * @param excludeId document ID to exclude from comparison
-     * @return similarity result with score and title, or null if no documents found
+     * @param content   待比较的内容
+     * @param excludeId 需要排除的文档ID
+     * @return 相似度结果（包含分数和文档标题），无结果时返回null
      */
     public SimilarityResult findMostSimilar(String content, Long excludeId) {
         ensureCache();
@@ -62,14 +62,13 @@ public class DocumentSimilarityService {
         return new SimilarityResult(maxScore, bestMatch.getTitle(), bestMatch.getId());
     }
 
-    /**
-     * Invalidate the cache (call when documents change).
-     */
+    /** 使缓存失效（文档变更时调用） */
     public void invalidateCache() {
         corpusCache = null;
         vectorCache = null;
     }
 
+    /** 双重检查锁保证线程安全地初始化语料库缓存和TF-IDF向量缓存 */
     private void ensureCache() {
         if (corpusCache == null) {
             synchronized (this) {
@@ -89,6 +88,7 @@ public class DocumentSimilarityService {
         }
     }
 
+    /** 相似度检测结果 */
     public static class SimilarityResult {
         private final double score;
         private final String title;

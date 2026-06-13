@@ -1,7 +1,9 @@
+// 路由配置模块：定义页面路径映射及导航守卫
 import { createRouter, createWebHistory } from 'vue-router'
 import { canAccessPath } from '../utils/navigation'
 import { readSessionUser } from '../utils/sessionUser'
 
+// 所有页面路由配置（懒加载方式引入组件）
 const routes = [
   { path: '/login', component: () => import('../views/Login.vue'), meta: { public: true } },
   { path: '/', redirect: '/dashboard' },
@@ -20,20 +22,25 @@ const routes = [
   { path: '/:pathMatch(.*)*', component: () => import('../views/NotFound.vue'), meta: { public: true } }
 ]
 
+// 创建路由实例，使用 HTML5 History 模式
 const router = createRouter({
   history: createWebHistory(),
   routes
 })
 
+// 全局前置守卫：校验登录状态和页面访问权限
 router.beforeEach((to, from, next) => {
   const token = sessionStorage.getItem('oms_token')
   if (!to.meta.public && !token) {
+    // 未登录且访问非公开页面，跳转到登录页
     next('/login')
   } else if (!to.meta.public) {
+    // 已登录，检查用户角色是否有权访问目标路径
     const user = readSessionUser()
     if (canAccessPath(to.path, user?.roleKeys || [])) {
       next()
     } else {
+      // 无权限则重定向到仪表盘
       next('/dashboard')
     }
   } else {

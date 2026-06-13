@@ -6,17 +6,27 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 仪表盘统计数据，用于首页数据概览展示
+ */
 public class DashboardStats {
     private long documentCount;
+    /** 待处理公文数量 */
     private long pendingDocumentCount;
+    /** 印章申请数量 */
     private long sealApplyCount;
     private long meetingCount;
     private long travelCount;
     private long reportCount;
+    /** 大型活动数量 */
     private long largeActivityCount;
+    /** 差旅预算总额 */
     private BigDecimal travelBudgetTotal = BigDecimal.ZERO;
+    /** 公文状态分布统计 */
     private Map<String, Long> documentStatusDistribution = new LinkedHashMap<>();
+    /** 月度业务数量统计 */
     private Map<String, Long> monthlyBusinessCounts = new LinkedHashMap<>();
+    /** 月度日程安排项 */
     private List<DashboardScheduleItem> monthlyScheduleItems = new ArrayList<>();
 
     public long getDocumentCount() {

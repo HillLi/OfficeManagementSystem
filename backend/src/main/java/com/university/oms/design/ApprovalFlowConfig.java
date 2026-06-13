@@ -5,14 +5,13 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import java.util.*;
 
-/**
- * Defines per-business-type approval step sequences and role mappings.
- */
+// 审批流程配置：定义各业务类型的审批步骤顺序和状态与角色的映射关系
 @Component
 public class ApprovalFlowConfig {
-    private final Map<String, List<String>> flows = new LinkedHashMap<>();
-    private final Map<String, String> statusToRole = new LinkedHashMap<>();
+    private final Map<String, List<String>> flows = new LinkedHashMap<>(); // 业务类型 -> 审批步骤列表
+    private final Map<String, String> statusToRole = new LinkedHashMap<>(); // 审批状态 -> 所需角色
 
+    // 初始化各业务类型的审批流程和状态角色映射
     @PostConstruct
     public void init() {
         flows.put("document", Arrays.asList("pending_dept", "pending_office", "pending_leader", "approved"));
@@ -33,10 +32,12 @@ public class ApprovalFlowConfig {
         statusToRole.put("pending_secret_review", "office_admin");
     }
 
+    // 根据待审批状态查询所需的角色
     public String getRequiredRole(String pendingStatus) {
         return statusToRole.get(pendingStatus);
     }
 
+    // 根据业务类型和当前状态获取下一个审批状态
     public String getNextStatus(String bizType, String currentStatus) {
         List<String> steps = flows.get(bizType);
         if (steps == null) return "approved";

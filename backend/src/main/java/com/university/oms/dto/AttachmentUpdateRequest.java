@@ -2,6 +2,9 @@ package com.university.oms.dto;
 
 import javax.validation.constraints.NotBlank;
 
+/**
+ * 附件更新请求参数（修改名称和密级）
+ */
 public class AttachmentUpdateRequest {
     @NotBlank(message = "材料名称不能为空")
     private String fileName;

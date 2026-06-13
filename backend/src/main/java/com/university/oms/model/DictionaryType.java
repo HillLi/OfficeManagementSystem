@@ -1,8 +1,14 @@
 package com.university.oms.model;
 
+/**
+ * 数据字典类型实体
+ */
 public class DictionaryType extends BaseEntity {
+    /** 字典类型编码 */
     private String dictType;
+    /** 字典类型名称 */
     private String dictName;
+    /** 是否为系统内置类型（不可删除） */
     private boolean systemType;
     private boolean enabled = true;
     private String remark;

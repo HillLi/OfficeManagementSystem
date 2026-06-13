@@ -6,7 +6,9 @@ import com.university.oms.model.User;
 
 import java.time.LocalDate;
 
+// 工厂模式：根据请求参数创建公文对象
 public class DocumentFactory {
+    // 创建公文对象并设置初始属性
     public Document create(long id, DocumentRequest request, User applicant) {
         Document document = new Document();
         document.setId(id);

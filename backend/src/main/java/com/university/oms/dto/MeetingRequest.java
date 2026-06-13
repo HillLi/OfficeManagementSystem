@@ -5,10 +5,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 import javax.validation.constraints.*;
 
+/**
+ * 会议创建/编辑请求参数
+ */
 public class MeetingRequest {
     @NotBlank(message = "会议主题不能为空")
     @Size(max = 200, message = "会议主题不能超过200字")
     private String title;
+    /** 会议室 ID */
     @NotNull(message = "会议室不能为空")
     private Long roomId;
     @NotNull(message = "开始时间不能为空")
@@ -17,25 +21,36 @@ public class MeetingRequest {
     private LocalDateTime endTime;
     @NotNull(message = "组织者不能为空")
     private Long organizerId;
+    /** 预计参会人数 */
     @Min(value = 1, message = "参会人数至少为1")
     private Integer expectedCount = 1;
+    /** 场地类型，默认"室内" */
     private String venueType = "室内";
+    /** 会议类型，默认"国内管理会议" */
     private String meetingType = "国内管理会议";
     @DecimalMin(value = "0", message = "预算不能为负数")
     private BigDecimal budget = BigDecimal.ZERO;
+    /** 住宿费 */
     @DecimalMin(value = "0", message = "费用不能为负数")
     private BigDecimal accommodationFee;
+    /** 餐饮费 */
     @DecimalMin(value = "0", message = "费用不能为负数")
     private BigDecimal mealFee;
+    /** 场地费 */
     @DecimalMin(value = "0", message = "费用不能为负数")
     private BigDecimal venueFee;
+    /** 其他费用 */
     @DecimalMin(value = "0", message = "费用不能为负数")
     private BigDecimal otherFee;
+    /** 风险评估报告文件地址 */
     private String riskReportUrl;
+    /** 安全保障方案文件地址 */
     private String securityPlanUrl;
+    /** 应急预案文件地址 */
     private String emergencyPlanUrl;
     @NotEmpty(message = "参会人员不能为空")
     private List<Long> participants;
+    /** 会议记录人 ID */
     private Long recorderId;
 
     public List<Long> getParticipants() { return participants; }

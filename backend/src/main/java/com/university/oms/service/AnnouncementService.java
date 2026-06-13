@@ -15,6 +15,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 公告管理服务，提供公告的创建、发布、撤回和查询功能
+ */
 @Service
 public class AnnouncementService {
     private final OmsRepository repo;
@@ -25,6 +28,7 @@ public class AnnouncementService {
         this.workflowService = workflowService;
     }
 
+    /** 查询公告列表，支持是否包含草稿 */
     public List<Announcement> list(boolean includeDrafts) {
         User user = AuthContext.requireUser();
         boolean maintainer = canMaintain(user);
@@ -35,11 +39,13 @@ public class AnnouncementService {
                 .collect(Collectors.toList());
     }
 
+    /** 获取最新的N条已发布公告 */
     public List<Announcement> latest(int limit) {
         int safeLimit = Math.max(1, Math.min(limit, 10));
         return list(false).stream().limit(safeLimit).collect(Collectors.toList());
     }
 
+    /** 获取单条公告详情 */
     public Announcement get(Long id) {
         User user = AuthContext.requireUser();
         Announcement announcement = require(id);
@@ -49,6 +55,7 @@ public class AnnouncementService {
         return withTargetDeptName(announcement);
     }
 
+    /** 创建新公告（草稿状态） */
     public Announcement create(AnnouncementRequest request) {
         User user = AuthContext.requireUser();
         requireMaintainer(user);
@@ -62,6 +69,7 @@ public class AnnouncementService {
         return withTargetDeptName(announcement);
     }
 
+    /** 更新公告内容 */
     public Announcement update(Long id, AnnouncementRequest request) {
         requireMaintainer(AuthContext.requireUser());
         Announcement announcement = require(id);
@@ -72,6 +80,7 @@ public class AnnouncementService {
         return withTargetDeptName(announcement);
     }
 
+    /** 发布公告 */
     public Announcement publish(Long id) {
         User user = AuthContext.requireUser();
         requireMaintainer(user);
@@ -85,6 +94,7 @@ public class AnnouncementService {
         return withTargetDeptName(announcement);
     }
 
+    /** 撤回公告 */
     public Announcement withdraw(Long id) {
         requireMaintainer(AuthContext.requireUser());
         Announcement announcement = require(id);
@@ -95,6 +105,7 @@ public class AnnouncementService {
         return withTargetDeptName(announcement);
     }
 
+    /** 将请求参数填充到公告对象中，并校验发布范围 */
     private void apply(Announcement announcement, AnnouncementRequest request) {
         announcement.setTitle(trimRequired(request.getTitle(), "公告标题不能为空"));
         announcement.setContent(trimRequired(request.getContent(), "公告内容不能为空"));
@@ -115,6 +126,7 @@ public class AnnouncementService {
         announcement.setPinned(Boolean.TRUE.equals(request.getPinned()));
     }
 
+    /** 补充公告的目标部门名称 */
     private Announcement withTargetDeptName(Announcement announcement) {
         announcement.setTargetDeptName("dept".equals(announcement.getTargetType())
                 ? resolveDeptName(announcement.getTargetDeptId())
@@ -127,6 +139,7 @@ public class AnnouncementService {
         return dept == null ? null : dept.getDeptName();
     }
 
+    /** 根据ID查询公告，不存在则抛异常 */
     private Announcement require(Long id) {
         Announcement announcement = repo.findAnnouncementById(id);
         if (announcement == null) {
@@ -135,6 +148,7 @@ public class AnnouncementService {
         return announcement;
     }
 
+    /** 判断用户是否可阅读该公告（已发布且范围匹配） */
     private boolean canRead(User user, Announcement announcement) {
         if (!"published".equals(announcement.getStatus())) {
             return false;
@@ -144,16 +158,19 @@ public class AnnouncementService {
                 || canMaintain(user);
     }
 
+    /** 校验当前用户是否具有公告维护权限 */
     private void requireMaintainer(User user) {
         if (!canMaintain(user)) {
             throw new ForbiddenException("无公告维护权限");
         }
     }
 
+    /** 判断用户是否为管理员或党办校办人员 */
     private boolean canMaintain(User user) {
         return user.getRoleKeys().contains("admin") || user.getRoleKeys().contains("office_admin");
     }
 
+    /** 公告排序规则：置顶优先，然后按发布/更新时间倒序 */
     private Comparator<Announcement> announcementOrder() {
         return Comparator.comparing(Announcement::isPinned).reversed()
                 .thenComparing((Announcement a) -> timeOrCreated(a), Comparator.reverseOrder());

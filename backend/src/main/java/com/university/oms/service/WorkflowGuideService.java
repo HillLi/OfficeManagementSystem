@@ -9,6 +9,9 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 流程导览服务，为各业务模块生成可视化的审批流程步骤指引
+ */
 @Service
 public class WorkflowGuideService {
     private final OmsRepository repo;
@@ -19,6 +22,7 @@ public class WorkflowGuideService {
         this.accessService = accessService;
     }
 
+    /** 根据业务类型和ID获取对应的流程导览 */
     public WorkflowGuideResponse guide(String bizType, Long bizId) {
         accessService.requireBusinessRead(bizType, bizId);
         if ("document".equals(bizType)) {
@@ -39,8 +43,9 @@ public class WorkflowGuideService {
         throw new BusinessException("暂不支持该业务流程导览");
     }
 
-    // --- Document guide ---
+    // --- 公文流程导览 ---
 
+    /** 生成公文审批流程的步骤列表 */
     private WorkflowGuideResponse documentGuide(Long id) {
         Document document = repo.findDocumentById(id);
         if (document == null) {
@@ -101,8 +106,9 @@ public class WorkflowGuideService {
         return step;
     }
 
-    // --- Seal guide ---
+    // --- 用印流程导览 ---
 
+    /** 生成用印审批流程的步骤列表，根据印章类型和事项等级动态调整 */
     private WorkflowGuideResponse sealGuide(Long id) {
         SealApplication app = repo.findSealApplicationById(id);
         if (app == null) throw new BusinessException("用印申请不存在");
@@ -122,6 +128,7 @@ public class WorkflowGuideService {
         return guide;
     }
 
+    /** 根据印章类型和事项等级生成对应的审批步骤 */
     private List<WorkflowGuideResponse.Step> sealApprovalSteps(SealApplication app) {
         List<WorkflowGuideResponse.Step> steps = new ArrayList<WorkflowGuideResponse.Step>();
         Seal seal = repo.findSealById(app.getSealId());
@@ -139,8 +146,9 @@ public class WorkflowGuideService {
         return steps;
     }
 
-    // --- Meeting guide ---
+    // --- 会议流程导览 ---
 
+    /** 生成会议审批流程的步骤列表，大型活动含保卫部门审核 */
     private WorkflowGuideResponse meetingGuide(Long id) {
         Meeting meeting = repo.findMeetingById(id);
         if (meeting == null) throw new BusinessException("会议不存在");
@@ -168,8 +176,9 @@ public class WorkflowGuideService {
         return guide;
     }
 
-    // --- Report guide ---
+    // --- 请示报告流程导览 ---
 
+    /** 生成请示报告审批流程的步骤列表 */
     private WorkflowGuideResponse reportGuide(Long id) {
         Report report = repo.findReportById(id);
         if (report == null) throw new BusinessException("请示报告不存在");
@@ -192,8 +201,9 @@ public class WorkflowGuideService {
         return guide;
     }
 
-    // --- Travel guide ---
+    // --- 差旅流程导览 ---
 
+    /** 生成差旅审批流程的步骤列表，包含报销和财务复核环节 */
     private WorkflowGuideResponse travelGuide(Long id) {
         Travel travel = repo.findTravelById(id);
         if (travel == null) throw new BusinessException("差旅申请不存在");
@@ -217,8 +227,9 @@ public class WorkflowGuideService {
         return guide;
     }
 
-    // --- Shared helpers ---
+    // --- 共享辅助方法 ---
 
+    /** 构建基础的流程导览响应对象 */
     private WorkflowGuideResponse base(String bizType, Long id, String title, String status) {
         WorkflowGuideResponse guide = new WorkflowGuideResponse();
         guide.setBizType(bizType);
@@ -233,6 +244,7 @@ public class WorkflowGuideService {
         return new WorkflowGuideResponse.Step(key, label, type, status);
     }
 
+    /** 构建基于审批记录的业务步骤 */
     private WorkflowGuideResponse.Step recordedStep(String bizType, Long id, String key,
                                                      String label, String type, String action) {
         WorkflowGuideResponse.Step step = step(key, label, type, "waiting");
@@ -243,6 +255,7 @@ public class WorkflowGuideService {
         return step;
     }
 
+    /** 根据审批记录构建业务操作步骤（如提交、归档等） */
     private WorkflowGuideResponse.Step recordedBusinessStep(String bizType, Long id,
                                                              String key, String label, String action) {
         WorkflowGuideResponse.Step step = step(key, label, "business", "waiting");
@@ -258,6 +271,7 @@ public class WorkflowGuideService {
         return step;
     }
 
+    /** 根据审批记录构建审批步骤，匹配对应的审批节点位置 */
     private WorkflowGuideResponse.Step approvalStep(String bizType, Long id, String key, String label) {
         WorkflowGuideResponse.Step step = step(key, label, "approval", "waiting");
         for (ApprovalRecord record : repo.findApprovalsByBizTypeAndBizId(bizType, id)) {
@@ -275,6 +289,7 @@ public class WorkflowGuideService {
         return step;
     }
 
+    /** 判断审批记录是否匹配指定节点的序号位置 */
     private boolean matchesApprovalIndex(String bizType, Long id, String key, ApprovalRecord target) {
         List<String> keys = approvalKeys(bizType, id);
         int approvalIndex = 0;
@@ -289,6 +304,7 @@ public class WorkflowGuideService {
         return false;
     }
 
+    /** 获取指定业务类型的审批节点Key列表（按顺序） */
     private List<String> approvalKeys(String bizType, Long id) {
         List<String> keys = new ArrayList<String>();
         if ("document".equals(bizType)) {
@@ -331,6 +347,7 @@ public class WorkflowGuideService {
         return keys;
     }
 
+    /** 构建基于审计日志的步骤（如AI校验） */
     private WorkflowGuideResponse.Step auditStep(String bizType, Long id, String key, String label,
                                                   String type, String action, String emptyStatus) {
         WorkflowGuideResponse.Step step = step(key, label, type, emptyStatus);
@@ -357,6 +374,7 @@ public class WorkflowGuideService {
         }
     }
 
+    /** 将待办任务信息（角色、截止时间、处理人）填充到步骤中 */
     private void applyTaskDetails(WorkflowGuideResponse.Step step, String bizType, Long bizId) {
         for (FlowTask task : repo.findFlowTasksByBizTypeAndBizId(bizType, bizId)) {
             if (step.getKey().equals(task.getNodeKey())) {
@@ -375,6 +393,7 @@ public class WorkflowGuideService {
         }
     }
 
+    /** 角色Key转中文标签 */
     private String roleLabel(String roleKey) {
         if ("dept_head".equals(roleKey)) return "部门负责人";
         if ("office_admin".equals(roleKey)) return "党办校办人员";
@@ -395,6 +414,7 @@ public class WorkflowGuideService {
         return count;
     }
 
+    /** 判断业务状态是否已到达或超过目标状态 */
     private boolean reached(String currentStatus, String targetStatus) {
         if (targetStatus.equals(currentStatus)) {
             return true;
@@ -406,6 +426,7 @@ public class WorkflowGuideService {
         return false;
     }
 
+    /** 根据当前业务状态标记步骤列表中对应的步骤为current */
     private void markCurrentByBusinessStatus(List<WorkflowGuideResponse.Step> steps, String currentStatus) {
         for (WorkflowGuideResponse.Step step : steps) {
             if (currentStatus != null && currentStatus.equals(step.getKey()) && "waiting".equals(step.getStatus())) {
@@ -414,6 +435,7 @@ public class WorkflowGuideService {
         }
     }
 
+    /** 标记公文流程中特殊的当前步骤（分发/归档） */
     private void markDocumentCurrent(List<WorkflowGuideResponse.Step> steps, String businessStatus) {
         if ("approved".equals(businessStatus)) {
             markWaitingStepCurrent(steps, "distribute");
@@ -422,6 +444,7 @@ public class WorkflowGuideService {
         }
     }
 
+    /** 标记审批通过后的后续步骤为current */
     private void markPostApprovalCurrent(List<WorkflowGuideResponse.Step> steps, String businessStatus,
                                          String approvedStatus, String approvedNextKey,
                                          String usedStatus, String usedNextKey) {
@@ -463,6 +486,7 @@ public class WorkflowGuideService {
         return false;
     }
 
+    /** 更新导览对象的当前节点Key为第一个current或rejected步骤 */
     private void updateCurrentNodeKey(WorkflowGuideResponse guide) {
         if (guide.getSteps() == null) {
             return;
@@ -475,6 +499,7 @@ public class WorkflowGuideService {
         }
     }
 
+    /** 填充差旅财务复核步骤的审批记录信息 */
     private void applyTravelRecheckRecord(WorkflowGuideResponse.Step step, Long id, Travel travel) {
         if (!travel.isReimbursementSubmitted()) {
             return;

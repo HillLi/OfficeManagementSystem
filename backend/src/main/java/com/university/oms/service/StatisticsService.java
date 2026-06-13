@@ -3,6 +3,9 @@ package com.university.oms.service;
 import com.university.oms.model.DashboardStats;
 import org.springframework.stereotype.Service;
 
+/**
+ * 统计服务，提供数据汇总与CSV导出功能
+ */
 @Service
 public class StatisticsService {
     private final DashboardService dashboardService;
@@ -11,10 +14,12 @@ public class StatisticsService {
         this.dashboardService = dashboardService;
     }
 
+    /** 获取统计摘要数据 */
     public DashboardStats summary() {
         return dashboardService.stats();
     }
 
+    /** 将统计数据导出为CSV格式 */
     public String exportCsv() {
         DashboardStats stats = summary();
         StringBuilder csv = new StringBuilder();

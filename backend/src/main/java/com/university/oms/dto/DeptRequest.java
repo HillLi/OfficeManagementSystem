@@ -3,10 +3,14 @@ package com.university.oms.dto;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 
+/**
+ * 部门创建/更新请求参数
+ */
 public class DeptRequest {
     @NotBlank
     @Size(max = 100, message = "部门名称不能超过100字")
     private String deptName;
+    /** 上级部门 ID（为空表示顶级部门） */
     private Long parentId;
 
     public String getDeptName() { return deptName; }

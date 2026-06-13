@@ -14,6 +14,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * 组织架构树服务，构建部门-用户的树形结构
+ */
 @Service
 public class OrgTreeService {
     private static final Comparator<Department> DEPARTMENT_ORDER = Comparator
@@ -29,6 +32,7 @@ public class OrgTreeService {
         this.repo = repo;
     }
 
+    /** 构建组织架构树（部门层级 + 部门下用户） */
     public List<OrgTreeNode> buildTree() {
         List<Department> sortedDepartments = new ArrayList<Department>(repo.findAllDepartments());
         sortedDepartments.sort(DEPARTMENT_ORDER);
@@ -40,6 +44,7 @@ public class OrgTreeService {
             departments.put(department.getId(), departmentNode(department));
         }
 
+        // 构建部门层级关系，检测循环引用
         List<OrgTreeNode> roots = new ArrayList<OrgTreeNode>();
         for (Department department : sortedDepartments) {
             OrgTreeNode node = departments.get(department.getId());
@@ -53,6 +58,7 @@ public class OrgTreeService {
             }
         }
 
+        // 将用户挂载到对应部门节点下
         List<User> sortedUsers = new ArrayList<User>(repo.findAllUsers());
         sortedUsers.sort(USER_ORDER);
         for (User user : sortedUsers) {
@@ -67,6 +73,7 @@ public class OrgTreeService {
         return roots;
     }
 
+    /** 检测部门父级链是否存在循环引用 */
     private boolean hasCyclicParentChain(Department department, Map<Long, Department> departments) {
         Set<Long> visited = new HashSet<Long>();
         Department current = department;

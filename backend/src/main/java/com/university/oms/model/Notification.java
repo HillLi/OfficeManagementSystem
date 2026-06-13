@@ -1,11 +1,18 @@
 package com.university.oms.model;
 
+/**
+ * 系统通知实体
+ */
 public class Notification extends BaseEntity {
+    /** 接收人ID */
     private Long receiverId;
     private String title;
     private String content;
+    /** 是否已读 */
     private boolean readStatus;
+    /** 关联的业务类型 */
     private String bizType;
+    /** 关联的业务ID */
     private Long bizId;
 
     public Long getReceiverId() { return receiverId; }

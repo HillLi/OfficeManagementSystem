@@ -3,6 +3,9 @@ package com.university.oms.dto;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 
+/**
+ * 公文分发请求参数（指定接收人和接收部门）
+ */
 public class DocumentDistributionRequest {
     @NotNull(message = "接收人不能为空")
     @Min(value = 1, message = "接收人ID无效")

@@ -6,10 +6,7 @@ import com.university.oms.model.User;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Composite pattern — department tree node.
- * Supports recursive operations across the organizational hierarchy.
- */
+// 组合模式：部门树节点，支持树形层级结构的递归操作
 public class DeptTreeNode {
     private final Department department;
     private final List<DeptTreeNode> children = new ArrayList<>();
@@ -18,6 +15,7 @@ public class DeptTreeNode {
         this.department = department;
     }
 
+    // 添加子部门节点
     public void addChild(DeptTreeNode child) {
         children.add(child);
     }
@@ -30,6 +28,7 @@ public class DeptTreeNode {
         return children;
     }
 
+    // 递归统计当前部门及其子部门的所有用户数量
     public int countAllUsers(List<User> allUsers) {
         int count = 0;
         for (User user : allUsers) {
@@ -43,6 +42,7 @@ public class DeptTreeNode {
         return count;
     }
 
+    // 递归将树形结构展平为部门列表
     public List<Department> flatten() {
         List<Department> result = new ArrayList<>();
         result.add(department);

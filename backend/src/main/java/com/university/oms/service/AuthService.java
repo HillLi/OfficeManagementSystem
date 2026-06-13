@@ -17,6 +17,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * 认证服务，处理用户登录、登出和登录失败锁定
+ */
 @Service
 public class AuthService {
     private static final int MAX_FAILURES = 5;
@@ -32,12 +35,14 @@ public class AuthService {
         this.passwordService = passwordService;
     }
 
+    /** 用户登录，校验密码并签发Token */
     public LoginResult login(LoginRequest request) {
         String username = request.getUsername() == null ? "" : request.getUsername().trim().toLowerCase();
         assertLoginAllowed(username);
         for (User user : repo.findAllUsers()) {
             if (user.getUsername().equals(request.getUsername()) && passwordService.matches(request.getPassword(), user.getPassword())) {
                 loginFailures.remove(username);
+                // 密码格式需要升级时自动重新hash
                 if (passwordService.needsUpgrade(user.getPassword())) {
                     user.setPassword(passwordService.hash(request.getPassword()));
                     repo.saveUser(user);
@@ -49,10 +54,12 @@ public class AuthService {
         throw new BusinessException("用户名或密码错误");
     }
 
+    /** 获取所有用户列表 */
     public List<User> users() {
         return repo.findAllUsers();
     }
 
+    /** 获取用户选项列表（用于下拉选择） */
     public List<UserOption> userOptions() {
         List<UserOption> options = new ArrayList<UserOption>();
         for (User user : repo.findAllUsers()) {
@@ -61,10 +68,12 @@ public class AuthService {
         return options;
     }
 
+    /** 获取部门选项列表 */
     public List<Department> deptOptions() {
         return repo.findAllDepartments();
     }
 
+    /** 用户登出，注销Token */
     public void logout(String authorization) {
         if (authorization != null && authorization.startsWith("Bearer ")) {
             tokenService.revoke(authorization.substring("Bearer ".length()).trim());
@@ -73,6 +82,7 @@ public class AuthService {
         }
     }
 
+    /** 检查登录是否被锁定 */
     private void assertLoginAllowed(String username) {
         LoginFailure failure = loginFailures.get(username);
         if (failure == null) {
@@ -86,6 +96,7 @@ public class AuthService {
         }
     }
 
+    /** 记录登录失败次数，达到上限后锁定账号 */
     private void recordLoginFailure(String username) {
         LoginFailure failure = loginFailures.computeIfAbsent(username, key -> new LoginFailure());
         failure.count++;
@@ -94,6 +105,7 @@ public class AuthService {
         }
     }
 
+    /** 登录失败记录 */
     private static class LoginFailure {
         private int count;
         private LocalDateTime lockedUntil;

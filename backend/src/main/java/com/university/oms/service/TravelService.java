@@ -16,6 +16,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 差旅管理服务，处理差旅申请、报销提交和交通工具校验
+ */
 @Service
 public class TravelService {
     private final OmsRepository repo;
@@ -25,7 +28,9 @@ public class TravelService {
     private final BusinessAccessService accessService;
     private final DictionaryService dictionaryService;
 
+    /** 教学科研业务对应的交通工具标准 */
     private static final Map<String, List<String>> TEACHING_RESEARCH_TRANSPORT = new HashMap<String, List<String>>();
+    /** 其他业务对应的交通工具标准 */
     private static final Map<String, List<String>> OTHER_BUSINESS_TRANSPORT = new HashMap<String, List<String>>();
     static {
         TEACHING_RESEARCH_TRANSPORT.put("一类", Arrays.asList("飞机头等舱", "飞机", "高铁商务座", "高铁一等座", "火车软卧"));
@@ -54,6 +59,7 @@ public class TravelService {
         this.dictionaryService = dictionaryService;
     }
 
+    /** 获取当前用户可见的差旅申请列表（根据角色过滤） */
     public List<Travel> list() {
         User user = AuthContext.currentUser();
         List<Travel> travels = repo.findAllTravels();
@@ -72,6 +78,7 @@ public class TravelService {
         return scoped;
     }
 
+    /** 创建差旅申请，校验交通工具并自动进行费用标准检查 */
     public Travel create(TravelRequest request) {
         dictionaryService.requireEnabled("staff_level", request.getStaffLevel(), "人员等级");
         dictionaryService.requireEnabled("travel_type", request.getTravelType(), "出差类型");
@@ -101,6 +108,7 @@ public class TravelService {
         return travel;
     }
 
+    /** 提交差旅报销，超出标准时需填写超标说明 */
     public Travel reimburse(Long id, TravelReimburseRequest request) {
         Travel travel = repo.findTravelById(id);
         if (travel == null) {
@@ -116,6 +124,7 @@ public class TravelService {
         if (travel.getCheckResult() == null) {
             travel.setCheckResult(expenseStrategy.check(travel));
         }
+        // 实际费用超出标准时必须填写超标说明
         if (request.getActualExpense().compareTo(travel.getCheckResult().getStandardAmount()) > 0
                 && (request.getOverLimitReason() == null || request.getOverLimitReason().trim().isEmpty())) {
             throw new BusinessException("实际费用超出标准时必须填写超标说明");
@@ -138,6 +147,7 @@ public class TravelService {
         return travel;
     }
 
+    /** 校验交通工具是否符合人员等级对应的出行标准 */
     private void validateTransport(Travel travel) {
         String transport = travel.getTransport();
         String staffLevel = travel.getStaffLevel();
@@ -156,6 +166,7 @@ public class TravelService {
         }
     }
 
+    /** 根据出差类型和人员等级获取允许的交通工具列表 */
     private List<String> allowedTransport(String travelType, String staffLevel) {
         if ("教学科研业务".equals(travelType)) {
             return TEACHING_RESEARCH_TRANSPORT.get(staffLevel);

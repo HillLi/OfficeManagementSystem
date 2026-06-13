@@ -1,6 +1,11 @@
+// 侧边栏导航菜单配置与权限控制
+
+/** 可发起业务的角色列表 */
 const INITIATOR_ROLES = ['office_user', 'dept_head', 'school_leader', 'office_admin']
+/** 可参与审批的角色列表 */
 const APPROVAL_ROLES = ['dept_head', 'school_leader', 'office_admin', 'finance_staff', 'security_staff']
 
+/** 全部菜单项定义（含路径、标签和允许访问的角色） */
 export const menuItems = [
   { index: '/dashboard', label: '工作台' },
   { index: '/documents', label: '公文管理', roles: INITIATOR_ROLES },
@@ -16,14 +21,17 @@ export const menuItems = [
   { index: '/admin/dictionaries', label: '字典管理', roles: ['admin'] }
 ]
 
+/** 判断用户是否拥有菜单项所要求的角色 */
 function hasAllowedRole(item, roleKeys) {
   return !item.roles || item.roles.some((role) => roleKeys.includes(role))
 }
 
+/** 根据用户角色过滤出可见的菜单项 */
 export function visibleMenuItems(roleKeys = []) {
   return menuItems.filter((item) => hasAllowedRole(item, roleKeys))
 }
 
+/** 判断用户是否有权访问指定路径 */
 export function canAccessPath(path, roleKeys = []) {
   const item = menuItems.find((candidate) => candidate.index === path)
   return !item || hasAllowedRole(item, roleKeys)

@@ -2,23 +2,42 @@ package com.university.oms.model;
 
 import java.time.LocalDateTime;
 
+/**
+ * 用印申请实体
+ */
 public class SealApplication extends BaseEntity {
+    /** 印章ID */
     private Long sealId;
+    /** 申请人ID */
     private Long applicantId;
+    /** 用印事由 */
     private String purpose;
+    /** 用印材料附件URL */
     private String materialUrl;
+    /** 盖章份数 */
     private Integer copies;
+    /** 是否外带用印 */
     private boolean takeOut;
+    /** 事项等级 */
     private String matterLevel;
+    /** 外带原因 */
     private String takeOutReason;
+    /** 外带地点 */
     private String takeOutLocation;
+    /** 监管人ID */
     private Long supervisorId;
     private String status;
+    /** 用印时间 */
     private LocalDateTime useTime;
+    /** 归还时间 */
     private LocalDateTime returnTime;
+    /** 归还截止时间 */
     private LocalDateTime returnDeadline;
+    /** 留存截止时间（印章需留存时的期限） */
     private LocalDateTime retentionUntil;
+    /** 印章名称（冗余字段，方便展示） */
     private String sealName;
+    /** 附件材料数量 */
     private int materialCount;
 
     public Long getSealId() {

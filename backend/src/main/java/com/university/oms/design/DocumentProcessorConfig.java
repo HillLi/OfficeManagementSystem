@@ -5,10 +5,7 @@ import com.university.oms.nlp.NlpQualityAnalysisDecorator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/**
- * Assembles the DocumentProcessor decorator chain.
- * Chain: NlpQualityAnalysisDecorator -> AiReviewDecorator -> SecrecyCheckDecorator -> BaseDocumentProcessor
- */
+// 装饰器模式：公文处理器装饰链配置，组装 NLP质量分析 -> AI审核 -> 保密检查 -> 基础处理
 @Configuration
 public class DocumentProcessorConfig {
 
@@ -18,6 +15,7 @@ public class DocumentProcessorConfig {
         this.similarityService = similarityService;
     }
 
+    // 构建并返回装饰器链
     @Bean
     public DocumentProcessor documentProcessor() {
         return new NlpQualityAnalysisDecorator(

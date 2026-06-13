@@ -2,10 +2,15 @@ package com.university.oms.model;
 
 import java.time.LocalDateTime;
 
+/**
+ * 会议参会人员实体
+ */
 public class MeetingParticipant extends BaseEntity {
     private Long meetingId;
     private Long userId;
+    /** 是否为会议记录人 */
     private boolean recorder;
+    /** 是否已确认会议纪要 */
     private boolean minutesConfirmed;
     private LocalDateTime confirmedAt;
 

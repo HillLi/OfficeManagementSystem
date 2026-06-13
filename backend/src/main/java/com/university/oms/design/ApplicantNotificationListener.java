@@ -4,9 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-/**
- * Observer — notifies the applicant when their business status changes.
- */
+// 观察者模式：申请人通知监听器，当业务状态变更时通知申请人
 @Component
 public class ApplicantNotificationListener implements StatusChangeListener {
     private static final Logger log = LoggerFactory.getLogger(ApplicantNotificationListener.class);

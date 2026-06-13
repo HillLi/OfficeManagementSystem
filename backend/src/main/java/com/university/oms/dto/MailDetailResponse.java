@@ -4,6 +4,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 邮件详情响应（包含发件人、收件人列表及当前用户的阅读状态）
+ */
 public class MailDetailResponse {
     private Long id;
     private Long senderId;
@@ -11,7 +14,9 @@ public class MailDetailResponse {
     private String subject;
     private String content;
     private LocalDateTime createdAt;
+    /** 当前用户在该邮件中的收件人类型（to/cc） */
     private String currentUserRecipientType;
+    /** 当前用户是否已读 */
     private boolean currentUserRead;
     private List<MailRecipientResponse> recipients = new ArrayList<MailRecipientResponse>();
 

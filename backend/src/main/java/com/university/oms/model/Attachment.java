@@ -4,18 +4,30 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.time.LocalDateTime;
 
+/**
+ * 附件实体，关联各类业务单据的文件附件
+ */
 public class Attachment extends BaseEntity {
+    /** 关联的业务类型 */
     private String bizType;
+    /** 关联的业务ID */
     private Long bizId;
+    /** 存储文件名 */
     private String fileName;
+    /** 原始文件名 */
     private String originalName;
+    /** 文件访问URL */
     private String fileUrl;
+    /** 服务器存储路径（不返回给前端） */
     @JsonIgnore
     private String storagePath;
     private Long fileSize;
+    /** MIME类型 */
     private String contentType;
+    /** 密级 */
     private String secrecyLevel;
     private Long uploaderId;
+    /** 是否已删除（逻辑删除） */
     private boolean deleted;
     private Long deletedBy;
     private LocalDateTime deletedAt;

@@ -53,6 +53,7 @@
   </el-dialog>
 </template>
 
+<!-- 工作流程导览弹窗组件：展示业务单据的审批流程进度和各节点详情 -->
 <script setup>
 import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
@@ -67,9 +68,11 @@ const visible = ref(false)
 const loading = ref(false)
 const guide = ref(null)
 
+// 获取当前正在处理或被驳回的流程步骤
 const currentStep = computed(() => guide.value?.steps?.find((step) =>
   step.status === 'current' || step.status === 'rejected'
 ))
+// 计算当前节点显示文本
 const currentNodeText = computed(() => {
   if (currentStep.value?.label) return currentStep.value.label
   const nodeKey = guide.value?.currentNodeKey
@@ -78,6 +81,7 @@ const currentNodeText = computed(() => {
   return labelOf('business_status', guide.value?.status) || nodeKey || '-'
 })
 
+// 打开流程导览弹窗，加载指定业务的流程数据
 const open = async (bizType, bizId) => {
   visible.value = true
   loading.value = true
@@ -91,6 +95,7 @@ const open = async (bizType, bizId) => {
   }
 }
 
+// 暴露open方法供父组件调用
 defineExpose({ open })
 </script>
 

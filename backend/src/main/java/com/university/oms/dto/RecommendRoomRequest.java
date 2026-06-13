@@ -3,9 +3,14 @@ package com.university.oms.dto;
 import javax.validation.constraints.*;
 import java.time.LocalDateTime;
 
+/**
+ * 会议室推荐请求参数（根据人数和设备需求推荐合适会议室）
+ */
 public class RecommendRoomRequest {
+    /** 预期参会人数 */
     @Min(value = 1, message = "预期人数至少为1")
     private Integer expectedCount = 1;
+    /** 所需设备要求描述 */
     @Size(max = 200, message = "设备要求不能超过200字")
     private String equipment;
     private LocalDateTime startTime;

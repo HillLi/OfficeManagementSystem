@@ -3,11 +3,18 @@ package com.university.oms.dto;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 组织架构树节点（部门-人员层级结构）
+ */
 public class OrgTreeNode {
     private String id;
+    /** 节点显示名称 */
     private String label;
+    /** 节点类型（dept/user） */
     private String type;
+    /** 关联的部门 ID（type=dept 时有值） */
     private Long deptId;
+    /** 关联的用户 ID（type=user 时有值） */
     private Long userId;
     private String email;
     private List<OrgTreeNode> children = new ArrayList<OrgTreeNode>();

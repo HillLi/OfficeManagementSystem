@@ -3,6 +3,7 @@ package com.university.oms.design;
 import com.university.oms.common.BusinessException;
 import com.university.oms.model.User;
 
+// 状态模式：已通过状态，不允许重复审批、驳回和撤回
 public class ApprovedState implements BusinessState {
     @Override
     public String approve(User operator) {

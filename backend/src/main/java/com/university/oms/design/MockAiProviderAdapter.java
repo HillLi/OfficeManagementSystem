@@ -2,11 +2,9 @@ package com.university.oms.design;
 
 import java.time.LocalDate;
 
-/**
- * Mock AI provider - replaced by NlpAiProviderAdapter as the primary implementation.
- * Kept as a fallback for testing.
- */
+// 适配器模式：模拟AI服务提供者，用于测试环境或作为后备实现
 public class MockAiProviderAdapter implements AiProviderAdapter {
+    // 根据公文类型和主题生成模拟公文草稿
     @Override
     public String draft(String docType, String topic, String keyPoints) {
         String points = keyPoints == null || keyPoints.trim().isEmpty() ? "请结合学校实际推进落实。" : keyPoints;

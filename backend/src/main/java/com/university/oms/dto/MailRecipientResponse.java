@@ -2,14 +2,22 @@ package com.university.oms.dto;
 
 import java.time.LocalDateTime;
 
+/**
+ * 邮件收件人信息响应
+ */
 public class MailRecipientResponse {
     private Long userId;
     private String realName;
     private String deptName;
+    /** 收件人类型（to/cc） */
     private String recipientType;
+    /** 是否已读 */
     private boolean readStatus;
+    /** 邮件发送状态 */
     private String emailStatus;
+    /** 邮件发送失败时的错误信息 */
     private String emailError;
+    /** 邮件发送时间 */
     private LocalDateTime emailSentAt;
 
     public Long getUserId() {

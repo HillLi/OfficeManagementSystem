@@ -17,6 +17,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 工作流服务，管理审批流实例、待办任务、通知、附件和审计日志
+ */
 @Service
 public class WorkflowService {
     private final OmsRepository repo;
@@ -35,6 +38,7 @@ public class WorkflowService {
         this.dictionaryService = dictionaryService;
     }
 
+    /** 添加附件记录（非用印业务） */
     public Attachment addAttachment(AttachmentRequest request) {
         if ("seal".equals(request.getBizType())) {
             throw new BusinessException("用印材料请通过文件上传接口提交");
@@ -55,10 +59,12 @@ public class WorkflowService {
         return attachment;
     }
 
+    /** 查询指定业务的附件列表 */
     public List<Attachment> attachments(String bizType, Long bizId) {
         return attachments(bizType, bizId, false);
     }
 
+    /** 查询附件列表，支持包含已删除的附件 */
     public List<Attachment> attachments(String bizType, Long bizId, boolean includeDeleted) {
         if (bizType != null && bizId != null) {
             accessService.requireBusinessRead(bizType, bizId);
@@ -74,6 +80,7 @@ public class WorkflowService {
                 .collect(Collectors.toList());
     }
 
+    /** 通过文件上传方式添加附件（用印业务） */
     public Attachment uploadAttachment(String bizType, Long bizId, String secrecyLevel, MultipartFile file) {
         User user = AuthContext.requireUser();
         accessService.requireAttachmentUpload(bizType, bizId);
@@ -96,6 +103,7 @@ public class WorkflowService {
         return attachment;
     }
 
+    /** 根据ID获取附件 */
     public Attachment attachment(Long id) {
         Attachment attachment = repo.findAttachmentById(id);
         if (attachment == null) {
@@ -104,6 +112,7 @@ public class WorkflowService {
         return attachment;
     }
 
+    /** 下载附件文件 */
     public Resource downloadAttachment(Long id) {
         Attachment attachment = attachment(id);
         if (attachment.isDeleted()) {
@@ -115,6 +124,7 @@ public class WorkflowService {
         return storageService.load(attachment.getStoragePath());
     }
 
+    /** 更新附件信息（文件名和密级） */
     public Attachment updateAttachment(Long id, AttachmentUpdateRequest request) {
         Attachment attachment = activeAttachment(id);
         accessService.requireAttachmentEdit(attachment.getBizType(), attachment.getBizId());
@@ -128,6 +138,7 @@ public class WorkflowService {
         return attachment;
     }
 
+    /** 逻辑删除附件，记录删除原因 */
     public Attachment deleteAttachment(Long id, AttachmentDeleteRequest request) {
         Attachment attachment = activeAttachment(id);
         accessService.requireAttachmentDelete(attachment.getBizType(), attachment.getBizId());
@@ -142,6 +153,7 @@ public class WorkflowService {
         return attachment;
     }
 
+    /** 获取未删除的附件，不存在或已删除则抛异常 */
     private Attachment activeAttachment(Long id) {
         Attachment attachment = attachment(id);
         if (attachment.isDeleted()) {
@@ -150,6 +162,7 @@ public class WorkflowService {
         return attachment;
     }
 
+    /** 记录审计日志 */
     public AuditLog audit(String module, String action, String bizType, Long bizId, String detail) {
         Long operatorId = AuthContext.currentUserIdOr(0L);
         AuditLog log = new AuditLog();
@@ -164,6 +177,7 @@ public class WorkflowService {
         return log;
     }
 
+    /** 查询审计日志列表 */
     public List<AuditLog> auditLogs(String bizType, Long bizId) {
         return repo.findAllAuditLogs().stream()
                 .filter(l -> bizType == null || bizType.equals(l.getBizType()))
@@ -171,6 +185,7 @@ public class WorkflowService {
                 .collect(Collectors.toList());
     }
 
+    /** 向指定用户发送站内通知 */
     public Notification notifyUser(Long receiverId, String title, String content, String bizType, Long bizId) {
         if (receiverId == null || repo.findUserById(receiverId) == null) {
             return null;
@@ -186,6 +201,7 @@ public class WorkflowService {
         return notification;
     }
 
+    /** 获取当前用户的通知列表，支持仅显示未读 */
     public List<Notification> notifications(boolean unreadOnly) {
         User user = AuthContext.requireUser();
         return repo.findNotificationsByReceiverId(user.getId()).stream()
@@ -193,6 +209,7 @@ public class WorkflowService {
                 .collect(Collectors.toList());
     }
 
+    /** 标记通知为已读 */
     public Notification markRead(Long id) {
         User user = AuthContext.requireUser();
         for (Notification notification : repo.findAllNotifications()) {
@@ -206,6 +223,7 @@ public class WorkflowService {
         throw new BusinessException("通知不存在");
     }
 
+    /** 启动审批流程，创建流程实例和待办任务 */
     public FlowInstance startFlow(String bizType, Long bizId, String initialStatus, Long starterId) {
         FlowInstance instance = repo.findFlowInstanceByBizTypeAndBizId(bizType, bizId);
         if (instance == null) {
@@ -225,16 +243,19 @@ public class WorkflowService {
         return instance;
     }
 
+    /** 推进审批流程到下一个节点 */
     public void advanceFlow(String bizType, Long bizId, String oldStatus, String newStatus, Long applicantId) {
         FlowInstance instance = repo.findFlowInstanceByBizTypeAndBizId(bizType, bizId);
         if (instance == null) {
             instance = startFlow(bizType, bizId, oldStatus, applicantId);
         }
+        // 关闭当前所有待办任务
         closeOpenTasks(instance.getId(), "reject".equals(newStatus) || "rejected".equals(newStatus) ? "rejected" : "completed");
         instance.setCurrentNodeKey(newStatus);
         instance.setStatus(terminal(newStatus) ? newStatus : "running");
         instance.setUpdatedAt(LocalDateTime.now());
         repo.saveFlowInstance(instance);
+        // 新节点为待审批状态时创建待办任务并通知审批人
         if (newStatus != null && newStatus.startsWith("pending_")) {
             createPendingTask(instance, newStatus);
             notifyNextApprovers(bizType, bizId, newStatus);
@@ -244,6 +265,7 @@ public class WorkflowService {
         audit(bizType, "advance_flow", bizType, bizId, oldStatus + " -> " + newStatus);
     }
 
+    /** 获取当前用户可见的流程实例列表 */
     public List<FlowInstance> flowInstances() {
         User user = AuthContext.requireUser();
         return repo.findAllFlowInstances().stream()
@@ -251,6 +273,7 @@ public class WorkflowService {
                 .collect(Collectors.toList());
     }
 
+    /** 获取待办任务列表，支持仅显示当前用户的任务 */
     public List<FlowTask> tasks(boolean onlyMine) {
         User user = AuthContext.requireUser();
         return repo.findAllFlowTasks().stream()
@@ -259,6 +282,7 @@ public class WorkflowService {
                 .collect(Collectors.toList());
     }
 
+    /** 为流程实例创建待办任务（同一节点不重复创建） */
     private void createPendingTask(FlowInstance instance, String nodeKey) {
         for (FlowTask existing : repo.findAllFlowTasks()) {
             if (existing.getInstanceId().equals(instance.getId()) && nodeKey.equals(existing.getNodeKey())
@@ -279,6 +303,7 @@ public class WorkflowService {
         repo.saveFlowTask(task);
     }
 
+    /** 关闭指定流程实例的所有待办任务 */
     private void closeOpenTasks(Long instanceId, String status) {
         for (FlowTask task : repo.findAllFlowTasks()) {
             if (task.getInstanceId().equals(instanceId) && "pending".equals(task.getStatus())) {
@@ -290,6 +315,7 @@ public class WorkflowService {
         }
     }
 
+    /** 通知下一个审批节点的有权限审批人 */
     private void notifyNextApprovers(String bizType, Long bizId, String nodeKey) {
         String role = flowConfig.getRequiredRole(nodeKey);
         if (role == null) {
@@ -302,6 +328,7 @@ public class WorkflowService {
         }
     }
 
+    /** 判断用户是否可以处理指定待办任务 */
     private boolean canHandle(User user, FlowTask task) {
         return user.getRoleKeys().contains("admin")
                 || (task.getApproverId() != null && task.getApproverId().equals(user.getId()))
@@ -309,6 +336,7 @@ public class WorkflowService {
                         task.getApproverRole());
     }
 
+    /** 判断用户是否可以查看指定流程实例 */
     private boolean canViewInstance(User user, FlowInstance instance) {
         if (user.getRoleKeys().contains("admin") || user.getRoleKeys().contains("office_admin")
                 || user.getRoleKeys().contains("school_leader")) {
@@ -325,6 +353,7 @@ public class WorkflowService {
         return false;
     }
 
+    /** 判断状态是否为终态（已审批/已驳回/已归档/已归还/已完成） */
     private boolean terminal(String status) {
         return "approved".equals(status) || "rejected".equals(status) || "archived".equals(status)
                 || "returned".equals(status) || "completed".equals(status);

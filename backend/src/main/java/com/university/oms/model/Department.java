@@ -1,7 +1,12 @@
 package com.university.oms.model;
 
+/**
+ * 部门实体
+ */
 public class Department extends BaseEntity {
+    /** 部门名称 */
     private String deptName;
+    /** 上级部门ID（用于构建部门树） */
     private Long parentId;
 
     public String getDeptName() {

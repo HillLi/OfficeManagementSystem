@@ -26,6 +26,7 @@
   </div>
 </template>
 
+<!-- 组织架构-用户树形选择器组件：以树形结构展示部门和人员，支持勾选用户 -->
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
 
@@ -48,6 +49,7 @@ const treeProps = {
   children: 'children'
 }
 
+// 递归展平树节点为一维数组
 function flattenNodes(nodes = []) {
   return nodes.flatMap((node) => [
     node,
@@ -55,23 +57,28 @@ function flattenNodes(nodes = []) {
   ])
 }
 
+// 从树数据中筛选出所有用户节点
 const userNodes = computed(() => flattenNodes(props.treeData).filter((node) => node.type === 'user'))
 
+// 根据已选ID计算已选用户信息列表（用于底部标签展示）
 const selectedUsers = computed(() => {
   const selected = new Set(props.modelValue.map((id) => String(id)))
   return userNodes.value.filter((node) => selected.has(String(node.userId)))
 })
 
+// 将已选用户ID转为树组件所需的选中key
 function checkedKeysFromModel() {
   return props.modelValue.map((id) => `user-${id}`)
 }
 
+// 同步树组件的勾选状态与外部modelValue
 function syncCheckedKeys() {
   nextTick(() => {
     treeRef.value?.setCheckedKeys(checkedKeysFromModel())
   })
 }
 
+// 树节点勾选变化时，提取所有已选用户ID并向上传递
 function handleCheck() {
   const checkedNodes = treeRef.value?.getCheckedNodes(false, true) || []
   const userIds = checkedNodes
@@ -81,10 +88,12 @@ function handleCheck() {
   emit('update:modelValue', Array.from(new Set(userIds)))
 }
 
+// 移除指定用户（点击标签关闭按钮）
 function removeUser(userId) {
   emit('update:modelValue', props.modelValue.filter((id) => String(id) !== String(userId)))
 }
 
+// 监听modelValue和treeData变化，同步树的勾选状态
 watch(
   () => [props.modelValue, props.treeData],
   syncCheckedKeys,

@@ -2,11 +2,18 @@ package com.university.oms.model;
 
 import java.time.LocalDateTime;
 
+/**
+ * 印章移交记录实体
+ */
 public class SealTransfer extends BaseEntity {
     private Long sealId;
+    /** 移交人ID */
     private Long transferorId;
+    /** 接收人ID */
     private Long receiverId;
+    /** 监交人ID */
     private Long supervisorId;
+    /** 移交材料附件URL */
     private String materialUrl;
     private String remark;
     private LocalDateTime transferTime;

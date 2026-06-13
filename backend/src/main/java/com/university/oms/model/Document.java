@@ -1,18 +1,31 @@
 package com.university.oms.model;
 
+/**
+ * 公文实体
+ */
 public class Document extends BaseEntity {
+    /** 公文编号 */
     private String docNo;
     private String title;
+    /** 公文类型 */
     private String docType;
+    /** 紧急程度 */
     private String urgency;
+    /** 密级 */
     private String secrecyLevel;
+    /** 知悉范围 */
     private String knowledgeScope;
     private String content;
+    /** 申请人ID */
     private Long applicantId;
+    /** 所属部门ID */
     private Long deptId;
     private String status;
+    /** 公文版本号 */
     private Integer version = 1;
+    /** 分发状态（not_distributed / distributed） */
     private String distributionStatus = "not_distributed";
+    /** AI审核结果 */
     private AiReviewResult aiReviewResult;
 
     public String getDocNo() {

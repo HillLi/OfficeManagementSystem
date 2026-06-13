@@ -16,6 +16,7 @@
   </div>
 </template>
 
+// 登录页面组件：提供用户名密码登录表单
 <script setup>
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -36,6 +37,7 @@ const rules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
+// 执行登录：校验表单、调用登录接口、存储用户信息并跳转首页
 const doLogin = async () => {
   loading.value = true
   error.value = ''

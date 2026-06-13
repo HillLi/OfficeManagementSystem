@@ -4,13 +4,16 @@ import com.university.oms.model.AiReviewResult;
 import com.university.oms.model.Document;
 import org.springframework.stereotype.Component;
 
+// 策略模式：默认公文审核策略，适用于所有公文类型
 @Component
 public class DefaultDocumentReviewStrategy implements DocumentReviewStrategy {
+    // 支持所有公文类型
     @Override
     public boolean supports(String docType) {
         return true;
     }
 
+    // 执行通用的格式和内容审核
     @Override
     public AiReviewResult review(Document document) {
         AiReviewResult result = new AiReviewResult();

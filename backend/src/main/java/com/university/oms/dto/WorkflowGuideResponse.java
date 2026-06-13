@@ -4,12 +4,17 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 工作流审批指引响应（展示审批流程各步骤及当前进度）
+ */
 public class WorkflowGuideResponse {
     private String bizType;
     private Long bizId;
     private String title;
+    /** 当前所在流程节点标识 */
     private String currentNodeKey;
     private String status;
+    /** 审批步骤列表 */
     private List<Step> steps = new ArrayList<Step>();
 
     public String getBizType() { return bizType; }
@@ -25,17 +30,26 @@ public class WorkflowGuideResponse {
     public List<Step> getSteps() { return steps; }
     public void setSteps(List<Step> steps) { this.steps = steps; }
 
+    /**
+     * 审批步骤详情
+     */
     public static class Step {
         private String key;
+        /** 步骤显示名称 */
         private String label;
+        /** 步骤类型（如 approval、submit 等） */
         private String type;
         private String status;
         private String roleKey;
         private String roleLabel;
+        /** 实际操作人 ID */
         private Long operatorId;
         private String operatorName;
+        /** 审批意见 */
         private String opinion;
+        /** 操作时间 */
         private LocalDateTime time;
+        /** 截止时间 */
         private LocalDateTime dueTime;
 
         public Step() { }

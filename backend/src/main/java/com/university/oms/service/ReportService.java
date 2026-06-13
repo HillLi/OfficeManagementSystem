@@ -12,6 +12,9 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 请示报告服务，处理请示报告的创建、审批和批复归档
+ */
 @Service
 public class ReportService {
     private final OmsRepository repo;
@@ -30,6 +33,7 @@ public class ReportService {
         this.dictionaryService = dictionaryService;
     }
 
+    /** 获取当前用户可见的请示报告列表（根据角色过滤） */
     public List<Report> list() {
         User user = AuthContext.currentUser();
         List<Report> reports = repo.findAllReports();
@@ -47,6 +51,7 @@ public class ReportService {
         return scoped;
     }
 
+    /** 创建请示报告，进入保密审查阶段 */
     public Report create(ReportRequest request) {
         dictionaryService.requireEnabled("report_type", request.getType(), "请示报告类型");
         dictionaryService.requireEnabled("secrecy_level", request.getSecrecyLevel(), "密级");
@@ -70,6 +75,7 @@ public class ReportService {
         return report;
     }
 
+    /** 批复归档请示报告（仅审批通过后可操作） */
     public Report reply(Long id, ReportReplyRequest request) {
         Report report = repo.findReportById(id);
         if (report == null) {

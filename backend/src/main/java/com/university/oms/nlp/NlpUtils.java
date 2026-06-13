@@ -12,10 +12,11 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Chinese NLP utilities based on HanLP: tokenization, keyword extraction, TF-IDF, cosine similarity.
+ * 中文NLP工具类，基于HanLP提供分词、关键词提取、TF-IDF计算和余弦相似度计算
  */
 public class NlpUtils {
 
+    /** 中文停用词集合 */
     private static final Set<String> STOP_WORDS = new HashSet<String>(Arrays.asList(
             "的", "了", "在", "是", "我", "有", "和", "就", "不", "人", "都", "一", "一个",
             "上", "也", "很", "到", "说", "要", "去", "你", "会", "着", "没有", "看", "好",
@@ -28,9 +29,7 @@ public class NlpUtils {
     private NlpUtils() {
     }
 
-    /**
-     * Chinese word segmentation, filtering stop words and non-noun/verb terms.
-     */
+    /** 中文分词，过滤停用词和非名词/动词/形容词 */
     public static List<String> tokenize(String text) {
         if (text == null || text.trim().isEmpty()) {
             return new ArrayList<String>();
@@ -53,9 +52,7 @@ public class NlpUtils {
         return result;
     }
 
-    /**
-     * Extract top-N keywords using TextRank algorithm.
-     */
+    /** 使用TextRank算法提取前N个关键词 */
     public static List<String> extractKeywords(String text, int topN) {
         if (text == null || text.trim().isEmpty()) {
             return new ArrayList<String>();
@@ -63,19 +60,19 @@ public class NlpUtils {
         return HanLP.extractKeyword(text, topN);
     }
 
-    /**
-     * Compute TF-IDF vector for a given text against a corpus.
-     */
+    /** 计算文本相对于语料库的TF-IDF向量 */
     public static Map<String, Double> computeTfIdf(String text, List<String> corpus) {
         List<String> tokens = tokenize(text);
         if (tokens.isEmpty()) {
             return new HashMap<String, Double>();
         }
+        // 计算词频TF
         Map<String, Integer> tf = new HashMap<String, Integer>();
         for (String token : tokens) {
             tf.put(token, tf.getOrDefault(token, 0) + 1);
         }
         int totalTokens = tokens.size();
+        // 计算TF-IDF值
         Map<String, Double> tfIdf = new HashMap<String, Double>();
         for (Map.Entry<String, Integer> entry : tf.entrySet()) {
             String word = entry.getKey();
@@ -92,9 +89,7 @@ public class NlpUtils {
         return tfIdf;
     }
 
-    /**
-     * Cosine similarity between two TF-IDF vectors.
-     */
+    /** 计算两个TF-IDF向量之间的余弦相似度 */
     public static double cosineSimilarity(Map<String, Double> v1, Map<String, Double> v2) {
         if (v1.isEmpty() || v2.isEmpty()) {
             return 0.0;

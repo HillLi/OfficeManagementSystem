@@ -1,6 +1,10 @@
 package com.university.oms.model;
 
+/**
+ * 站内信消息实体
+ */
 public class MailMessage extends BaseEntity {
+    /** 发件人ID */
     private Long senderId;
     private String subject;
     private String content;

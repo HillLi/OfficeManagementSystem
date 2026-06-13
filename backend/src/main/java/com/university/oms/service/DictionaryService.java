@@ -21,8 +21,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * 数据字典服务，管理字典类型和字典项的增删改查
+ */
 @Service
 public class DictionaryService {
+    /** 系统内置字典类型，不可停用 */
     private static final Set<String> SYSTEM_TYPES = new LinkedHashSet<String>(Arrays.asList(
             "business_status", "distribution_status", "biz_type",
             "flow_node", "role_key", "secrecy_level"
@@ -34,6 +38,7 @@ public class DictionaryService {
         this.repo = repo;
     }
 
+    /** 获取完整的字典目录（含所有类型和项） */
     public DictionaryCatalogResponse catalog() {
         Map<String, List<DictionaryItem>> dictionaries = new LinkedHashMap<String, List<DictionaryItem>>();
         for (DictionaryType type : listTypes()) {
@@ -45,6 +50,7 @@ public class DictionaryService {
         return response;
     }
 
+    /** 获取字典数据的版本号（基于最新更新时间） */
     public String version() {
         LocalDateTime latest = null;
         for (DictionaryType type : repo.findAllDictionaryTypes()) {
@@ -56,12 +62,14 @@ public class DictionaryService {
         return latest == null ? "" : latest.toString();
     }
 
+    /** 获取所有字典类型列表，按类型代码排序 */
     public List<DictionaryType> listTypes() {
         List<DictionaryType> types = new ArrayList<DictionaryType>(repo.findAllDictionaryTypes());
         types.sort(Comparator.comparing(DictionaryType::getDictType));
         return types;
     }
 
+    /** 获取指定字典类型下的所有字典项 */
     public List<DictionaryItem> listItems(String dictType) {
         requireType(dictType);
         List<DictionaryItem> items = new ArrayList<DictionaryItem>(repo.findDictionaryItemsByType(dictType));
@@ -70,6 +78,7 @@ public class DictionaryService {
         return items;
     }
 
+    /** 创建新的字典类型 */
     public DictionaryType createType(DictionaryTypeRequest request) {
         if (repo.findDictionaryTypeByType(request.getDictType()) != null) {
             throw new BusinessException("字典类型代码已存在");
@@ -87,6 +96,7 @@ public class DictionaryService {
         return type;
     }
 
+    /** 更新字典类型信息 */
     public DictionaryType updateType(String dictType, DictionaryTypeRequest request) {
         DictionaryType type = requireType(dictType);
         if (!dictType.equals(request.getDictType())) {
@@ -104,6 +114,7 @@ public class DictionaryService {
         return type;
     }
 
+    /** 创建新的字典项 */
     public DictionaryItem createItem(String dictType, DictionaryItemRequest request) {
         requireType(dictType);
         if (request.getDictCode() == null || request.getDictCode().trim().isEmpty()) {
@@ -127,6 +138,7 @@ public class DictionaryService {
         return item;
     }
 
+    /** 更新字典项信息 */
     public DictionaryItem updateItem(String dictType, String code, DictionaryItemRequest request) {
         requireType(dictType);
         DictionaryItem item = repo.findDictionaryItemByTypeAndCode(dictType, code);
@@ -149,6 +161,7 @@ public class DictionaryService {
         return item;
     }
 
+    /** 校验字典项是否启用，未启用则抛异常 */
     public void requireEnabled(String dictType, String code, String fieldLabel) {
         DictionaryItem item = repo.findDictionaryItemByTypeAndCode(dictType, code);
         if (item == null || !item.isEnabled()) {
@@ -156,6 +169,7 @@ public class DictionaryService {
         }
     }
 
+    /** 根据类型代码查询字典类型，不存在则抛异常 */
     private DictionaryType requireType(String dictType) {
         DictionaryType type = repo.findDictionaryTypeByType(dictType);
         if (type == null) {
@@ -175,6 +189,7 @@ public class DictionaryService {
         return right;
     }
 
+    /** 记录字典操作审计日志 */
     private void audit(String action, String detail, Long bizId) {
         AuditLog log = new AuditLog();
         OmsRepository.fillEntity(log, repo.nextId());

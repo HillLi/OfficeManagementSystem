@@ -6,6 +6,9 @@ import javax.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 发送邮件请求参数
+ */
 public class MailSendRequest {
     @NotBlank(message = "邮件主题不能为空")
     @Size(max = 255, message = "邮件主题不能超过255个字符")
@@ -15,8 +18,10 @@ public class MailSendRequest {
     @Size(max = 10000, message = "邮件内容不能超过10000字")
     private String content;
 
+    /** 收件人用户 ID 列表 */
     @NotEmpty(message = "收件人不能为空")
     private List<Long> toUserIds = new ArrayList<Long>();
+    /** 抄送人用户 ID 列表 */
     private List<Long> ccUserIds = new ArrayList<Long>();
 
     public String getSubject() {

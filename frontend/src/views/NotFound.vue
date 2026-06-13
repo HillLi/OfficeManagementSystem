@@ -8,6 +8,10 @@
   </div>
 </template>
 
+// 404页面：当访问不存在的路由时显示的提示页面
+<script setup>
+</script>
+
 <style scoped>
 .not-found-page {
   min-height: 360px;

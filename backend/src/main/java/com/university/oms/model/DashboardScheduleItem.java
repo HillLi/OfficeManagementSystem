@@ -2,15 +2,21 @@ package com.university.oms.model;
 
 import java.time.LocalDateTime;
 
+/**
+ * 仪表盘日程项，用于首页展示会议等日程安排
+ */
 public class DashboardScheduleItem {
     private Long id;
+    /** 业务类型（如：meeting） */
     private String bizType;
     private String title;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private String status;
+    /** 是否为大型活动 */
     private boolean largeActivity;
     private String roomName;
+    /** 业务类型的中文显示文本 */
     private String typeText;
 
     public Long getId() {

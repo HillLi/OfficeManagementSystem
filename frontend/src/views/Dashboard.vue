@@ -126,6 +126,7 @@
   </div>
 </template>
 
+// 系统首页仪表盘：展示统计概览、最新公告、日程日历和数据图表
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { BarChart, GaugeChart, PieChart } from 'echarts/charts'
@@ -136,6 +137,7 @@ import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
 import { formatDate } from '../utils/format'
 
+// 注册ECharts所需组件
 use([BarChart, GaugeChart, PieChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
 
 const dictionaryStore = useDictionaryStore()
@@ -146,37 +148,46 @@ const selectedAnnouncement = ref(null)
 const monthlyScheduleItems = ref([])
 const selectedDateKey = ref(dateKey(new Date()))
 const weekdayNames = ['一', '二', '三', '四', '五', '六', '日']
+
+// 仪表盘统计数据
 const stats = reactive({
   documentCount: 0, pendingDocumentCount: 0, sealApplyCount: 0,
   meetingCount: 0, travelCount: 0, reportCount: 0, largeActivityCount: 0,
   travelBudgetTotal: 0, documentStatusDistribution: {}, monthlyBusinessCounts: {}
 })
 
+// ECharts图表DOM引用
 const pieRef = ref(null)
 const barRef = ref(null)
 const gaugeRef = ref(null)
 let charts = []
 
+// 是否有公文状态分布数据
 const hasDocumentStatusData = computed(() =>
   Object.keys(stats.documentStatusDistribution || {}).length > 0
 )
+// 是否有月度业务量数据
 const hasMonthlyBusinessData = computed(() =>
   Object.keys(stats.monthlyBusinessCounts || {}).length > 0
 )
+// 是否有差旅预算数据
 const hasTravelBudgetData = computed(() =>
   Number(stats.travelBudgetTotal) > 0
 )
 
+// 当前日程月份的起始日期
 const scheduleMonthDate = computed(() => {
   const now = new Date()
   return new Date(now.getFullYear(), now.getMonth(), 1)
 })
 
+// 日程月份标题文本
 const scheduleMonthTitle = computed(() => {
   const month = scheduleMonthDate.value
   return `${month.getFullYear()} 年 ${month.getMonth() + 1} 月日程`
 })
 
+// 计算当前月的日历天数（含前置空位）
 const calendarDays = computed(() => {
   const month = scheduleMonthDate.value
   const year = month.getFullYear()
@@ -202,6 +213,7 @@ const calendarDays = computed(() => {
   return days
 })
 
+// 按日期分组日程项
 const scheduleByDate = computed(() => {
   const grouped = {}
   monthlyScheduleItems.value.forEach((item) => {
@@ -216,13 +228,16 @@ const scheduleByDate = computed(() => {
   return grouped
 })
 
+// 当前选中日期的日程项
 const selectedDayItems = computed(() => scheduleByDate.value[selectedDateKey.value] || [])
 
+// 选中日期的显示标签
 const selectedDateLabel = computed(() => {
   const date = parseDateKey(selectedDateKey.value)
   return date ? `${date.getMonth() + 1} 月 ${date.getDate()} 日事项` : '当日事项'
 })
 
+// 页面挂载时加载仪表盘数据和最新公告
 onMounted(async () => {
   try {
     const [dashboardData, announcements] = await Promise.all([
@@ -238,10 +253,12 @@ onMounted(async () => {
   }
 })
 
+// 页面卸载时销毁ECharts实例，防止内存泄漏
 onUnmounted(() => {
   charts.forEach(c => c.dispose())
 })
 
+// 初始化ECharts图表：公文状态饼图、月度业务量柱状图、差旅预算仪表盘
 function initCharts() {
   const statusDist = stats.documentStatusDistribution || {}
   if (hasDocumentStatusData.value && pieRef.value) {
@@ -282,10 +299,12 @@ function initCharts() {
   }
 }
 
+// 选中某一天
 function selectDate(key) {
   selectedDateKey.value = key
 }
 
+// 获取某天日程中包含的类型（会议/活动）
 function scheduleTypeForDay(key) {
   const items = scheduleByDate.value[key] || []
   if (items.length === 0) {
@@ -297,6 +316,7 @@ function scheduleTypeForDay(key) {
   }
 }
 
+// 计算日程项在当前月内占用的所有日期key
 function dateRangeKeys(item) {
   if (!item.startTime) {
     return []
@@ -323,6 +343,7 @@ function dateRangeKeys(item) {
   return keys
 }
 
+// 格式化日程项的起止时间
 function formatScheduleTime(item) {
   if (!item.startTime) {
     return '-'
@@ -343,10 +364,12 @@ function formatScheduleTime(item) {
   return `${start.getMonth() + 1}/${start.getDate()} ${startText} - ${end.getMonth() + 1}/${end.getDate()} ${endText}`
 }
 
+// 将日期转换为YYYY-MM-DD格式的key
 function dateKey(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
+// 解析日期key字符串为Date对象
 function parseDateKey(key) {
   const parts = String(key || '').split('-').map(Number)
   if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) {
@@ -358,23 +381,28 @@ function parseDateKey(key) {
     : null
 }
 
+// 获取某天的零时Date对象
 function startOfDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
 }
 
+// 数字补零
 function pad(value) {
   return String(value).padStart(2, '0')
 }
 
+// 打开公告详情弹窗
 function openAnnouncement(item) {
   selectedAnnouncement.value = item
   detailVisible.value = true
 }
 
+// 公告分类文本映射
 function categoryText(category) {
   return { notice: '通知', announcement: '公告', policy: '制度' }[category] || '通知'
 }
 
+// 公告发布范围文本
 function scopeText(row) {
   return row.targetType === 'dept' ? (row.targetDeptName || '指定部门') : '全校'
 }

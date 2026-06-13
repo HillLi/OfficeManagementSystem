@@ -6,9 +6,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 
-/**
- * Builds a department tree (Composite pattern) from OmsRepository.
- */
+// 建造者模式：从数据库构建部门树结构
 @Component
 public class DeptTreeBuilder {
     private final OmsRepository repo;
@@ -17,6 +15,7 @@ public class DeptTreeBuilder {
         this.repo = repo;
     }
 
+    // 从数据库加载所有部门并构建树形结构
     public DeptTreeNode buildTree() {
         Map<Long, DeptTreeNode> nodeMap = new LinkedHashMap<>();
         for (Department dept : repo.findAllDepartments()) {

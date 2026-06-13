@@ -26,6 +26,7 @@
   </div>
 </template>
 
+// 应用根组件：提供登录页面和主布局（头部、侧边菜单、内容区）的切换
 <script setup>
 import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -41,12 +42,18 @@ const route = useRoute()
 const userStore = useUserStore()
 const dictionaryStore = useDictionaryStore()
 const actionBadgeStore = useActionBadgeStore()
+
+// 根据用户角色计算可见菜单项
 const visibleItems = computed(() => visibleMenuItems(userStore.roleKeys))
 let refreshTimer = null
 
+// 获取菜单项的角标数量
 const menuBadge = (item) => actionBadgeStore.menuBadgeFor(item.index)
+
+// 业务操作事件回调，触发Shell数据刷新
 const handleBusinessAction = () => refreshShellData()
 
+// 刷新字典和角标等Shell级别数据
 const refreshShellData = async () => {
   if (!userStore.isLoggedIn) {
     actionBadgeStore.reset()
@@ -64,19 +71,25 @@ const refreshShellData = async () => {
   }
 }
 
+// 组件挂载时加载数据，注册定时刷新和业务事件监听
 onMounted(() => {
   refreshShellData()
   window.addEventListener('oms:business-action', handleBusinessAction)
   refreshTimer = window.setInterval(refreshShellData, 30000)
 })
+
+// 组件卸载时清理事件监听和定时器
 onUnmounted(() => {
   window.removeEventListener('oms:business-action', handleBusinessAction)
   if (refreshTimer) {
     window.clearInterval(refreshTimer)
   }
 })
+
+// 监听登录状态和路由变化，刷新Shell数据
 watch(() => [userStore.isLoggedIn, route.path], refreshShellData)
 
+// 处理用户退出登录
 const handleLogout = async () => {
   try {
     await api.logout()

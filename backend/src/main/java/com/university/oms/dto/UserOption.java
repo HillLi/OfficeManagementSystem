@@ -1,5 +1,8 @@
 package com.university.oms.dto;
 
+/**
+ * 用户下拉选项（用于选择人员时返回简要信息）
+ */
 public class UserOption {
     private Long id;
     private String realName;

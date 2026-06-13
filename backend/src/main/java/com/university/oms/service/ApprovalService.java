@@ -12,6 +12,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 审批服务，处理各业务模块的审批流操作（通过/驳回）
+ */
 @Service
 public class ApprovalService {
     private final OmsRepository repo;
@@ -33,6 +36,7 @@ public class ApprovalService {
         this.accessService = accessService;
     }
 
+    /** 记录一条审批操作日志 */
     public ApprovalRecord record(String bizType, Long bizId, Long operatorId, String action, String opinion) {
         ApprovalRecord record = new ApprovalRecord();
         OmsRepository.fillEntity(record, repo.nextId());
@@ -45,6 +49,7 @@ public class ApprovalService {
         return record;
     }
 
+    /** 查询审批记录列表，支持按业务类型和ID过滤 */
     public List<ApprovalRecord> list(String bizType, Long bizId) {
         if (bizType != null && bizId != null) {
             accessService.requireBusinessRead(bizType, bizId);
@@ -56,6 +61,10 @@ public class ApprovalService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 执行审批操作（通过/驳回）
+     * 根据业务类型和当前状态确定审批流，调用状态模式进行状态流转
+     */
     public Object approve(String bizType, Long bizId, ApprovalRequest request) {
         Long operatorId = AuthContext.currentUserIdOr(request.getOperatorId());
         User operator = repo.findUserById(operatorId);
@@ -67,6 +76,7 @@ public class ApprovalService {
         String oldStatus = getStatus(entity);
         accessService.requireBusinessApproval(operator, bizType, bizId, oldStatus, flowConfig.getRequiredRole(oldStatus));
 
+        // 根据审批流Key和当前状态获取对应的状态处理对象
         BusinessState state = stateFactory.getState(flowKey(bizType, entity, oldStatus), oldStatus);
         String newStatus;
         if ("reject".equals(request.getAction())) {
@@ -74,6 +84,7 @@ public class ApprovalService {
         } else {
             newStatus = state.approve(operator);
         }
+        // 差旅已提交报销且审批通过时直接归档
         if (entity instanceof Travel && "approved".equals(newStatus)
                 && ((Travel) entity).isReimbursementSubmitted()) {
             newStatus = "archived";
@@ -87,6 +98,7 @@ public class ApprovalService {
         return entity;
     }
 
+    /** 根据业务类型和ID查找对应的业务实体 */
     private BaseEntity findEntity(String bizType, Long bizId) {
         switch (bizType) {
             case "document":
@@ -114,6 +126,10 @@ public class ApprovalService {
         }
     }
 
+    /**
+     * 根据业务类型、实体属性和当前状态确定审批流Key
+     * 不同场景走不同的审批链路（如大型活动、校级重大印章等）
+     */
     private String flowKey(String bizType, BaseEntity entity, String currentStatus) {
         if ("meeting".equals(bizType) && (entity instanceof Meeting)
                 && (((Meeting) entity).isLargeActivity() || "pending_security".equals(currentStatus))) {
@@ -135,6 +151,7 @@ public class ApprovalService {
         return bizType;
     }
 
+    /** 获取业务实体的当前状态 */
     private String getStatus(BaseEntity entity) {
         if (entity instanceof Document) return ((Document) entity).getStatus();
         if (entity instanceof SealApplication) return ((SealApplication) entity).getStatus();
@@ -144,6 +161,7 @@ public class ApprovalService {
         return "unknown";
     }
 
+    /** 获取业务实体的申请人/组织者ID */
     private Long applicantId(BaseEntity entity) {
         if (entity instanceof Document) return ((Document) entity).getApplicantId();
         if (entity instanceof SealApplication) return ((SealApplication) entity).getApplicantId();
@@ -153,6 +171,7 @@ public class ApprovalService {
         return null;
     }
 
+    /** 设置业务实体的新状态并持久化 */
     private void setStatus(BaseEntity entity, String status, Long operatorId) {
         LocalDateTime now = LocalDateTime.now();
         if (entity instanceof Document) {

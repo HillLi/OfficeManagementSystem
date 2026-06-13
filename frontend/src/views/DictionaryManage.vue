@@ -97,11 +97,13 @@
 </template>
 
 <script setup>
+// 字典管理页面：提供字典类型和字典项目的增删改查功能，供系统管理员维护下拉选项数据
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../api'
 import { useDictionaryStore } from '../stores/dictionary'
 
+/** 字典状态管理实例 */
 const dictionaryStore = useDictionaryStore()
 const types = ref([])
 const items = ref([])
@@ -126,16 +128,20 @@ const itemRules = {
   dictCode: [{ required: true, message: '请输入项目代码', trigger: 'blur' }],
   dictLabel: [{ required: true, message: '请输入显示值', trigger: 'blur' }]
 }
+/** 当前选中的字典类型对象 */
 const selectedDictionaryType = computed(() => types.value.find((type) => type.dictType === selectedType.value))
+/** 选中类型的标题文本（名称+代码） */
 const selectedTypeTitle = computed(() => {
   if (!selectedDictionaryType.value) return ''
   return `${selectedDictionaryType.value.dictName}（${selectedDictionaryType.value?.dictType}）`
 })
+/** 分页后的字典类型列表 */
 const paginatedTypes = computed(() => {
   const start = (typePage.value - 1) * typePageSize
   return types.value.slice(start, start + typePageSize)
 })
 
+/** 加载所有字典类型列表，并自动选中第一个类型 */
 async function loadTypes() {
   loading.value = true
   try {
@@ -156,11 +162,13 @@ async function loadTypes() {
   }
 }
 
+/** 根据当前选中类型同步分页页码 */
 function syncTypePageWithSelection() {
   const selectedIndex = types.value.findIndex((type) => type.dictType === selectedType.value)
   typePage.value = selectedIndex >= 0 ? Math.floor(selectedIndex / typePageSize) + 1 : 1
 }
 
+/** 切换字典类型分页页码，自动选中当前页第一个类型 */
 async function changeTypePage(page) {
   typePage.value = page
   const firstVisibleType = paginatedTypes.value[0]?.dictType
@@ -169,6 +177,7 @@ async function changeTypePage(page) {
   }
 }
 
+/** 加载当前选中类型下的字典项目列表 */
 async function loadItems() {
   if (!selectedType.value) {
     items.value = []
@@ -184,26 +193,31 @@ async function loadItems() {
   }
 }
 
+/** 选中某个字典类型并加载其下的项目 */
 async function selectType(dictType) {
   if (!dictType) return
   selectedType.value = dictType
   await loadItems()
 }
 
+/** 点击表格行选中对应字典类型 */
 function selectTypeRow(row) {
   selectType(row.dictType)
 }
 
+/** 为选中的字典类型行添加高亮样式类名 */
 function typeRowClassName({ row }) {
   return row.dictType === selectedType.value ? 'selected-type-row' : ''
 }
 
+/** 打开字典类型编辑/新增弹窗 */
 function openType(type = null) {
   editingType.value = type
   Object.assign(typeForm, type || { dictType: '', dictName: '', enabled: true, remark: '' })
   typeDialog.value = true
 }
 
+/** 保存字典类型（新增或更新） */
 async function saveType() {
   saving.value = true
   try {
@@ -227,12 +241,14 @@ async function saveType() {
   }
 }
 
+/** 打开字典项目编辑/新增弹窗 */
 function openItem(item = null) {
   editingItem.value = item
   Object.assign(itemForm, item || { dictCode: '', dictLabel: '', sortOrder: 0, enabled: true, remark: '' })
   itemDialog.value = true
 }
 
+/** 保存字典项目（新增或更新） */
 async function saveItem() {
   saving.value = true
   try {

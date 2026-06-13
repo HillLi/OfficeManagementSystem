@@ -2,13 +2,21 @@ package com.university.oms.model;
 
 import java.time.LocalDateTime;
 
+/**
+ * 公文分发记录实体
+ */
 public class DocumentDistribution extends BaseEntity {
     private Long documentId;
+    /** 接收人ID */
     private Long receiverId;
+    /** 接收人部门ID */
     private Long receiverDeptId;
     private String status;
+    /** 分发时间 */
     private LocalDateTime distributedAt;
+    /** 接收时间 */
     private LocalDateTime receivedAt;
+    /** 催办时间 */
     private LocalDateTime remindedAt;
 
     public Long getDocumentId() { return documentId; }

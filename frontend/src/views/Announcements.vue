@@ -126,6 +126,7 @@
   </div>
 </template>
 
+// 通知公告管理页面：展示公告列表，管理员可新增、编辑、发布和撤回公告
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
@@ -145,6 +146,8 @@ const editing = ref(null)
 const saving = ref(false)
 const loading = ref(false)
 const formRef = ref(null)
+
+// 公告表单数据
 const form = reactive({
   title: '',
   content: '',
@@ -158,9 +161,12 @@ const rules = {
   content: [{ required: true, message: '请输入正文', trigger: 'blur' }]
 }
 
+// 当前用户是否有公告维护权限（管理员或办公室管理员）
 const canMaintain = computed(() => userStore.roleKeys.includes('admin') || userStore.roleKeys.includes('office_admin'))
+// 已发布公告列表
 const publishedRows = computed(() => rows.value)
 
+// 加载公告数据，管理员同时加载草稿和部门选项
 async function load() {
   try {
     rows.value = await api.announcements()
@@ -177,12 +183,14 @@ async function load() {
   }
 }
 
+// 打开新增公告弹窗
 function openCreate() {
   editing.value = null
   Object.assign(form, { title: '', content: '', category: 'notice', targetType: 'all', targetDeptId: null, pinned: false })
   dialogVisible.value = true
 }
 
+// 打开编辑公告弹窗，填充已有数据
 function openEdit(row) {
   editing.value = row
   Object.assign(form, {
@@ -196,11 +204,13 @@ function openEdit(row) {
   dialogVisible.value = true
 }
 
+// 打开公告详情弹窗
 function openAnnouncement(row) {
   selectedAnnouncement.value = row
   detailVisible.value = true
 }
 
+// 保存公告（新增或更新）
 async function save() {
   saving.value = true
   try {
@@ -222,6 +232,7 @@ async function save() {
   }
 }
 
+// 发布草稿公告
 async function publish(row) {
   try {
     await api.publishAnnouncement(row.id)
@@ -232,6 +243,7 @@ async function publish(row) {
   }
 }
 
+// 撤回已发布公告
 async function withdraw(row) {
   try {
     await api.withdrawAnnouncement(row.id)
@@ -242,26 +254,32 @@ async function withdraw(row) {
   }
 }
 
+// 公告状态文本映射
 function statusText(status) {
   return { draft: '草稿', published: '已发布', withdrawn: '已撤回' }[status] || status
 }
 
+// 公告状态标签类型映射
 function statusType(status) {
   return { draft: 'info', published: 'success', withdrawn: 'warning' }[status] || 'info'
 }
 
+// 公告分类文本映射
 function categoryText(category) {
   return { notice: '通知', announcement: '公告', policy: '制度' }[category] || '通知'
 }
 
+// 获取公告发布范围的显示文本
 function scopeText(row) {
   return row.targetType === 'dept' ? (row.targetDeptName || deptName(row.targetDeptId) || '指定部门') : '全校'
 }
 
+// 根据部门ID查找部门名称
 function deptName(deptId) {
   return deptOptions.value.find((dept) => dept.id === deptId)?.deptName
 }
 
+// 页面挂载时加载公告数据
 onMounted(load)
 </script>
 

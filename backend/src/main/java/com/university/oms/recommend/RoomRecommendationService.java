@@ -15,8 +15,8 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Multi-dimensional weighted scoring for smart meeting room recommendation.
- * Dimensions: capacity fit (Gaussian), equipment match (token overlap), utilization balance.
+ * 会议室智能推荐服务，基于多维加权评分进行推荐
+ * 评分维度：容量匹配度（高斯分布）、设备匹配度（分词重叠率）、利用率均衡度
  */
 @Service
 public class RoomRecommendationService {
@@ -32,10 +32,10 @@ public class RoomRecommendationService {
     }
 
     /**
-     * Recommend meeting rooms using multi-dimensional weighted scoring.
+     * 基于多维加权评分推荐会议室
      *
-     * @param request recommendation request with expected count, equipment, time range
-     * @return sorted list of scored rooms (highest score first)
+     * @param request 推荐请求（含预期人数、设备需求、时间段）
+     * @return 按评分降序排列的会议室列表
      */
     public List<ScoredRoom> recommendEnhanced(RecommendRoomRequest request) {
         int expected = request.getExpectedCount() != null ? request.getExpectedCount() : 1;
@@ -47,7 +47,7 @@ public class RoomRecommendationService {
             if (!room.isEnabled()) {
                 continue;
             }
-            // Filter out rooms with time conflicts
+            // 过滤掉有时间段冲突的会议室
             if (request.getStartTime() != null && hasConflict(room.getId(), request.getStartTime(),
                     request.getEndTime(), allMeetings)) {
                 continue;
@@ -57,6 +57,7 @@ public class RoomRecommendationService {
             double equipMatch = computeEquipmentMatch(room.getEquipment(), request.getEquipment());
             double utilBalance = computeUtilizationBalance(room.getId(), allMeetings);
 
+            // 三维加权总分
             double totalScore = WEIGHT_CAPACITY * capFit
                     + WEIGHT_EQUIPMENT * equipMatch
                     + WEIGHT_UTILIZATION * utilBalance;
@@ -64,6 +65,7 @@ public class RoomRecommendationService {
             scoredRooms.add(new ScoredRoom(room, totalScore, capFit, equipMatch, utilBalance));
         }
 
+        // 按总分降序排列
         scoredRooms.sort(new Comparator<ScoredRoom>() {
             @Override
             public int compare(ScoredRoom a, ScoredRoom b) {
@@ -74,15 +76,15 @@ public class RoomRecommendationService {
     }
 
     /**
-     * Gaussian capacity fitting: exp(-((capacity - expected)^2) / (2 * sigma^2)).
-     * sigma = expected * 0.3. Perfect fit when capacity == expected.
+     * 高斯容量匹配度：exp(-((capacity - expected)^2) / (2 * sigma^2))
+     * sigma = expected * 0.3，容量恰好等于预期人数时得满分
      */
     double computeCapacityFit(int capacity, int expected) {
         if (expected <= 0) {
             expected = 1;
         }
         if (capacity < expected) {
-            return 0.0; // room too small, completely unfit
+            return 0.0; // 容量不足，完全不匹配
         }
         double sigma = expected * 0.3;
         if (sigma < 1.0) {
@@ -93,11 +95,11 @@ public class RoomRecommendationService {
     }
 
     /**
-     * Equipment match score using tokenized overlap ratio.
+     * 设备匹配度：基于分词结果的重叠率
      */
     double computeEquipmentMatch(String roomEquipment, String requiredEquipment) {
         if (requiredEquipment == null || requiredEquipment.trim().isEmpty()) {
-            return 1.0; // no specific requirement, all rooms match
+            return 1.0; // 无特殊设备需求，所有会议室都匹配
         }
         if (roomEquipment == null || roomEquipment.trim().isEmpty()) {
             return 0.0;
@@ -105,7 +107,7 @@ public class RoomRecommendationService {
         List<String> roomTokens = NlpUtils.tokenize(roomEquipment);
         List<String> requiredTokens = NlpUtils.tokenize(requiredEquipment);
         if (requiredTokens.isEmpty()) {
-            // Fallback to simple contains check
+            // 分词失败时回退到简单包含检查
             return roomEquipment.contains(requiredEquipment) ? 1.0 : 0.0;
         }
         Set<String> roomSet = new HashSet<String>(roomTokens);
@@ -119,8 +121,8 @@ public class RoomRecommendationService {
     }
 
     /**
-     * Utilization balance: 1 - (occupied slots / total available slots).
-     * Penalizes over-booked rooms to distribute usage evenly.
+     * 利用率均衡度：1 - (该会议室已占用会议数 / 总活跃会议数)
+     * 对过度使用的会议室施加惩罚，促进使用均衡
      */
     double computeUtilizationBalance(Long roomId, List<Meeting> allMeetings) {
         long occupiedCount = 0;
@@ -140,6 +142,7 @@ public class RoomRecommendationService {
         return 1.0 - ((double) occupiedCount / totalActive);
     }
 
+    /** 检查会议室在指定时段是否有时间冲突 */
     private boolean hasConflict(Long roomId, LocalDateTime start, LocalDateTime end,
                                 List<Meeting> allMeetings) {
         if (start == null || end == null) {

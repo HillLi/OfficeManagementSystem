@@ -13,11 +13,15 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.*;
 
+/**
+ * 用户与部门管理服务，提供用户和部门的增删改查操作
+ */
 @Service
 public class UserManageService {
     private final OmsRepository repo;
     private final PasswordService passwordService;
 
+    /** 系统支持的有效角色集合 */
     private static final Set<String> VALID_ROLES = new LinkedHashSet<>(Arrays.asList(
             "admin", "office_user", "dept_head", "school_leader",
             "office_admin", "finance_staff", "security_staff", "seal_keeper"
@@ -28,18 +32,21 @@ public class UserManageService {
         this.passwordService = passwordService;
     }
 
-    // ========== User CRUD ==========
+    // ========== 用户 CRUD ==========
 
+    /** 获取所有用户列表 */
     public List<User> listUsers() {
         return repo.findAllUsers();
     }
 
+    /** 根据ID获取用户，不存在则抛异常 */
     public User getUser(Long id) {
         User user = repo.findUserById(id);
         if (user == null) throw new BusinessException("用户不存在");
         return user;
     }
 
+    /** 创建新用户，校验用户名唯一性 */
     public User createUser(CreateUserRequest request) {
         for (User u : repo.findAllUsers()) {
             if (u.getUsername().equals(request.getUsername())) {
@@ -64,6 +71,7 @@ public class UserManageService {
         return user;
     }
 
+    /** 更新用户信息，支持姓名、密码、邮箱、部门和角色的修改 */
     public User updateUser(Long id, UpdateUserRequest request) {
         User user = getUser(id);
         if (request.getRealName() != null) user.setRealName(request.getRealName());
@@ -85,6 +93,7 @@ public class UserManageService {
         return user;
     }
 
+    /** 删除用户，禁止删除系统管理员 */
     public void deleteUser(Long id) {
         User user = getUser(id);
         if ("admin".equals(user.getUsername())) {
@@ -93,12 +102,14 @@ public class UserManageService {
         repo.deleteUser(id);
     }
 
-    // ========== Department CRUD ==========
+    // ========== 部门 CRUD ==========
 
+    /** 获取所有部门列表 */
     public List<Department> listDepts() {
         return repo.findAllDepartments();
     }
 
+    /** 创建新部门 */
     public Department createDept(DeptRequest request) {
         Department dept = new Department();
         OmsRepository.fillEntity(dept, repo.nextId());
@@ -108,6 +119,7 @@ public class UserManageService {
         return dept;
     }
 
+    /** 更新部门信息，同步更新部门下用户的部门名称 */
     public Department updateDept(Long id, DeptRequest request) {
         Department dept = repo.findDepartmentById(id);
         if (dept == null) throw new BusinessException("部门不存在");
@@ -123,6 +135,7 @@ public class UserManageService {
         return dept;
     }
 
+    /** 删除部门，部门下有用户时禁止删除 */
     public void deleteDept(Long id) {
         for (User user : repo.findAllUsers()) {
             if (id.equals(user.getDeptId())) {
@@ -132,14 +145,16 @@ public class UserManageService {
         repo.deleteDepartment(id);
     }
 
-    // ========== Roles ==========
+    // ========== 角色管理 ==========
 
+    /** 获取系统支持的有效角色集合 */
     public Set<String> listRoles() {
         return VALID_ROLES;
     }
 
-    // ========== Helpers ==========
+    // ========== 辅助方法 ==========
 
+    /** 解析逗号分隔的角色字符串，过滤无效角色 */
     private void parseRoleKeys(String raw, Set<String> target) {
         target.clear();
         if (raw == null || raw.trim().isEmpty()) return;

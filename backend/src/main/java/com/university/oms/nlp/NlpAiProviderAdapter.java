@@ -11,9 +11,8 @@ import java.util.Set;
 import java.util.StringTokenizer;
 
 /**
- * NLP-enhanced AI draft provider.
- * Uses HanLP TextRank to extract core keywords from keyPoints,
- * auto-infers paragraph structure, and generates richer template content.
+ * NLP增强的AI公文起草适配器
+ * 使用HanLP TextRank提取核心关键词，自动推断段落结构，生成更丰富的模板内容
  */
 @Component
 @Primary
@@ -26,11 +25,11 @@ public class NlpAiProviderAdapter implements AiProviderAdapter {
         String points = keyPoints == null || keyPoints.trim().isEmpty()
                 ? "请结合学校实际推进落实。" : keyPoints;
 
-        // 1. Extract core keywords from keyPoints using TextRank
+        // 1. 使用TextRank从要点中提取核心关键词
         List<String> keywords = NlpUtils.extractKeywords(topic + " " + points, KEYWORD_TOP_N);
         Set<String> coreKeywords = new LinkedHashSet<String>(keywords);
 
-        // 2. Tokenize keyPoints for paragraph structure inference
+        // 2. 分词后推断段落结构的关键短语
         List<String> tokens = NlpUtils.tokenize(points);
         Set<String> keyPhrases = new LinkedHashSet<String>();
         for (String token : tokens) {
@@ -39,13 +38,13 @@ public class NlpAiProviderAdapter implements AiProviderAdapter {
             }
         }
 
-        // 3. Generate enriched template content
+        // 3. 生成增强的模板内容
         StringBuilder sb = new StringBuilder();
         sb.append("关于").append(topic).append("的").append(docType).append("\n\n");
         sb.append("各单位：\n");
         sb.append("为规范推进").append(topic).append("相关工作，根据学校办公管理要求，现将有关事项").append(docType).append("如下：\n");
 
-        // Section 1: Background & objectives
+        // 第一部分：背景与目标
         sb.append("\n一、背景与目标\n");
         sb.append("根据上级精神和学校工作部署，围绕").append(topic).append("，制定本").append(docType).append("。");
         if (!keyPhrases.isEmpty()) {
@@ -53,11 +52,11 @@ public class NlpAiProviderAdapter implements AiProviderAdapter {
         }
         sb.append("\n");
 
-        // Section 2: Main content using keyPoints
+        // 第二部分：工作内容（使用用户提供的要点）
         sb.append("\n二、工作内容\n");
         sb.append(points).append("\n");
 
-        // Section 3: Implementation requirements inferred from keywords
+        // 第三部分：根据关键词自动推断工作要求
         sb.append("\n三、工作要求\n");
         if (coreKeywords.size() >= 2) {
             String[] kwArray = coreKeywords.toArray(new String[0]);
@@ -69,11 +68,11 @@ public class NlpAiProviderAdapter implements AiProviderAdapter {
             sb.append("请各单位结合实际认真落实，按时反馈办理情况。\n");
         }
 
-        // Section 4: Schedule & feedback
+        // 第四部分：时间安排与反馈
         sb.append("\n四、时间安排与反馈\n");
         sb.append("请各单位于本学期末前将落实情况报送至学校办公室，联系人及方式另行通知。\n");
 
-        // Keyword info footer
+        // 关键词信息脚注
         if (!coreKeywords.isEmpty()) {
             sb.append("\n【智能提取关键词】").append(String.join("、", coreKeywords)).append("\n");
         }

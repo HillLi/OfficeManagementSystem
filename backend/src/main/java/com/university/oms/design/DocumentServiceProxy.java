@@ -14,14 +14,12 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-/**
- * Proxy pattern — wraps DocumentService with permission checks and operation logging.
- */
+// 代理模式：公文服务代理，在调用真实服务前后增加权限校验和操作日志
 @Service
 public class DocumentServiceProxy {
     private static final Logger log = LoggerFactory.getLogger(DocumentServiceProxy.class);
 
-    private final DocumentService delegate;
+    private final DocumentService delegate; // 被代理的真实公文服务
     private final OmsRepository repo;
 
     public DocumentServiceProxy(DocumentService delegate, OmsRepository repo) {
@@ -29,30 +27,36 @@ public class DocumentServiceProxy {
         this.repo = repo;
     }
 
+    // 带权限校验的公文创建操作
     public Document createWithPermissionCheck(DocumentRequest request, Long currentUserId) {
         checkPermission(currentUserId, "office_user");
         logOperation("create_document", currentUserId);
         return delegate.create(request);
     }
 
+    // 带所有权校验的公文提交操作
     public Document submitWithPermissionCheck(Long id, Long currentUserId) {
         checkOwnership(id, currentUserId);
         logOperation("submit_document", currentUserId);
         return delegate.submit(id);
     }
 
+    // 直接委托审核操作（无额外校验）
     public AiReviewResult review(Long id) {
         return delegate.review(id);
     }
 
+    // 直接委托AI草稿生成操作
     public String draft(AiDraftRequest request) {
         return delegate.draft(request);
     }
 
+    // 直接委托公文列表查询操作
     public List<Document> list() {
         return delegate.list();
     }
 
+    // 校验用户是否拥有指定角色权限
     private void checkPermission(Long userId, String requiredRole) {
         User user = repo.findUserById(userId);
         if (user == null) {
@@ -63,6 +67,7 @@ public class DocumentServiceProxy {
         }
     }
 
+    // 校验用户是否为公文的所有者或管理员
     private void checkOwnership(Long docId, Long userId) {
         Document doc = repo.findDocumentById(docId);
         if (doc == null) {
@@ -74,6 +79,7 @@ public class DocumentServiceProxy {
         }
     }
 
+    // 记录操作日志
     private void logOperation(String action, Long userId) {
         log.info("Document operation: {} by user {}", action, userId);
     }

@@ -6,9 +6,7 @@ import com.university.oms.model.Meeting;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Builder pattern — constructs Meeting objects step by step with validation.
- */
+// 建造者模式：逐步构建会议对象并进行校验
 public class MeetingBuilder {
     private final Meeting meeting = new Meeting();
 
@@ -72,6 +70,7 @@ public class MeetingBuilder {
         return this;
     }
 
+    // 构建会议对象，执行必要的字段校验
     public Meeting build() {
         if (meeting.getTitle() == null || meeting.getTitle().trim().isEmpty()) {
             throw new BusinessException("会议主题不能为空");

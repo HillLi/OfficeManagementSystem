@@ -2,13 +2,20 @@ package com.university.oms.model;
 
 import java.time.LocalDateTime;
 
+/**
+ * 公告实体
+ */
 public class Announcement extends BaseEntity {
     private String title;
     private String content;
+    /** 公告分类 */
     private String category;
+    /** 目标对象类型（如：全员、指定部门） */
     private String targetType;
+    /** 目标部门ID */
     private Long targetDeptId;
     private String targetDeptName;
+    /** 是否置顶 */
     private boolean pinned;
     private String status;
     private Long publisherId;

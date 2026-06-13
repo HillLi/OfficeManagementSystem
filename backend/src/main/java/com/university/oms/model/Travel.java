@@ -3,20 +3,33 @@ package com.university.oms.model;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+/**
+ * 出差申请实体
+ */
 public class Travel extends BaseEntity {
+    /** 申请人ID */
     private Long applicantId;
     private String destination;
     private LocalDate startDate;
     private LocalDate endDate;
+    /** 出差事由 */
     private String reason;
+    /** 人员级别（用于确定差旅标准） */
     private String staffLevel;
+    /** 出差类型 */
     private String travelType;
+    /** 交通方式 */
     private String transport;
     private BigDecimal budget;
+    /** 实际报销金额 */
     private BigDecimal actualExpense;
+    /** 报销凭证附件URL */
     private String receiptUrl;
+    /** 超标原因 */
     private String overLimitReason;
+    /** 是否已提交报销 */
     private boolean reimbursementSubmitted;
+    /** 差旅标准校验结果 */
     private TravelCheckResult checkResult;
     private String status;
 

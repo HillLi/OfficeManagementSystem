@@ -112,6 +112,7 @@
   </div>
 </template>
 
+<!-- 用户与部门管理页面：用户增删改查、部门增删改查、角色分配 -->
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -128,18 +129,19 @@ const loading = ref(false)
 const userFormRef = ref(null)
 const deptFormRef = ref(null)
 
+// 获取角色显示名称
 function roleLabel(key) {
   return dictionaryStore.labelOf('role_key', key)
 }
 
-// ---- Dept name map ----
+// 构建部门ID到名称的映射
 const deptNameMap = computed(() => {
   const m = { 0: '（顶级）' }
   depts.value.forEach(d => { m[d.id] = d.deptName })
   return m
 })
 
-// ---- User Dialog ----
+// ---- 用户对话框 ----
 const userDialogVisible = ref(false)
 const editingUser = ref(null)
 const userDialogTitle = computed(() => editingUser.value ? '编辑用户' : '新增用户')
@@ -151,6 +153,7 @@ const userForm = ref({
   deptId: null,
   selectedRoles: []
 })
+// 用户表单校验规则（新增时用户名和密码必填）
 const userRules = computed(() => {
   const base = {
     realName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
@@ -169,6 +172,7 @@ const deptRules = {
   deptName: [{ required: true, message: '请输入部门名称', trigger: 'blur' }]
 }
 
+// 打开用户新增/编辑对话框
 function openUserDialog(user) {
   editingUser.value = user
   if (user) {
@@ -193,6 +197,7 @@ function openUserDialog(user) {
   userDialogVisible.value = true
 }
 
+// 保存用户（新增或更新）
 async function handleSaveUser() {
   try {
     await userFormRef.value.validate()
@@ -230,6 +235,7 @@ async function handleSaveUser() {
   }
 }
 
+// 删除用户（带确认提示）
 async function handleDeleteUser(user) {
   try {
     await ElMessageBox.confirm(`确定删除用户「${user.realName}」？`, '确认', { type: 'warning' })
@@ -241,12 +247,13 @@ async function handleDeleteUser(user) {
   }
 }
 
-// ---- Dept Dialog ----
+// ---- 部门对话框 ----
 const deptDialogVisible = ref(false)
 const editingDept = ref(null)
 const deptDialogTitle = computed(() => editingDept.value ? '编辑部门' : '新增部门')
 const deptForm = ref({ deptName: '', parentId: null })
 
+// 打开部门新增/编辑对话框
 function openDeptDialog(dept) {
   editingDept.value = dept
   if (dept) {
@@ -257,6 +264,7 @@ function openDeptDialog(dept) {
   deptDialogVisible.value = true
 }
 
+// 保存部门（新增或更新）
 async function handleSaveDept() {
   try {
     await deptFormRef.value.validate()
@@ -281,6 +289,7 @@ async function handleSaveDept() {
   }
 }
 
+// 删除部门（带确认提示）
 async function handleDeleteDept(dept) {
   try {
     await ElMessageBox.confirm(`确定删除部门「${dept.deptName}」？`, '确认', { type: 'warning' })
@@ -292,7 +301,9 @@ async function handleDeleteDept(dept) {
   }
 }
 
-// ---- Load data ----
+// ---- 加载数据 ----
+
+// 加载用户列表
 async function loadUsers() {
   loading.value = true
   try {
@@ -303,6 +314,8 @@ async function loadUsers() {
     loading.value = false
   }
 }
+
+// 加载部门列表
 async function loadDepts() {
   loading.value = true
   try {
@@ -313,6 +326,8 @@ async function loadDepts() {
     loading.value = false
   }
 }
+
+// 加载所有角色列表
 async function loadRoles() {
   try {
     allRoles.value = await api.adminRoles()
@@ -321,6 +336,7 @@ async function loadRoles() {
   }
 }
 
+// 页面挂载时加载用户、部门和角色数据
 onMounted(() => {
   loadUsers()
   loadDepts()

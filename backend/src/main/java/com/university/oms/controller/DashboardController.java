@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/** 仪表盘控制器，负责返回首页统计数据 */
 @RestController
 @RequestMapping("/api/dashboard")
 public class DashboardController {
@@ -16,6 +17,7 @@ public class DashboardController {
         this.service = service;
     }
 
+    /** 获取仪表盘统计数据 */
     @GetMapping
     public ApiResponse<DashboardStats> stats() {
         return ApiResponse.ok(service.stats());

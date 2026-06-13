@@ -3,7 +3,7 @@ package com.university.oms.recommend;
 import com.university.oms.model.MeetingRoom;
 
 /**
- * A meeting room with multi-dimensional scoring for smart recommendation.
+ * 带评分的会议室推荐结果，包含总分和各维度评分
  */
 public class ScoredRoom {
     private MeetingRoom room;
@@ -32,6 +32,7 @@ public class ScoredRoom {
         this.room = room;
     }
 
+    /** 推荐总分（加权） */
     public double getScore() {
         return score;
     }
@@ -40,6 +41,7 @@ public class ScoredRoom {
         this.score = score;
     }
 
+    /** 容量匹配度评分 */
     public double getCapacityFit() {
         return capacityFit;
     }
@@ -48,6 +50,7 @@ public class ScoredRoom {
         this.capacityFit = capacityFit;
     }
 
+    /** 设备匹配度评分 */
     public double getEquipmentMatch() {
         return equipmentMatch;
     }
@@ -56,6 +59,7 @@ public class ScoredRoom {
         this.equipmentMatch = equipmentMatch;
     }
 
+    /** 利用率均衡度评分 */
     public double getUtilizationBalance() {
         return utilizationBalance;
     }

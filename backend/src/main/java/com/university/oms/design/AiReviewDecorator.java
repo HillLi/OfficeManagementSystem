@@ -3,12 +3,11 @@ package com.university.oms.design;
 import com.university.oms.model.AiReviewResult;
 import com.university.oms.model.Document;
 
-/**
- * Decorator — adds content sensitivity analysis after base processing.
- */
+// 装饰器模式：在基础处理之后增加内容敏感词检测
 public class AiReviewDecorator implements DocumentProcessor {
-    private final DocumentProcessor wrapped;
+    private final DocumentProcessor wrapped; // 被装饰的内部处理器
 
+    // 注入被装饰的处理器
     public AiReviewDecorator(DocumentProcessor wrapped) {
         this.wrapped = wrapped;
     }

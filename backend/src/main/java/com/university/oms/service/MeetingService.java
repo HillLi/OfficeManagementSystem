@@ -30,6 +30,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * 会议管理服务，处理会议申请、纪要归档、纪要确认和会议室推荐
+ */
 @Service
 public class MeetingService {
     private final OmsRepository repo;
@@ -52,10 +55,12 @@ public class MeetingService {
         this.meetingFeeStandards = repo.findMeetingFeeStandards();
     }
 
+    /** 获取所有会议室列表 */
     public List<MeetingRoom> rooms() {
         return repo.findAllRooms();
     }
 
+    /** 获取当前用户可见的会议列表（根据角色过滤） */
     public List<Meeting> meetings() {
         User user = AuthContext.currentUser();
         List<Meeting> meetings = repo.findAllMeetings();
@@ -75,6 +80,7 @@ public class MeetingService {
         return scoped;
     }
 
+    /** 基础会议室推荐（按容量、设备、时间过滤） */
     public List<MeetingRoom> recommend(RecommendRoomRequest request) {
         return repo.findAllRooms().stream()
                 .filter(MeetingRoom::isEnabled)
@@ -85,10 +91,15 @@ public class MeetingService {
                 .collect(Collectors.toList());
     }
 
+    /** 智能会议室推荐（多维加权评分） */
     public List<ScoredRoom> recommendEnhanced(RecommendRoomRequest request) {
         return recommendationService.recommendEnhanced(request);
     }
 
+    /**
+     * 创建会议申请
+     * 包含参会人校验、会议室容量校验、大型活动审批规则校验、费用校验等
+     */
     public Meeting create(MeetingRequest request) {
         dictionaryService.requireEnabled("venue_type", request.getVenueType(), "场地类型");
         dictionaryService.requireEnabled("meeting_type", request.getMeetingType(), "会议类别");
@@ -112,6 +123,7 @@ public class MeetingService {
                 throw new BusinessException("参会人员不存在：" + participantId);
             }
         }
+        // 实际参会人数取参会人数与预期人数的较大值
         int regulatoryExpectedCount = request.getExpectedCount() == null
                 ? participantIds.size()
                 : Math.max(participantIds.size(), request.getExpectedCount());
@@ -127,6 +139,7 @@ public class MeetingService {
         if (hasConflict(request.getRoomId(), request.getStartTime(), request.getEndTime())) {
             throw new BusinessException("会议室在该时段已被占用");
         }
+        // 大型活动需提前15个工作日申请
         boolean large = isLargeActivity(request.getVenueType(), regulatoryExpectedCount);
         if (large && workingDaysBetween(LocalDate.now(), request.getStartTime().toLocalDate()) < 15) {
             throw new BusinessException("大型活动必须至少提前15个工作日申请");
@@ -174,6 +187,7 @@ public class MeetingService {
         return meeting;
     }
 
+    /** 记录员填写会议纪要，提交后通知所有参会人确认 */
     public Meeting archiveMinutes(Long id, MeetingMinutesRequest request) {
         Meeting meeting = repo.findMeetingById(id);
         if (meeting == null) {
@@ -203,10 +217,12 @@ public class MeetingService {
         return meeting;
     }
 
+    /** 获取指定会议的参会人列表 */
     public List<MeetingParticipant> getMeetingParticipants(Long meetingId) {
         return repo.findParticipantsByMeetingId(meetingId);
     }
 
+    /** 获取当前用户参与的会议列表 */
     public List<MeetingParticipationResponse> participatedMeetings() {
         User user = AuthContext.requireUser();
         List<MeetingParticipationResponse> result = new ArrayList<MeetingParticipationResponse>();
@@ -240,6 +256,7 @@ public class MeetingService {
         return response;
     }
 
+    /** 参会人确认会议纪要，全员确认后自动流转 */
     public Meeting confirmMinutes(Long meetingId) {
         User user = AuthContext.requireUser();
         Meeting meeting = repo.findMeetingById(meetingId);
@@ -281,6 +298,7 @@ public class MeetingService {
         return meeting;
     }
 
+    /** 将会议纪要发布为公告 */
     public Meeting publishMeeting(Long meetingId) {
         User user = AuthContext.requireUser();
         Meeting meeting = repo.findMeetingById(meetingId);
@@ -313,6 +331,7 @@ public class MeetingService {
         return meeting;
     }
 
+    /** 直接归档会议（不发布为公告） */
     public Meeting archiveDirectly(Long meetingId) {
         User user = AuthContext.requireUser();
         Meeting meeting = repo.findMeetingById(meetingId);
@@ -333,6 +352,7 @@ public class MeetingService {
         return meeting;
     }
 
+    /** 催办参会人确认会议纪要 */
     public void remindParticipant(Long meetingId, Long userId) {
         User currentUser = AuthContext.requireUser();
         Meeting meeting = repo.findMeetingById(meetingId);
@@ -358,6 +378,7 @@ public class MeetingService {
         return repo.findParticipantByMeetingIdAndUserId(meetingId, userId) != null;
     }
 
+    /** 校验会议费用：分项合计须与预算一致，且不超过会议类型标准上限 */
     private void validateMeetingFee(MeetingRequest request) {
         String meetingType = request.getMeetingType();
         BigDecimal budget = request.getBudget() == null ? BigDecimal.ZERO : request.getBudget();
@@ -381,6 +402,7 @@ public class MeetingService {
         return value == null ? BigDecimal.ZERO : value;
     }
 
+    /** 计算两个日期之间的工作日数 */
     private long workingDaysBetween(LocalDate start, LocalDate end) {
         long count = 0;
         for (LocalDate date = start.plusDays(1); !date.isAfter(end); date = date.plusDays(1)) {
@@ -391,6 +413,7 @@ public class MeetingService {
         return count;
     }
 
+    /** 检查会议室在指定时段是否有时间冲突 */
     private boolean hasConflict(Long roomId, LocalDateTime start, LocalDateTime end) {
         if (start == null || end == null) {
             return false;
@@ -406,6 +429,7 @@ public class MeetingService {
         return false;
     }
 
+    /** 判断是否为大型活动（室内>500人或室外>100人） */
     private boolean isLargeActivity(String venueType, Integer expectedCount) {
         int count = expectedCount == null ? 0 : expectedCount;
         return ("室内".equals(venueType) && count > 500) || ("室外".equals(venueType) && count > 100);

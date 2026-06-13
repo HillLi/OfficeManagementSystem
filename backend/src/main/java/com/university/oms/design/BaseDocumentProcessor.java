@@ -3,10 +3,9 @@ package com.university.oms.design;
 import com.university.oms.model.AiReviewResult;
 import com.university.oms.model.Document;
 
-/**
- * Base component for Decorator pattern — basic format checks.
- */
+// 装饰器模式：基础公文处理器，执行标题格式和正文长度的基本检查
 public class BaseDocumentProcessor implements DocumentProcessor {
+    // 执行基本格式校验：标题格式、正文长度、文号格式
     @Override
     public AiReviewResult process(Document document) {
         AiReviewResult result = new AiReviewResult();

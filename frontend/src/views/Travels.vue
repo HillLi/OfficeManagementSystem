@@ -66,6 +66,7 @@
   </div>
 </template>
 
+<!-- 差旅审批页面：差旅申请列表、提交差旅申请、报销登记 -->
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
@@ -108,6 +109,7 @@ const reimburseRules = {
   actualExpense: [{ required: true, message: '请输入实际报销金额', trigger: 'blur' }]
 }
 
+// 加载差旅列表数据
 const load = async () => {
   loading.value = true
   try {
@@ -118,6 +120,8 @@ const load = async () => {
     loading.value = false
   }
 }
+
+// 提交差旅申请
 const submit = async () => {
   try {
     await formRef.value.validate()
@@ -131,6 +135,8 @@ const submit = async () => {
     }
   }
 }
+
+// 打开报销登记弹窗，回填已有数据
 const openReimburse = (travel) => {
   currentTravel.value = travel
   reimburseForm.actualExpense = Number(travel.actualExpense || travel.budget || 0)
@@ -138,6 +144,8 @@ const openReimburse = (travel) => {
   reimburseForm.overLimitReason = travel.overLimitReason || ''
   reimburseDialog.value = true
 }
+
+// 提交报销申请（提交财务复核）
 const reimburse = async () => {
   try {
     await reimburseFormRef.value.validate()
@@ -151,9 +159,12 @@ const reimburse = async () => {
     }
   }
 }
+
+// 打开流程导览弹窗
 const openFlowGuide = (travel) => {
   flowGuideDialog.value?.open('travel', travel.id)
 }
 
+// 页面挂载时加载差旅数据
 onMounted(load)
 </script>

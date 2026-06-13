@@ -162,6 +162,7 @@
 </template>
 
 <script setup>
+// 用印管理页面：提供用印申请、材料上传管理、印章移交、用印登记和归还确认等功能
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
@@ -172,8 +173,11 @@ import WorkflowGuideDialog from '../components/WorkflowGuideDialog.vue'
 const dictionaryStore = useDictionaryStore()
 const labelOf = dictionaryStore.labelOf
 const optionsOf = dictionaryStore.optionsOf
+/** 当前登录用户 */
 const currentUser = readSessionUser(undefined, { id: 0, roleKeys: [] })
+/** 是否具有用印管理权限（印章保管员、办公室管理员或系统管理员） */
 const canManage = computed(() => currentUser.roleKeys?.some((role) => ['seal_keeper', 'office_admin', 'admin'].includes(role)))
+/** 是否允许查看已删除的材料（办公室管理员或系统管理员） */
 const canViewDeleted = computed(() => currentUser.roleKeys?.some((role) => ['office_admin', 'admin'].includes(role)))
 const loading = ref(false)
 const seals = ref([])
@@ -214,7 +218,9 @@ const transferForm = reactive({
   remark: ''
 })
 const editForm = reactive({ id: null, fileName: '', secrecyLevel: '内部' })
+/** 材料管理弹窗标题 */
 const materialTitle = computed(() => currentApplication.value ? `${currentApplication.value.sealName} - 用印材料` : '用印材料')
+/** 是否允许上传材料（仅草稿状态且为申请人本人） */
 const canUpload = computed(() => currentApplication.value?.status === 'draft'
   && currentApplication.value?.applicantId === currentUser.id)
 const rules = {
@@ -233,13 +239,20 @@ const editRules = {
   fileName: [{ required: true, message: '请输入材料名称', trigger: 'blur' }]
 }
 
+/** 根据印章ID获取印章名称 */
 const sealName = (sealId) => seals.value.find((seal) => seal.id === sealId)?.sealName || `印章 #${sealId}`
+/** 根据用户ID获取用户姓名 */
 const userName = (userId) => userOptions.value.find((user) => user.id === userId)?.realName || `#${userId}`
+/** 判断当前用户是否可以提交该用印申请 */
 const canSubmit = (row) => row.status === 'draft' && row.applicantId === currentUser.id
+/** 判断当前用户是否可以编辑该材料 */
 const canEdit = (row) => !row.deleted && canUpload.value
+/** 判断当前用户是否可以删除该材料 */
 const canDelete = (row) => !row.deleted && (canUpload.value || canViewDeleted.value)
+/** 将字节数转换为可读的文件大小文本 */
 const fileSize = (bytes) => bytes == null ? '-' : bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`
 
+/** 加载印章列表、用印申请列表、用户选项及移交记录 */
 const load = async () => {
   loading.value = true
   try {
@@ -252,6 +265,7 @@ const load = async () => {
     loading.value = false
   }
 }
+/** 保存用印申请草稿并打开材料上传弹窗 */
 const saveDraft = async () => {
   try {
     await formRef.value.validate()
@@ -266,6 +280,7 @@ const saveDraft = async () => {
     }
   }
 }
+/** 提交用印申请进入审批流程 */
 const submitDraft = async (row) => {
   try {
     await api.submitSealApp(row.id)
@@ -278,6 +293,7 @@ const submitDraft = async (row) => {
     ElMessage.error(e.message || '提交审批失败')
   }
 }
+/** 打开材料管理弹窗 */
 const openMaterials = async (application) => {
   currentApplication.value = application
   includeDeleted.value = false
@@ -286,9 +302,11 @@ const openMaterials = async (application) => {
   await loadMaterials()
   materialDialog.value = true
 }
+/** 打开流程导览弹窗 */
 const openFlowGuide = (application) => {
   flowGuideDialog.value?.open('seal', application.id)
 }
+/** 加载当前用印申请的材料列表 */
 const loadMaterials = async () => {
   if (!currentApplication.value) return
   try {
@@ -301,14 +319,17 @@ const loadMaterials = async () => {
     ElMessage.error(e.message || '加载材料失败')
   }
 }
+/** 选择上传文件 */
 const chooseFile = (uploadFile, fileList) => {
   selectedFile.value = uploadFile.raw
   uploadFiles.value = fileList.slice(-1)
 }
+/** 移除已选择的文件 */
 const removeFile = () => {
   selectedFile.value = null
   uploadFiles.value = []
 }
+/** 上传材料文件到服务器 */
 const uploadMaterial = async () => {
   try {
     const data = new FormData()
@@ -326,6 +347,7 @@ const uploadMaterial = async () => {
     ElMessage.error(e.message || '材料上传失败')
   }
 }
+/** 下载材料文件 */
 const downloadMaterial = async (row) => {
   try {
     const blob = await api.downloadAttachment(row.id)
@@ -338,12 +360,14 @@ const downloadMaterial = async (row) => {
     ElMessage.error(e.message || '下载材料失败')
   }
 }
+/** 打开材料信息编辑弹窗 */
 const openEdit = (row) => {
   editForm.id = row.id
   editForm.fileName = row.fileName
   editForm.secrecyLevel = row.secrecyLevel
   editDialog.value = true
 }
+/** 保存修改后的材料信息 */
 const saveEdit = async () => {
   try {
     await editFormRef.value.validate()
@@ -357,6 +381,7 @@ const saveEdit = async () => {
     }
   }
 }
+/** 逻辑删除材料（需输入删除原因） */
 const removeMaterial = async (row) => {
   try {
     const { value } = await ElMessageBox.prompt('请输入删除原因', `删除材料：${row.fileName}`, {
@@ -373,6 +398,7 @@ const removeMaterial = async (row) => {
     if (error !== 'cancel' && error !== 'close') ElMessage.error(error.message || '删除失败')
   }
 }
+/** 登记用印（管理员操作） */
 const markUsed = async (id) => {
   try {
     await api.markSealUsed(id, currentUser.id)
@@ -382,6 +408,7 @@ const markUsed = async (id) => {
     ElMessage.error(e.message || '登记用印失败')
   }
 }
+/** 确认印章归还（管理员操作） */
 const markReturned = async (id) => {
   try {
     await api.returnSeal(id, currentUser.id)
@@ -391,6 +418,7 @@ const markReturned = async (id) => {
     ElMessage.error(e.message || '确认归还失败')
   }
 }
+/** 创建印章移交记录 */
 const createTransfer = async () => {
   try {
     await transferFormRef.value.validate()

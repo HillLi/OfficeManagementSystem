@@ -4,13 +4,20 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+/**
+ * 用户实体
+ */
 public class User extends BaseEntity {
     private String username;
     private String password;
+    /** 真实姓名 */
     private String realName;
     private String email;
+    /** 所属部门ID */
     private Long deptId;
+    /** 所属部门名称（冗余字段） */
     private String deptName;
+    /** 用户角色标识集合 */
     private Set<String> roleKeys = new LinkedHashSet<String>();
 
     public String getUsername() {

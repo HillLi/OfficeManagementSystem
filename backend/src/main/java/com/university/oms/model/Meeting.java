@@ -3,27 +3,47 @@ package com.university.oms.model;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * 会议实体
+ */
 public class Meeting extends BaseEntity {
     private String title;
+    /** 会议室ID */
     private Long roomId;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
+    /** 组织者ID */
     private Long organizerId;
+    /** 预计参会人数 */
     private Integer expectedCount;
+    /** 会场类型 */
     private String venueType;
+    /** 会议类型 */
     private String meetingType;
+    /** 会议预算 */
     private BigDecimal budget;
+    /** 住宿费用 */
     private BigDecimal accommodationFee;
+    /** 餐饮费用 */
     private BigDecimal mealFee;
+    /** 场地费用 */
     private BigDecimal venueFee;
+    /** 其他费用 */
     private BigDecimal otherFee;
+    /** 风险评估报告附件URL */
     private String riskReportUrl;
+    /** 安全工作方案附件URL */
     private String securityPlanUrl;
+    /** 应急预案附件URL */
     private String emergencyPlanUrl;
+    /** 是否为大型活动 */
     private boolean largeActivity;
+    /** 签到人数 */
     private Integer signInCount = 0;
+    /** 会议纪要内容 */
     private String minutes;
     private String status;
+    /** 会议记录人ID */
     private Long recorderId;
 
     public Long getRecorderId() { return recorderId; }

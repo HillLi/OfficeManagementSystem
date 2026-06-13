@@ -4,8 +4,10 @@ import com.university.oms.common.BusinessException;
 import com.university.oms.model.User;
 import org.springframework.stereotype.Component;
 
+// 责任链模式：党办校办人员审批处理器
 @Component
 public class OfficeAdminHandler extends ApprovalHandler {
+    // 处理党办校办待审批状态和保密审查状态的审批请求
     @Override
     public String handle(String currentStatus, String action, User operator) {
         if ("pending_office".equals(currentStatus)) {

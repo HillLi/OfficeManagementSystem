@@ -4,11 +4,10 @@ import com.university.oms.common.BusinessException;
 import com.university.oms.model.Document;
 import org.springframework.stereotype.Service;
 
-/**
- * Template Method — document submission workflow.
- */
+// 模板方法模式：公文提交工作流的具体实现
 @Service
 public class DocumentWorkflowService extends AbstractBusinessService<Document> {
+    // 校验公文标题和正文不能为空
     @Override
     protected void validate(Document doc) {
         if (doc.getTitle() == null || doc.getTitle().trim().isEmpty()) {
@@ -19,6 +18,7 @@ public class DocumentWorkflowService extends AbstractBusinessService<Document> {
         }
     }
 
+    // 设置公文状态为待部门审批并关联申请人
     @Override
     protected Document doSubmit(Document doc, Long applicantId) {
         doc.setStatus("pending_dept");

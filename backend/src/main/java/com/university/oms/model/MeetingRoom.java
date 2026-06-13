@@ -1,10 +1,17 @@
 package com.university.oms.model;
 
+/**
+ * 会议室实体
+ */
 public class MeetingRoom extends BaseEntity {
     private String roomName;
+    /** 容纳人数 */
     private Integer capacity;
+    /** 设备配置描述 */
     private String equipment;
+    /** 会议室位置 */
     private String location;
+    /** 是否启用 */
     private boolean enabled;
 
     public String getRoomName() {

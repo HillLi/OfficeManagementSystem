@@ -37,6 +37,7 @@
   </div>
 </template>
 
+<!-- 统计报表页面：展示各类业务统计数据，支持导出CSV -->
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
@@ -59,15 +60,18 @@ const stats = reactive({
   monthlyBusinessCounts: {}
 })
 
+// 将公文状态分布数据转为表格行
 const documentStatusRows = computed(() =>
   Object.entries(stats.documentStatusDistribution || {}).map(([status, count]) => ({
     status: labelOf('business_status', status), count
   }))
 )
+// 将月度业务量数据转为表格行
 const monthlyRows = computed(() =>
   Object.entries(stats.monthlyBusinessCounts || {}).map(([month, count]) => ({ month, count }))
 )
 
+// 页面挂载时加载统计数据
 onMounted(async () => {
   loading.value = true
   try {
@@ -79,6 +83,7 @@ onMounted(async () => {
   }
 })
 
+// 导出统计报表为CSV文件
 const download = async () => {
   try {
     const blob = await api.exportStatistics()
@@ -94,4 +99,3 @@ const download = async () => {
   }
 }
 </script>
-

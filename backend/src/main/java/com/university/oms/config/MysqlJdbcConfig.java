@@ -10,8 +10,14 @@ import javax.sql.DataSource;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * MySQL数据源与JDBC配置，包含数据库连接和自动迁移逻辑
+ */
 @Configuration
 public class MysqlJdbcConfig {
+    /**
+     * 创建数据源，并在连接MySQL时自动执行表结构迁移
+     */
     @Bean
     public DataSource dataSource(@Value("${spring.datasource.url}") String url,
                                  @Value("${spring.datasource.username}") String username,
@@ -23,7 +29,7 @@ public class MysqlJdbcConfig {
         dataSource.setPassword(password);
         dataSource.setDriverClassName(driverClassName);
 
-        // Run migration on MySQL startup only
+        // 仅在使用MySQL时执行数据库迁移
         if (url.contains("mysql")) {
             try {
                 runMigrations(dataSource);
@@ -35,8 +41,12 @@ public class MysqlJdbcConfig {
         return dataSource;
     }
 
+    /**
+     * 执行增量迁移：为已有表补充缺失的列，并创建缺失的表
+     */
     private void runMigrations(DataSource dataSource) {
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        // 迁移定义：每项为 {表名, 列名, 列定义}
         String[][] migrations = {
                 {"oa_seal_log", "take_out_reason", "VARCHAR(500)"},
                 {"oa_seal_log", "take_out_location", "VARCHAR(255)"},
@@ -75,7 +85,7 @@ public class MysqlJdbcConfig {
             addColumnIfMissing(jdbc, m[0], m[1], m[2]);
         }
 
-        // Create missing tables
+        // 创建缺失的表
         createTableIfNotExists(jdbc, "oms_sequence",
                 "id INT DEFAULT 1 PRIMARY KEY, next_id BIGINT NOT NULL");
         createTableIfNotExists(jdbc, "oa_meeting_participant",
@@ -94,6 +104,9 @@ public class MysqlJdbcConfig {
                 + "due_time DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
     }
 
+    /**
+     * 检查表中是否存在指定列，不存在则添加
+     */
     private void addColumnIfMissing(JdbcTemplate jdbc, String table, String column, String definition) {
         try {
             List<Map<String, Object>> cols = jdbc.queryForList(
@@ -107,6 +120,9 @@ public class MysqlJdbcConfig {
         }
     }
 
+    /**
+     * 如果表不存在则创建
+     */
     private void createTableIfNotExists(JdbcTemplate jdbc, String table, String columns) {
         try {
             jdbc.execute("CREATE TABLE IF NOT EXISTS " + table + " (" + columns + ")");
@@ -115,6 +131,7 @@ public class MysqlJdbcConfig {
         }
     }
 
+    /** 创建JdbcTemplate实例 */
     @Bean
     public JdbcTemplate jdbcTemplate(DataSource dataSource) {
         return new JdbcTemplate(dataSource);

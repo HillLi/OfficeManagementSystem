@@ -12,6 +12,9 @@ import com.university.oms.repository.OmsRepository;
 import com.university.oms.security.AuthContext;
 import org.springframework.stereotype.Service;
 
+/**
+ * 业务权限校验服务，统一管理各业务模块的访问控制和操作权限判断
+ */
 @Service
 public class BusinessAccessService {
     private final OmsRepository repo;
@@ -20,6 +23,7 @@ public class BusinessAccessService {
         this.repo = repo;
     }
 
+    /** 校验当前用户是否有权提交该公文 */
     public void requireDocumentSubmit(Document document) {
         User user = AuthContext.requireUser();
         if (!document.getApplicantId().equals(user.getId()) && !hasRole(user, "admin")) {
@@ -27,6 +31,7 @@ public class BusinessAccessService {
         }
     }
 
+    /** 校验当前用户是否有权归档该公文 */
     public void requireDocumentArchive(Document document) {
         User user = AuthContext.requireUser();
         if (!hasRole(user, "office_admin") && !hasRole(user, "admin")) {
@@ -34,10 +39,12 @@ public class BusinessAccessService {
         }
     }
 
+    /** 校验当前用户是否有权分发该公文 */
     public void requireDocumentDistribute(Document document) {
         requireDocumentArchive(document);
     }
 
+    /** 校验当前用户是否有权签收该公文分发记录 */
     public void requireDocumentReceipt(DocumentDistribution distribution) {
         User user = AuthContext.requireUser();
         if (!distribution.getReceiverId().equals(user.getId()) && !hasRole(user, "admin")) {
@@ -45,10 +52,12 @@ public class BusinessAccessService {
         }
     }
 
+    /** 校验当前用户是否有权催办该公文签收 */
     public void requireDocumentRemind(Document document) {
         requireDocumentArchive(document);
     }
 
+    /** 校验当前用户是否有权归档该会议纪要 */
     public void requireMeetingMinutesArchive(Meeting meeting) {
         User user = AuthContext.requireUser();
         if (!meeting.getOrganizerId().equals(user.getId())
@@ -58,6 +67,7 @@ public class BusinessAccessService {
         }
     }
 
+    /** 校验当前用户是否为会议记录员 */
     public void requireMeetingRecorder(Meeting meeting) {
         User user = AuthContext.requireUser();
         if (!user.getId().equals(meeting.getRecorderId())) {
@@ -65,6 +75,7 @@ public class BusinessAccessService {
         }
     }
 
+    /** 校验当前用户是否为会议组织者 */
     public void requireMeetingOrganizer(Meeting meeting) {
         User user = AuthContext.requireUser();
         if (!user.getId().equals(meeting.getOrganizerId())) {
@@ -72,6 +83,7 @@ public class BusinessAccessService {
         }
     }
 
+    /** 校验当前用户是否有权批复归档请示报告 */
     public void requireReportReply(Report report) {
         User user = AuthContext.requireUser();
         if (!hasRole(user, "office_admin")
@@ -81,6 +93,7 @@ public class BusinessAccessService {
         }
     }
 
+    /** 校验当前用户是否有权提交该差旅报销 */
     public void requireTravelReimburse(Travel travel) {
         User user = AuthContext.requireUser();
         if (!travel.getApplicantId().equals(user.getId()) && !hasRole(user, "admin")) {
@@ -88,18 +101,21 @@ public class BusinessAccessService {
         }
     }
 
+    /** 校验当前用户是否有权读取指定业务数据 */
     public void requireBusinessRead(String bizType, Long bizId) {
         if (!canReadBusiness(bizType, bizId)) {
             deny("无权访问该业务数据");
         }
     }
 
+    /** 校验指定用户是否有权审批该业务 */
     public void requireBusinessApproval(User user, String bizType, Long bizId, String nodeKey, String approverRole) {
         if (!canHandleApproval(user, bizType, bizId, nodeKey, approverRole)) {
             deny("No permission to approve this business item");
         }
     }
 
+    /** 校验当前用户是否有权上传指定业务的附件 */
     public void requireAttachmentUpload(String bizType, Long bizId) {
         if (!"seal".equals(bizType)) {
             deny("当前业务不支持文件上传");
@@ -114,6 +130,7 @@ public class BusinessAccessService {
         }
     }
 
+    /** 校验当前用户是否有权编辑指定业务的附件 */
     public void requireAttachmentEdit(String bizType, Long bizId) {
         SealApplication application = requireSealMaterialApplication(bizType, bizId);
         User user = AuthContext.requireUser();
@@ -122,6 +139,7 @@ public class BusinessAccessService {
         }
     }
 
+    /** 校验当前用户是否有权删除指定业务的附件 */
     public void requireAttachmentDelete(String bizType, Long bizId) {
         SealApplication application = requireSealMaterialApplication(bizType, bizId);
         User user = AuthContext.requireUser();
@@ -134,6 +152,7 @@ public class BusinessAccessService {
         deny("无权删除该用印材料");
     }
 
+    /** 校验当前用户是否有权查看已删除材料记录 */
     public void requireViewDeletedAttachments() {
         User user = AuthContext.requireUser();
         if (!hasRole(user, "office_admin") && !hasRole(user, "admin")) {
@@ -141,6 +160,10 @@ public class BusinessAccessService {
         }
     }
 
+    /**
+     * 判断当前用户是否可读取指定业务数据
+     * 综合考虑用户角色、申请人身份、部门归属等因素
+     */
     public boolean canReadBusiness(String bizType, Long bizId) {
         User user = AuthContext.requireUser();
         if (hasRole(user, "admin")) {
@@ -175,6 +198,7 @@ public class BusinessAccessService {
         return false;
     }
 
+    /** 判断指定用户是否有权审批指定业务节点 */
     public boolean canHandleApproval(User user, String bizType, Long bizId, String nodeKey, String approverRole) {
         if (user == null) {
             return false;
@@ -185,6 +209,7 @@ public class BusinessAccessService {
         if (approverRole == null || !hasRole(user, approverRole)) {
             return false;
         }
+        // 部门负责人只能审批本部门的业务
         if ("dept_head".equals(approverRole)) {
             Long deptId = businessDepartment(bizType, bizId);
             return deptId != null && deptId.equals(user.getDeptId());
@@ -192,12 +217,14 @@ public class BusinessAccessService {
         return true;
     }
 
+    /** 判断用户是否可读取（基于申请人、管理角色或部门负责人身份） */
     private boolean canReadForApplicant(User user, Long applicantId, Long deptId, boolean manager) {
         return user.getId().equals(applicantId)
                 || manager
                 || (hasRole(user, "dept_head") && deptId != null && deptId.equals(user.getDeptId()));
     }
 
+    /** 获取指定业务所属的部门ID */
     private Long businessDepartment(String bizType, Long bizId) {
         if ("document".equals(bizType)) {
             Document document = repo.findDocumentById(bizId);
@@ -227,6 +254,7 @@ public class BusinessAccessService {
         return user == null ? null : user.getDeptId();
     }
 
+    /** 判断用户是否为公文的分发接收人 */
     private boolean isDocumentReceiver(User user, Long documentId) {
         for (DocumentDistribution distribution : repo.findDocumentDistributionsByDocumentId(documentId)) {
             if (user.getId().equals(distribution.getReceiverId())) {
@@ -236,6 +264,7 @@ public class BusinessAccessService {
         return false;
     }
 
+    /** 校验并返回用印材料所属的用印申请 */
     private SealApplication requireSealMaterialApplication(String bizType, Long bizId) {
         if (!"seal".equals(bizType)) {
             deny("该业务暂不支持材料维护");

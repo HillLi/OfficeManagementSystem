@@ -80,6 +80,7 @@
   </div>
 </template>
 
+// 审批任务管理页面：展示待办任务、通知消息、流程实例和审批记录，支持审批操作
 <script setup>
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -102,6 +103,7 @@ const instances = ref([])
 const flowGuideDialog = ref(null)
 const loading = ref(false)
 
+// 加载审批相关数据（审批记录、待办任务、通知、流程实例）
 const load = async () => {
   loading.value = true
   try {
@@ -117,11 +119,13 @@ const load = async () => {
   }
 }
 
+// 获取标签页的角标数量
 const tabBadge = (tabName) => approvalTabBadgeCount(tabName, {
   pendingTasks: actionBadgeStore.pendingTasks,
   unreadNotifications: actionBadgeStore.unreadNotifications
 })
 
+// 处理审批任务：同意或退回，弹出意见输入框后提交
 const process = async (row, action) => {
   try {
     const label = action === 'approve' ? '审批同意' : '退回申请'
@@ -139,6 +143,7 @@ const process = async (row, action) => {
   }
 }
 
+// 标记通知为已读
 const markRead = async (id) => {
   try {
     await api.markNotificationRead(id)
@@ -148,10 +153,12 @@ const markRead = async (id) => {
   }
 }
 
+// 打开流程导览弹窗
 const openFlowGuide = (bizType, bizId) => {
   flowGuideDialog.value?.open(bizType, bizId)
 }
 
+// 页面挂载时加载审批数据
 onMounted(load)
 </script>
 
