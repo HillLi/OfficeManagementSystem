@@ -128,7 +128,7 @@
 
 // 系统首页仪表盘：展示统计概览、最新公告、日程日历和数据图表
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { BarChart, GaugeChart, PieChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import { init, use } from 'echarts/core'
@@ -247,6 +247,8 @@ onMounted(async () => {
     Object.assign(stats, dashboardData)
     monthlyScheduleItems.value = Array.isArray(dashboardData.monthlyScheduleItems) ? dashboardData.monthlyScheduleItems : []
     latestAnnouncements.value = announcements
+    // 等待 v-if 控制的图表容器渲染到 DOM 后再初始化 ECharts
+    await nextTick()
     initCharts()
   } catch (e) {
     console.error('Dashboard load failed', e)

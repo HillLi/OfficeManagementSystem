@@ -1,9 +1,11 @@
 package com.university.oms.service;
 
 import com.university.oms.common.BusinessException;
+import com.university.oms.dto.ChangePasswordRequest;
 import com.university.oms.dto.LoginRequest;
 import com.university.oms.dto.LoginResult;
 import com.university.oms.dto.UserOption;
+import com.university.oms.security.AuthContext;
 import com.university.oms.model.Department;
 import com.university.oms.model.User;
 import com.university.oms.repository.OmsRepository;
@@ -71,6 +73,16 @@ public class AuthService {
     /** 获取部门选项列表 */
     public List<Department> deptOptions() {
         return repo.findAllDepartments();
+    }
+
+    /** 用户修改密码，需验证旧密码 */
+    public void changePassword(ChangePasswordRequest request) {
+        User user = AuthContext.requireUser();
+        if (!passwordService.matches(request.getOldPassword(), user.getPassword())) {
+            throw new BusinessException("旧密码不正确");
+        }
+        user.setPassword(passwordService.hash(request.getNewPassword()));
+        repo.saveUser(user);
     }
 
     /** 用户登出，注销Token */

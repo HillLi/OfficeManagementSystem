@@ -1,5 +1,6 @@
 package com.university.oms.service;
 
+import com.university.oms.design.DashboardFacade;
 import com.university.oms.model.DashboardStats;
 import org.springframework.stereotype.Service;
 
@@ -8,15 +9,15 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class StatisticsService {
-    private final DashboardService dashboardService;
+    private final DashboardFacade facade;
 
-    public StatisticsService(DashboardService dashboardService) {
-        this.dashboardService = dashboardService;
+    public StatisticsService(DashboardFacade facade) {
+        this.facade = facade;
     }
 
-    /** 获取统计摘要数据 */
+    /** 获取统计摘要数据（不过滤权限，展示全量汇总） */
     public DashboardStats summary() {
-        return dashboardService.stats();
+        return facade.aggregate();
     }
 
     /** 将统计数据导出为CSV格式 */

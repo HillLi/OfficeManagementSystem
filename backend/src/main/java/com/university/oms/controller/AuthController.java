@@ -1,6 +1,7 @@
 package com.university.oms.controller;
 
 import com.university.oms.common.ApiResponse;
+import com.university.oms.dto.ChangePasswordRequest;
 import com.university.oms.dto.LoginRequest;
 import com.university.oms.dto.LoginResult;
 import com.university.oms.dto.UserOption;
@@ -26,6 +27,13 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<LoginResult> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.ok(authService.login(request));
+    }
+
+    /** 用户修改密码 */
+    @PostMapping("/change-password")
+    public ApiResponse<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(request);
+        return ApiResponse.ok(null);
     }
 
     /** 用户登出 */

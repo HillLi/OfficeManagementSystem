@@ -81,6 +81,8 @@ export const api = {
   // 登录与登出
   login: (data) => http.post('/auth/login', data),
   logout: () => http.post('/auth/logout'),
+  // 修改密码
+  changePassword: (data) => http.post('/auth/change-password', data),
   // 仪表盘数据
   dashboard: () => http.get('/dashboard'),
   // 公告管理
