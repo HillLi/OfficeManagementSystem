@@ -18,7 +18,8 @@ export const menuItems = [
   { index: '/announcements', label: '通知公告' },
   { index: '/statistics', label: '统计报表' },
   { index: '/admin/users', label: '用户管理', roles: ['admin'] },
-  { index: '/admin/dictionaries', label: '字典管理', roles: ['admin'] }
+  { index: '/admin/dictionaries', label: '字典管理', roles: ['admin'] },
+  { index: '/admin/workflow', label: '审批流程配置', roles: ['admin'] }
 ]
 
 /** 判断用户是否拥有菜单项所要求的角色 */

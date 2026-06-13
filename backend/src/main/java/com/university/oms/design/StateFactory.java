@@ -14,7 +14,7 @@ public class StateFactory {
         this.flowConfig = flowConfig;
     }
 
-    // 根据状态字符串创建状态对象（不含业务类型信息）
+    // 根据状态字符串创建状态对象（不含业务类型信息，角色按全局查找）
     public BusinessState getState(String status) {
         if (status == null) {
             throw new BusinessException("状态不能为空");
@@ -28,7 +28,7 @@ public class StateFactory {
                 return new RejectedState();
             default:
                 if (status.startsWith("pending_")) {
-                    String role = flowConfig.getRequiredRole(status);
+                    String role = flowConfig.getRequiredRole(null, status);
                     if (role == null) {
                         role = "admin";
                     }
@@ -52,7 +52,7 @@ public class StateFactory {
                 return new RejectedState();
             default:
                 if (status.startsWith("pending_")) {
-                    String role = flowConfig.getRequiredRole(status);
+                    String role = flowConfig.getRequiredRole(bizType, status);
                     if (role == null) {
                         role = "admin";
                     }

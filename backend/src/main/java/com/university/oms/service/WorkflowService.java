@@ -290,7 +290,7 @@ public class WorkflowService {
                 return;
             }
         }
-        String role = flowConfig.getRequiredRole(nodeKey);
+        String role = flowConfig.getRequiredRole(null, nodeKey);
         FlowTask task = new FlowTask();
         OmsRepository.fillEntity(task, repo.nextId());
         task.setInstanceId(instance.getId());
@@ -317,7 +317,7 @@ public class WorkflowService {
 
     /** 通知下一个审批节点的有权限审批人 */
     private void notifyNextApprovers(String bizType, Long bizId, String nodeKey) {
-        String role = flowConfig.getRequiredRole(nodeKey);
+        String role = flowConfig.getRequiredRole(null, nodeKey);
         if (role == null) {
             return;
         }

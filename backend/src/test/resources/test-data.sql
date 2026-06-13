@@ -169,3 +169,25 @@ INSERT INTO oa_meeting_fee_standard (meeting_type, accommodation_limit, meal_lim
 ('在华举办的国际会议', 700, 200, 300, 1200);
 
 INSERT INTO oms_sequence (id, next_id) VALUES (1, 1000);
+
+-- 审批流程默认配置（与原硬编码一致）
+INSERT INTO oa_flow_node (id, flow_key, sort_order, node_key, node_label, role_key, enabled) VALUES
+(1, 'document', 1, 'pending_dept', '部门负责人审批', 'dept_head', 1),
+(2, 'document', 2, 'pending_office', '党办校办审核', 'office_admin', 1),
+(3, 'document', 3, 'pending_leader', '校级领导签发', 'school_leader', 1),
+(4, 'seal_office', 1, 'pending_office', '党办校办审批', 'office_admin', 1),
+(5, 'seal_dept', 1, 'pending_dept', '部门负责人审批', 'dept_head', 1),
+(6, 'seal_dept_major', 1, 'pending_dept', '部门负责人审批', 'dept_head', 1),
+(7, 'seal_dept_major', 2, 'pending_office', '党办校办审核', 'office_admin', 1),
+(8, 'seal_school_major', 1, 'pending_office', '党办校办审核', 'office_admin', 1),
+(9, 'seal_school_major', 2, 'pending_leader', '校级领导签发', 'school_leader', 1),
+(10, 'meeting', 1, 'pending_dept', '部门负责人审批', 'dept_head', 1),
+(11, 'meeting_large', 1, 'pending_security', '保卫处安全审批', 'security_staff', 1),
+(12, 'meeting_large', 2, 'pending_dept', '部门负责人审批', 'dept_head', 1),
+(13, 'meeting_large', 3, 'pending_leader', '校级领导审批', 'school_leader', 1),
+(14, 'travel', 1, 'pending_dept', '部门负责人审批', 'dept_head', 1),
+(15, 'travel', 2, 'pending_finance', '财务处审批', 'finance_staff', 1),
+(16, 'report', 1, 'pending_secret_review', '保密审查', 'office_admin', 1),
+(17, 'report', 2, 'pending_dept', '部门负责人审批', 'dept_head', 1),
+(18, 'report', 3, 'pending_leader', '校级领导审批', 'school_leader', 1);
+

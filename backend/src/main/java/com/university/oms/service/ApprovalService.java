@@ -74,10 +74,11 @@ public class ApprovalService {
 
         BaseEntity entity = findEntity(bizType, bizId);
         String oldStatus = getStatus(entity);
-        accessService.requireBusinessApproval(operator, bizType, bizId, oldStatus, flowConfig.getRequiredRole(oldStatus));
+        String effectiveFlowKey = flowKey(bizType, entity, oldStatus);
+        accessService.requireBusinessApproval(operator, bizType, bizId, oldStatus, flowConfig.getRequiredRole(effectiveFlowKey, oldStatus));
 
         // 根据审批流Key和当前状态获取对应的状态处理对象
-        BusinessState state = stateFactory.getState(flowKey(bizType, entity, oldStatus), oldStatus);
+        BusinessState state = stateFactory.getState(effectiveFlowKey, oldStatus);
         String newStatus;
         if ("reject".equals(request.getAction())) {
             newStatus = state.reject(operator);

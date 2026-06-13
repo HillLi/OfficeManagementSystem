@@ -68,6 +68,7 @@ public class OmsRepository {
                         "COALESCE((SELECT MAX(id) FROM sys_dict_item),0)," +
                         "COALESCE((SELECT MAX(id) FROM oa_flow_instance),0)," +
                         "COALESCE((SELECT MAX(id) FROM oa_flow_task),0)," +
+                        "COALESCE((SELECT MAX(id) FROM oa_flow_node),0)," +
                         "COALESCE((SELECT MAX(id) FROM oa_meeting_participant),0)," +
                         "1000)",
                 Long.class);
@@ -314,6 +315,22 @@ public class OmsRepository {
                         "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                 t.getId(), t.getInstanceId(), t.getBizType(), t.getBizId(), t.getNodeKey(), t.getApproverRole(),
                 t.getApproverId(), t.getStatus(), t.getDueTime(), t.getCreatedAt(), t.getUpdatedAt());
+    }
+
+    // ========== Write Methods: FlowNode ==========
+
+    /** 保存（新增或更新）一个审批流程节点 */
+    public void saveFlowNode(FlowNode node) {
+        jdbcTemplate.update("REPLACE INTO oa_flow_node " +
+                        "(id, flow_key, sort_order, node_key, node_label, role_key, enabled, created_at, updated_at) " +
+                        "VALUES (?,?,?,?,?,?,?,?,?)",
+                node.getId(), node.getFlowKey(), node.getSortOrder(), node.getNodeKey(), node.getNodeLabel(),
+                node.getRoleKey(), node.isEnabled() ? 1 : 0, node.getCreatedAt(), node.getUpdatedAt());
+    }
+
+    /** 删除指定流程Key下的所有节点（用于整体替换保存） */
+    public void deleteFlowNodesByFlowKey(String flowKey) {
+        jdbcTemplate.update("DELETE FROM oa_flow_node WHERE flow_key=?", flowKey);
     }
 
     // ========== Read Methods: User ==========
@@ -1035,5 +1052,33 @@ public class OmsRepository {
         t.setStatus(rs.getString("status"));
         t.setDueTime(toLocalDateTime(rs, "due_time"));
         return t;
+    }
+
+    // ========== Read Methods: FlowNode ==========
+
+    /** 查询所有审批流程节点，按流程Key和顺序排序 */
+    public List<FlowNode> findAllFlowNodes() {
+        return jdbcTemplate.query("SELECT * FROM oa_flow_node ORDER BY flow_key, sort_order",
+                (rs, rowNum) -> mapFlowNode(rs));
+    }
+
+    /** 查询指定流程Key的所有节点（按顺序排序） */
+    public List<FlowNode> findFlowNodesByFlowKey(String flowKey) {
+        return jdbcTemplate.query("SELECT * FROM oa_flow_node WHERE flow_key=? ORDER BY sort_order",
+                (rs, rowNum) -> mapFlowNode(rs), flowKey);
+    }
+
+    private FlowNode mapFlowNode(ResultSet rs) throws SQLException {
+        FlowNode node = new FlowNode();
+        node.setId(rs.getLong("id"));
+        node.setCreatedAt(toLocalDateTime(rs, "created_at"));
+        node.setUpdatedAt(toLocalDateTime(rs, "updated_at"));
+        node.setFlowKey(rs.getString("flow_key"));
+        node.setSortOrder(rs.getInt("sort_order"));
+        node.setNodeKey(rs.getString("node_key"));
+        node.setNodeLabel(rs.getString("node_label"));
+        node.setRoleKey(rs.getString("role_key"));
+        node.setEnabled(rs.getInt("enabled") == 1);
+        return node;
     }
 }

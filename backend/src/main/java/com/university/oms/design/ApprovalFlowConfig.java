@@ -1,43 +1,70 @@
 package com.university.oms.design;
 
+import com.university.oms.model.FlowNode;
+import com.university.oms.repository.OmsRepository;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.util.*;
 
-// 审批流程配置：定义各业务类型的审批步骤顺序和状态与角色的映射关系
+// 审批流程配置：从数据库加载各业务类型的审批步骤顺序和状态与角色的映射关系
 @Component
 public class ApprovalFlowConfig {
-    private final Map<String, List<String>> flows = new LinkedHashMap<>(); // 业务类型 -> 审批步骤列表
-    private final Map<String, String> statusToRole = new LinkedHashMap<>(); // 审批状态 -> 所需角色
+    private final OmsRepository repo;
+    // 流程Key -> 审批节点状态列表（按顺序）
+    private final Map<String, List<String>> flows = new LinkedHashMap<>();
+    // 流程Key -> (节点状态 -> 审批角色)
+    private final Map<String, Map<String, String>> nodeRoles = new LinkedHashMap<>();
+    // 节点状态 -> 显示名称
+    private final Map<String, String> nodeLabels = new LinkedHashMap<>();
 
-    // 初始化各业务类型的审批流程和状态角色映射
+    public ApprovalFlowConfig(OmsRepository repo) {
+        this.repo = repo;
+    }
+
+    // 启动时从数据库加载审批流程配置
     @PostConstruct
-    public void init() {
-        flows.put("document", Arrays.asList("pending_dept", "pending_office", "pending_leader", "approved"));
-        flows.put("seal_office", Arrays.asList("pending_office", "approved"));
-        flows.put("seal_dept", Arrays.asList("pending_dept", "approved"));
-        flows.put("seal_dept_major", Arrays.asList("pending_dept", "pending_office", "approved"));
-        flows.put("seal_school_major", Arrays.asList("pending_office", "pending_leader", "approved"));
-        flows.put("meeting", Arrays.asList("pending_dept", "approved"));
-        flows.put("meeting_large", Arrays.asList("pending_security", "pending_dept", "pending_leader", "approved"));
-        flows.put("travel", Arrays.asList("pending_dept", "pending_finance", "approved"));
-        flows.put("report", Arrays.asList("pending_secret_review", "pending_dept", "pending_leader", "approved"));
-
-        statusToRole.put("pending_dept", "dept_head");
-        statusToRole.put("pending_office", "office_admin");
-        statusToRole.put("pending_leader", "school_leader");
-        statusToRole.put("pending_security", "security_staff");
-        statusToRole.put("pending_finance", "finance_staff");
-        statusToRole.put("pending_secret_review", "office_admin");
+    public synchronized void init() {
+        reload();
     }
 
-    // 根据待审批状态查询所需的角色
-    public String getRequiredRole(String pendingStatus) {
-        return statusToRole.get(pendingStatus);
+    /** 重新从数据库加载配置（管理员修改后调用） */
+    public synchronized void reload() {
+        flows.clear();
+        nodeRoles.clear();
+        nodeLabels.clear();
+        for (FlowNode node : repo.findAllFlowNodes()) {
+            if (!node.isEnabled()) {
+                continue;
+            }
+            flows.computeIfAbsent(node.getFlowKey(), k -> new ArrayList<>()).add(node.getNodeKey());
+            nodeRoles.computeIfAbsent(node.getFlowKey(), k -> new LinkedHashMap<>())
+                    .put(node.getNodeKey(), node.getRoleKey());
+            if (node.getNodeLabel() != null) {
+                nodeLabels.putIfAbsent(node.getNodeKey(), node.getNodeLabel());
+            }
+        }
     }
 
-    // 根据业务类型和当前状态获取下一个审批状态
+    /** 根据流程Key和待审批状态查询所需的审批角色 */
+    public String getRequiredRole(String flowKey, String pendingStatus) {
+        Map<String, String> roles = nodeRoles.get(flowKey);
+        if (roles != null) {
+            String role = roles.get(pendingStatus);
+            if (role != null) {
+                return role;
+            }
+        }
+        // 兜底：跨流程查找该状态对应的角色
+        for (Map<String, String> map : nodeRoles.values()) {
+            if (map.containsKey(pendingStatus)) {
+                return map.get(pendingStatus);
+            }
+        }
+        return null;
+    }
+
+    /** 根据业务类型和当前状态获取下一个审批状态 */
     public String getNextStatus(String bizType, String currentStatus) {
         List<String> steps = flows.get(bizType);
         if (steps == null) return "approved";
@@ -48,6 +75,12 @@ public class ApprovalFlowConfig {
         return null;
     }
 
+    /** 获取节点显示名称 */
+    public String getNodeLabel(String nodeKey) {
+        return nodeLabels.get(nodeKey);
+    }
+
+    /** 获取全部流程配置（流程Key -> 节点状态列表） */
     public Map<String, List<String>> getFlows() {
         return flows;
     }

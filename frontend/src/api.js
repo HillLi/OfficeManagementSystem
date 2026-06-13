@@ -83,6 +83,11 @@ export const api = {
   logout: () => http.post('/auth/logout'),
   // 修改密码
   changePassword: (data) => http.post('/auth/change-password', data),
+  // 审批流程配置（管理员）
+  adminWorkflowFlowKeys: () => http.get('/admin/workflow/flow-keys'),
+  adminWorkflowNodes: () => http.get('/admin/workflow/nodes'),
+  adminWorkflowNodesByFlow: (flowKey) => http.get(`/admin/workflow/flow-key/${flowKey}`),
+  adminSaveWorkflowFlow: (flowKey, steps) => http.put(`/admin/workflow/flow-key/${flowKey}`, steps),
   // 仪表盘数据
   dashboard: () => http.get('/dashboard'),
   // 公告管理

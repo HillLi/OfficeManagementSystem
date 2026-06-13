@@ -317,6 +317,18 @@ CREATE TABLE oa_flow_task (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE oa_flow_node (
+  id BIGINT PRIMARY KEY,
+  flow_key VARCHAR(40) NOT NULL,
+  sort_order INT NOT NULL,
+  node_key VARCHAR(40) NOT NULL,
+  node_label VARCHAR(100),
+  role_key VARCHAR(40) NOT NULL,
+  enabled TINYINT DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE oa_travel_standard (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   staff_level VARCHAR(20) NOT NULL,

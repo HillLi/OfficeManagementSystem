@@ -71,7 +71,8 @@ describe('role based navigation', () => {
       '/announcements',
       '/statistics',
       '/admin/users',
-      '/admin/dictionaries'
+      '/admin/dictionaries',
+      '/admin/workflow'
     ])
   })
 
@@ -84,5 +85,7 @@ describe('role based navigation', () => {
     expect(canAccessPath('/mails', ['admin'])).toBe(true)
     expect(canAccessPath('/admin/dictionaries', ['office_user'])).toBe(false)
     expect(canAccessPath('/admin/dictionaries', ['admin'])).toBe(true)
+    expect(canAccessPath('/admin/workflow', ['office_user'])).toBe(false)
+    expect(canAccessPath('/admin/workflow', ['admin'])).toBe(true)
   })
 })

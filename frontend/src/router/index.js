@@ -19,6 +19,7 @@ const routes = [
   { path: '/statistics', component: () => import('../views/Statistics.vue') },
   { path: '/admin/users', component: () => import('../views/UserManage.vue') },
   { path: '/admin/dictionaries', component: () => import('../views/DictionaryManage.vue') },
+  { path: '/admin/workflow', component: () => import('../views/WorkflowConfig.vue') },
   { path: '/:pathMatch(.*)*', component: () => import('../views/NotFound.vue'), meta: { public: true } }
 ]
 

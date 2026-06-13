@@ -102,6 +102,69 @@ public class MysqlJdbcConfig {
                 "id BIGINT PRIMARY KEY, instance_id BIGINT NOT NULL, biz_type VARCHAR(20) NOT NULL, biz_id BIGINT NOT NULL, "
                 + "node_key VARCHAR(50) NOT NULL, approver_role VARCHAR(50), approver_id BIGINT, status VARCHAR(20) NOT NULL, "
                 + "due_time DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+        // 审批流程配置表：定义各流程的审批步骤顺序、节点名称和审批角色
+        createTableIfNotExists(jdbc, "oa_flow_node",
+                "id BIGINT PRIMARY KEY, flow_key VARCHAR(40) NOT NULL, sort_order INT NOT NULL, "
+                + "node_key VARCHAR(40) NOT NULL, node_label VARCHAR(100), role_key VARCHAR(40) NOT NULL, "
+                + "enabled TINYINT DEFAULT 1, "
+                + "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+        // 首次创建时插入默认审批流程配置（若表为空）
+        seedFlowNodesIfEmpty(jdbc);
+    }
+
+    /**
+     * 当 oa_flow_node 表为空时，插入与原硬编码一致的默认审批流程配置
+     */
+    private void seedFlowNodesIfEmpty(JdbcTemplate jdbc) {
+        try {
+            Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM oa_flow_node", Integer.class);
+            if (count != null && count > 0) {
+                return;
+            }
+        } catch (Exception e) {
+            System.err.println("Seed flow nodes check: " + e.getMessage());
+            return;
+        }
+        // flowKey, nodeKey, nodeLabel, roleKey
+        String[][] defaults = {
+                {"document", "pending_dept", "部门负责人审批", "dept_head"},
+                {"document", "pending_office", "党办校办审核", "office_admin"},
+                {"document", "pending_leader", "校级领导签发", "school_leader"},
+                {"seal_office", "pending_office", "党办校办审批", "office_admin"},
+                {"seal_dept", "pending_dept", "部门负责人审批", "dept_head"},
+                {"seal_dept_major", "pending_dept", "部门负责人审批", "dept_head"},
+                {"seal_dept_major", "pending_office", "党办校办审核", "office_admin"},
+                {"seal_school_major", "pending_office", "党办校办审核", "office_admin"},
+                {"seal_school_major", "pending_leader", "校级领导签发", "school_leader"},
+                {"meeting", "pending_dept", "部门负责人审批", "dept_head"},
+                {"meeting_large", "pending_security", "保卫处安全审批", "security_staff"},
+                {"meeting_large", "pending_dept", "部门负责人审批", "dept_head"},
+                {"meeting_large", "pending_leader", "校级领导审批", "school_leader"},
+                {"travel", "pending_dept", "部门负责人审批", "dept_head"},
+                {"travel", "pending_finance", "财务处审批", "finance_staff"},
+                {"report", "pending_secret_review", "保密审查", "office_admin"},
+                {"report", "pending_dept", "部门负责人审批", "dept_head"},
+                {"report", "pending_leader", "校级领导审批", "school_leader"},
+        };
+        long id = 1;
+        int order = 1;
+        String prevFlow = null;
+        for (String[] d : defaults) {
+            if (!d[0].equals(prevFlow)) {
+                order = 1;
+                prevFlow = d[0];
+            } else {
+                order++;
+            }
+            try {
+                jdbc.update("INSERT INTO oa_flow_node (id, flow_key, sort_order, node_key, node_label, role_key, enabled) "
+                                + "VALUES (?,?,?,?,?,?,1)",
+                        id, d[0], order, d[1], d[2], d[3]);
+            } catch (Exception e) {
+                System.err.println("Seed flow node " + d[0] + "/" + d[1] + ": " + e.getMessage());
+            }
+            id++;
+        }
     }
 
     /**
